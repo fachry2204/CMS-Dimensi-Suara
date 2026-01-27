@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ReleaseData, Track } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users } from 'lucide-react';
+import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Props {
   release: ReleaseData;
@@ -15,6 +15,9 @@ interface Props {
 export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators }) => {
   const [activeTab, setActiveTab] = useState<'INFO' | 'DISTRIBUTION'>('INFO');
   
+  // Accordion State for Tracklist
+  const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
+
   // Audio Preview State
   // Keys: `${trackId}_full` or `${trackId}_clip`
   const [playingKey, setPlayingKey] = useState<string | null>(null);
@@ -44,6 +47,9 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
         setUpcInput(release.upc || '');
         setRejectionReason(release.rejectionReason || '');
         setRejectionDesc(release.rejectionDescription || '');
+        
+        // Reset expanded track
+        setExpandedTrackId(null);
     }
   }, [isOpen, release]);
 
@@ -74,6 +80,10 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
   }, [isOpen, release.tracks, release.coverArt]);
 
   if (!isOpen) return null;
+
+  const toggleTrackExpand = (trackId: string) => {
+    setExpandedTrackId(prev => prev === trackId ? null : trackId);
+  };
 
   // AI Generation for Rejection
   const generateRejectionMessage = async () => {
@@ -181,7 +191,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
     const isPlaying = playingKey === key;
 
-    const togglePlay = () => {
+    const togglePlay = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent accordion toggle
         const audioEl = document.getElementById(`audio-${key}`) as HTMLAudioElement;
         if (!audioEl) return;
 
@@ -208,7 +219,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                 {isPlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
             <button 
-                onClick={() => downloadFile(url, fileName || `audio_${type}.wav`)}
+                onClick={(e) => { e.stopPropagation(); downloadFile(url, fileName || `audio_${type}.wav`); }}
                 className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 hover:text-blue-600 transition-colors"
                 title={`Download ${type === 'full' ? 'Full Track' : 'Clip'}`}
             >
@@ -393,149 +404,161 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                             </div>
 
                             <div className="space-y-4">
-                                {release.tracks.map((track) => (
-                                    <div key={track.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-blue-300 transition-colors shadow-sm">
-                                        {/* Track Header */}
-                                        <div className="bg-slate-50 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between border-b border-gray-100 gap-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-sm">
-                                                    {track.trackNumber}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-lg text-slate-800">{track.title}</h4>
-                                                    <p className="text-xs text-slate-500">
-                                                        {track.artists.map(a => `${a.name} (${a.role})`).join(", ")}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-right">
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase">ISRC CODE</div>
-                                                    <div className="font-mono text-sm font-medium text-slate-700 bg-white px-2 py-1 rounded border border-gray-200">
-                                                        {isrcInputs[track.id] || track.isrc || "N/A"}
+                                {release.tracks.map((track) => {
+                                    const isExpanded = expandedTrackId === track.id;
+                                    
+                                    return (
+                                        <div key={track.id} className={`bg-white rounded-xl border overflow-hidden transition-all shadow-sm ${isExpanded ? 'border-blue-300 ring-1 ring-blue-100' : 'border-gray-200 hover:border-blue-200'}`}>
+                                            {/* Track Header (Clickable for Accordion) */}
+                                            <div 
+                                                className={`px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50/50' : 'bg-slate-50 hover:bg-slate-100'}`}
+                                                onClick={() => toggleTrackExpand(track.id)}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-sm transition-colors ${isExpanded ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-gray-200'}`}>
+                                                        {track.trackNumber}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-lg text-slate-800">{track.title}</h4>
+                                                        <p className="text-xs text-slate-500">
+                                                            {track.artists.map(a => `${a.name} (${a.role})`).join(", ")}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Track Details Grid */}
-                                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            {/* Column 1: Audio Files & Actions */}
-                                            <div className="space-y-6">
-                                                {/* Full Audio */}
-                                                <div>
-                                                    <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-1">
-                                                        <FileAudio size={12} /> Full Audio File
-                                                    </span>
-                                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                                        <div className="text-xs font-bold text-slate-700 truncate mb-2" title={track.audioFile?.name}>
-                                                            {track.audioFile?.name || "No file uploaded"}
+                                                <div className="flex items-center gap-6">
+                                                    <div className="text-right hidden sm:block">
+                                                        <div className="text-[10px] font-bold text-slate-400 uppercase">ISRC CODE</div>
+                                                        <div className="font-mono text-sm font-medium text-slate-700 bg-white px-2 py-1 rounded border border-gray-200">
+                                                            {isrcInputs[track.id] || track.isrc || "N/A"}
                                                         </div>
-                                                        <AudioPlayer track={track} type="full" />
+                                                    </div>
+                                                    <div className="text-slate-400">
+                                                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                                     </div>
                                                 </div>
+                                            </div>
 
-                                                {/* Audio Clip */}
-                                                <div>
-                                                    <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-1">
-                                                        <Scissors size={12} /> Audio Clip (Trim)
-                                                    </span>
-                                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                                        {track.audioClip ? (
-                                                            <>
-                                                                <div className="text-xs font-bold text-slate-700 truncate mb-2" title={track.audioClip.name}>
-                                                                    {track.audioClip.name}
+                                            {/* Track Details Grid (Conditionally Rendered) */}
+                                            {isExpanded && (
+                                                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in border-t border-gray-100">
+                                                    {/* Column 1: Audio Files & Actions */}
+                                                    <div className="space-y-6">
+                                                        {/* Full Audio */}
+                                                        <div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-1">
+                                                                <FileAudio size={12} /> Full Audio File
+                                                            </span>
+                                                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                                <div className="text-xs font-bold text-slate-700 truncate mb-2" title={track.audioFile?.name}>
+                                                                    {track.audioFile?.name || "No file uploaded"}
                                                                 </div>
-                                                                <AudioPlayer track={track} type="clip" />
-                                                            </>
-                                                        ) : (
-                                                            <div className="text-xs text-slate-400 italic py-1">No clip generated</div>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                                                <AudioPlayer track={track} type="full" />
+                                                            </div>
+                                                        </div>
 
-                                                <div className="flex gap-4">
-                                                    <div>
-                                                        <span className="text-[10px] uppercase font-bold text-slate-400">Genre</span>
-                                                        <div className="text-sm font-medium text-slate-700">{track.genre}</div>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] uppercase font-bold text-slate-400">Explicit</span>
-                                                        <div className={`text-sm font-bold ${track.explicitLyrics === 'Yes' ? 'text-red-500' : 'text-green-600'}`}>
-                                                            {track.explicitLyrics}
+                                                        {/* Audio Clip */}
+                                                        <div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-1">
+                                                                <Scissors size={12} /> Audio Clip (Trim)
+                                                            </span>
+                                                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                                {track.audioClip ? (
+                                                                    <>
+                                                                        <div className="text-xs font-bold text-slate-700 truncate mb-2" title={track.audioClip.name}>
+                                                                            {track.audioClip.name}
+                                                                        </div>
+                                                                        <AudioPlayer track={track} type="clip" />
+                                                                    </>
+                                                                ) : (
+                                                                    <div className="text-xs text-slate-400 italic py-1">No clip generated</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex gap-4">
+                                                            <div>
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400">Genre</span>
+                                                                <div className="text-sm font-medium text-slate-700">{track.genre}</div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400">Explicit</span>
+                                                                <div className={`text-sm font-bold ${track.explicitLyrics === 'Yes' ? 'text-red-500' : 'text-green-600'}`}>
+                                                                    {track.explicitLyrics}
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </div>
 
-                                            {/* Column 2: Credits & Contributors */}
-                                            <div className="space-y-6">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                     <div>
-                                                        <span className="text-[10px] uppercase font-bold text-slate-400">Composer</span>
-                                                        <div className="text-sm font-medium text-slate-700">{track.composer}</div>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] uppercase font-bold text-slate-400">Lyricist</span>
-                                                        <div className="text-sm font-medium text-slate-700">{track.lyricist}</div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Full Additional Contributors Display */}
-                                                <div>
-                                                    <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-2">
-                                                        <Users size={12} /> Additional Contributors
-                                                    </span>
-                                                    {track.contributors.length > 0 ? (
-                                                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                                                            <table className="w-full text-left text-xs">
-                                                                <thead className="bg-gray-50 text-gray-500 font-bold">
-                                                                    <tr>
-                                                                        <th className="px-3 py-2">Name</th>
-                                                                        <th className="px-3 py-2">Role</th>
-                                                                        <th className="px-3 py-2">Type</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-gray-100">
-                                                                    {track.contributors.map((c, idx) => (
-                                                                        <tr key={idx}>
-                                                                            <td className="px-3 py-2 font-medium text-slate-700">{c.name}</td>
-                                                                            <td className="px-3 py-2 text-slate-500">{c.role}</td>
-                                                                            <td className="px-3 py-2 text-slate-500">{c.type}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
+                                                    {/* Column 2: Credits & Contributors */}
+                                                    <div className="space-y-6">
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                             <div>
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400">Composer</span>
+                                                                <div className="text-sm font-medium text-slate-700">{track.composer}</div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400">Lyricist</span>
+                                                                <div className="text-sm font-medium text-slate-700">{track.lyricist}</div>
+                                                            </div>
                                                         </div>
-                                                    ) : (
-                                                        <div className="text-xs text-slate-400 italic">None added.</div>
-                                                    )}
-                                                </div>
-                                            </div>
 
-                                            {/* Column 3: Lyrics & Extras */}
-                                            <div>
-                                                 <div className="flex justify-between items-center mb-1">
-                                                     <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                                                         <Mic2 size={10} /> Lyrics Preview
-                                                     </span>
-                                                     {track.lyrics && (
-                                                         <button 
-                                                            onClick={() => copyToClipboard(track.lyrics)}
-                                                            className="text-blue-500 hover:text-blue-700 transition-colors"
-                                                            title="Copy Lyrics"
-                                                         >
-                                                             <Clipboard size={14} />
-                                                         </button>
-                                                     )}
-                                                 </div>
-                                                 <div className="bg-gray-50 rounded-lg p-3 text-xs text-slate-600 italic h-48 overflow-y-auto border border-gray-100 whitespace-pre-line">
-                                                     {track.lyrics ? track.lyrics : "No lyrics provided."}
-                                                 </div>
-                                            </div>
+                                                        {/* Full Additional Contributors Display */}
+                                                        <div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-2">
+                                                                <Users size={12} /> Additional Contributors
+                                                            </span>
+                                                            {track.contributors.length > 0 ? (
+                                                                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                                                    <table className="w-full text-left text-xs">
+                                                                        <thead className="bg-gray-50 text-gray-500 font-bold">
+                                                                            <tr>
+                                                                                <th className="px-3 py-2">Name</th>
+                                                                                <th className="px-3 py-2">Role</th>
+                                                                                <th className="px-3 py-2">Type</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-gray-100">
+                                                                            {track.contributors.map((c, idx) => (
+                                                                                <tr key={idx}>
+                                                                                    <td className="px-3 py-2 font-medium text-slate-700">{c.name}</td>
+                                                                                    <td className="px-3 py-2 text-slate-500">{c.role}</td>
+                                                                                    <td className="px-3 py-2 text-slate-500">{c.type}</td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-xs text-slate-400 italic">None added.</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Column 3: Lyrics & Extras */}
+                                                    <div>
+                                                         <div className="flex justify-between items-center mb-1">
+                                                             <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                                                                 <Mic2 size={10} /> Lyrics Preview
+                                                             </span>
+                                                             {track.lyrics && (
+                                                                 <button 
+                                                                    onClick={(e) => { e.stopPropagation(); copyToClipboard(track.lyrics); }}
+                                                                    className="text-blue-500 hover:text-blue-700 transition-colors"
+                                                                    title="Copy Lyrics"
+                                                                 >
+                                                                     <Clipboard size={14} />
+                                                                 </button>
+                                                             )}
+                                                         </div>
+                                                         <div className="bg-gray-50 rounded-lg p-3 text-xs text-slate-600 italic h-48 overflow-y-auto border border-gray-100 whitespace-pre-line">
+                                                             {track.lyrics ? track.lyrics : "No lyrics provided."}
+                                                         </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
