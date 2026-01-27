@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Music4, User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 interface Props {
-  onLogin: () => void;
+  onLogin: (username: string) => void;
 }
 
 export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
@@ -24,7 +24,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       const isValidUser2 = (username === 'fachry' && password === 'bangbens');
 
       if (isValidAdmin || isValidUser2) {
-        onLogin();
+        onLogin(username);
       } else {
         setError('Username atau Password salah.');
         setIsLoading(false);

@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Disc, Music, Calendar, Eye, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Disc, Music, Calendar, Eye, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Globe, ChevronLeft, ChevronRight, List } from 'lucide-react';
 import { ReleaseData } from '../types';
 
 interface Props {
@@ -24,6 +24,16 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
   
   // Sorting State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isViewAll, setIsViewAll] = useState(false);
+  const ITEMS_PER_PAGE = 10;
+
+  // Reset pagination when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeStatusTab, searchQuery, isViewAll]);
 
   // Define Tabs
   const tabs = [
@@ -80,6 +90,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
             return dateA.localeCompare(dateB) * direction;
     }
   });
+
+  // 3. Pagination Logic
+  const totalItems = sortedReleases.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  
+  const displayedReleases = isViewAll 
+    ? sortedReleases 
+    : sortedReleases.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleSort = (key: SortKey) => {
     setSortConfig(current => ({
@@ -152,8 +170,8 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
             })}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
+            <div className="overflow-x-auto flex-1">
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-gray-100">
                         <tr>
@@ -167,7 +185,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {sortedReleases.map((release) => {
+                        {displayedReleases.map((release) => {
                             // Determine type
                             const type = release.tracks.length > 1 ? "Album/EP" : "Single";
                             
@@ -290,6 +308,66 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                     </p>
                 </div>
             )}
+
+            {/* Pagination Footer */}
+            <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                <div className="flex items-center gap-4">
+                     <span className="text-sm text-slate-500">
+                        Showing {displayedReleases.length} of {totalItems} results
+                     </span>
+                     <button 
+                        onClick={() => setIsViewAll(!isViewAll)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-2 transition-colors ${isViewAll ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'}`}
+                     >
+                        <List size={14} />
+                        {isViewAll ? "Show Paged" : "View All"}
+                     </button>
+                </div>
+
+                {!isViewAll && totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded-lg border border-gray-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                // Logic to show window of pages around current
+                                let pageNum = i + 1;
+                                if (totalPages > 5) {
+                                    if (currentPage > 3) pageNum = currentPage - 2 + i;
+                                    if (pageNum > totalPages) pageNum = pageNum - (pageNum - totalPages);
+                                }
+                                
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setCurrentPage(pageNum)}
+                                        className={`w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center transition-colors
+                                            ${currentPage === pageNum 
+                                                ? 'bg-blue-600 text-white shadow-sm' 
+                                                : 'text-slate-600 hover:bg-slate-100'}`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="p-2 rounded-lg border border-gray-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     </div>
   );

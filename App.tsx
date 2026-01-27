@@ -13,64 +13,13 @@ import { LoginScreen } from './screens/LoginScreen';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-react';
-
-const DUMMY_RELEASES: ReleaseData[] = [
-    { 
-        id: '101', 
-        title: "Summer Vibes Vol. 1", 
-        primaryArtists: ["The Weekend Band"], 
-        status: 'Live', 
-        aggregator: "LokaMusik",
-        submissionDate: "2023-10-01", 
-        coverArt: null, upc: "898921821", language: "Indonesia", label: "Indie Local", version: "Original", tracks: [
-            { id: 't1', title: 'Summer Start', trackNumber: '1', artists: [], contributors: [], explicitLyrics: 'No', genre: 'Pop', isrc: 'IDA012300001', composer: '', lyricist: '', duration: '', releaseDate: '', lyrics: '' },
-            { id: 't2', title: 'Sunset Drive', trackNumber: '2', artists: [], contributors: [], explicitLyrics: 'No', genre: 'Pop', isrc: 'IDA012300002', composer: '', lyricist: '', duration: '', releaseDate: '', lyrics: '' }
-        ], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-10-15"
-    },
-    { 
-        id: '102', 
-        title: "Midnight Rain", 
-        primaryArtists: ["Sarah J"], 
-        status: 'Processing',
-        aggregator: "SoundOn",
-        submissionDate: "2023-11-05", 
-        coverArt: null, upc: "", language: "English", label: "Sarah Music", version: "Original", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-11-20"
-    },
-    {
-        id: '103',
-        title: "Acoustic Sessions (Live)",
-        primaryArtists: ["John Doe"],
-        status: 'Pending',
-        aggregator: "",
-        submissionDate: "2023-11-28",
-        coverArt: null, upc: "", language: "Indonesia", label: "JD Records", version: "Live", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-12-05"
-    },
-    {
-        id: '104',
-        title: "Bootleg Remix 2023",
-        primaryArtists: ["DJ Unknown"],
-        status: 'Rejected',
-        aggregator: "",
-        submissionDate: "2023-11-25",
-        rejectionReason: "Isu Hak Cipta / Audio Sampling Ilegal",
-        rejectionDescription: "Rilis Anda ditolak karena terdeteksi menggunakan sampel audio tanpa lisensi resmi. Mohon lampirkan bukti lisensi atau hapus sampel tersebut.",
-        coverArt: null, upc: "", language: "English", label: "None", version: "Remix", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-11-30"
-    },
-    {
-        id: '105',
-        title: "Lagu Cinta Pertama",
-        primaryArtists: ["Budi Doremi KW"],
-        status: 'Pending',
-        aggregator: "",
-        submissionDate: "2023-11-29",
-        coverArt: null, upc: "", language: "Indonesia", label: "Self Release", version: "Original", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-12-10"
-    }
-];
+import { generateSongwriters, generatePublishing, generateReleases } from './utils/dummyData';
 
 const App: React.FC = () => {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<string>('');
   
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
@@ -79,38 +28,28 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('DASHBOARD');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Global App State
-  const [allReleases, setAllReleases] = useState<ReleaseData[]>(DUMMY_RELEASES);
-  const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn"]);
-  
-  // Publishing State
+  // Global App State with GENERATED DATA (50+)
+  const [savedSongwriters, setSavedSongwriters] = useState<SavedSongwriter[]>([]);
   const [allPublishing, setAllPublishing] = useState<PublishingRegistration[]>([]);
-  const [savedSongwriters, setSavedSongwriters] = useState<SavedSongwriter[]>([
-    { 
-      id: '1', 
-      name: 'Fachry (Demo)', 
-      firstName: 'Fachry',
-      lastName: 'Demo',
-      email: 'fachry@example.com',
-      phone: '081234567890',
-      nik: '3171234567890001',
-      npwp: '12.345.678.9-123.000',
-      country: 'Indonesia',
-      province: 'DKI Jakarta',
-      city: 'Jakarta Selatan',
-      district: 'Tebet',
-      village: 'Tebet Timur',
-      postalCode: '12820',
-      address1: 'Jl. Tebet Raya No. 123',
-      address2: '',
-      bankName: 'BCA',
-      bankBranch: 'KCP Tebet',
-      accountName: 'Fachry Demo',
-      accountNumber: '1234567890',
-      publisher: 'Dimensi Publishing', 
-      ipi: '00123456789' 
-    }
-  ]);
+  const [allReleases, setAllReleases] = useState<ReleaseData[]>([]);
+
+  const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn", "Tunecore", "Believe"]);
+  
+  // Initialize Data
+  useEffect(() => {
+    // 1. Generate 60 Songwriters
+    const writers = generateSongwriters(60);
+    setSavedSongwriters(writers);
+
+    // 2. Generate 70 Publishing Registrations (linked to writers)
+    const pubs = generatePublishing(70, writers);
+    setAllPublishing(pubs);
+
+    // 3. Generate 55 Releases
+    const rels = generateReleases(55);
+    setAllReleases(rels);
+
+  }, []);
 
   // Wizard State
   const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
@@ -123,14 +62,18 @@ const App: React.FC = () => {
   // Check LocalStorage on Mount
   useEffect(() => {
     const storedAuth = localStorage.getItem('cms_auth');
+    const storedUser = localStorage.getItem('cms_user');
     if (storedAuth === 'true') {
       setIsAuthenticated(true);
+      if (storedUser) setCurrentUser(storedUser);
     }
     setIsAuthChecking(false);
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = (username: string) => {
     localStorage.setItem('cms_auth', 'true');
+    localStorage.setItem('cms_user', username);
+    setCurrentUser(username);
     setIsAuthenticated(true);
   };
 
@@ -140,7 +83,9 @@ const App: React.FC = () => {
 
   const confirmLogout = () => {
     localStorage.removeItem('cms_auth');
+    localStorage.removeItem('cms_user');
     setIsAuthenticated(false);
+    setCurrentUser('');
     setShowLogoutDialog(false);
     // Reset states
     setActiveTab('DASHBOARD');
@@ -236,7 +181,7 @@ const App: React.FC = () => {
         fixed inset-0 z-40 transform transition-transform duration-300 md:relative md:translate-x-0 md:w-auto
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-         <Sidebar activeTab={activeTab} onNavigate={handleSidebarNavigate} />
+         <Sidebar activeTab={activeTab} onNavigate={handleSidebarNavigate} currentUser={currentUser} />
          <div 
             className={`absolute inset-0 bg-black/50 -z-10 md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}
             onClick={() => setIsMobileMenuOpen(false)}
@@ -261,8 +206,10 @@ const App: React.FC = () => {
                 {/* Profile Dropdown Simulation */}
                 <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
                     <div className="text-right hidden sm:block">
-                        <div className="text-sm font-bold text-slate-800">Admin User</div>
-                        <div className="text-[10px] text-slate-500 font-medium">Super Administrator</div>
+                        <div className="text-sm font-bold text-slate-800 capitalize">{currentUser}</div>
+                        <div className="text-[10px] text-slate-500 font-medium">
+                            {currentUser === 'admin' ? 'Super Administrator' : 'Content Manager'}
+                        </div>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
                         <User size={20} />
@@ -295,7 +242,7 @@ const App: React.FC = () => {
             <Statistics releases={allReleases} />
           )}
 
-          {activeTab.startsWith('PUBLISHING') && (
+          {activeTab.startsWith('PUBLISHING') && currentUser === 'fachry' && (
             <Publishing 
                 activeTab={activeTab} 
                 savedSongwriters={savedSongwriters}
