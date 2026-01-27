@@ -102,3 +102,74 @@ export enum Step {
 }
 
 export type ReleaseType = 'SINGLE' | 'ALBUM';
+
+// --- PUBLISHING TYPES ---
+
+export interface Songwriter {
+  id: string;
+  name: string;
+  role: 'Author' | 'Composer' | 'Author & Composer' | 'Arranger';
+  share: number; // Percentage 0-100
+}
+
+export interface SavedSongwriter {
+  id: string;
+  // Display Name (Computed)
+  name: string; 
+  
+  // Personal Details
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  nik: string; // KTP
+  npwp: string; // Tax ID
+  
+  // Address
+  country: string;
+  province: string;
+  city: string;
+  district: string;
+  village: string;
+  postalCode: string;
+  address1: string;
+  address2: string;
+
+  // Bank Details
+  bankName: string;
+  bankBranch: string;
+  accountName: string;
+  accountNumber: string;
+
+  // Legacy/Optional
+  publisher?: string;
+  ipi?: string;
+}
+
+export interface PublishingRegistration {
+  id?: string; // Added for list view
+  status?: 'Pending' | 'Approved' | 'Rejected'; // Added for list view
+  submissionDate?: string; // Added for list view
+  
+  title: string;
+  songCode: string; // New Field
+  otherTitle: string;
+  sampleLink: string;
+  rightsGranted: {
+    synchronization: boolean;
+    mechanical: boolean;
+    performing: boolean;
+    printing: boolean;
+    other: boolean;
+  };
+  performer: string;
+  duration: string;
+  genre: string;
+  language: string;
+  region: string;
+  iswc: string;
+  isrc: string;
+  lyrics: string; // New Field
+  note: string;
+  songwriters: Songwriter[];
+}

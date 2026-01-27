@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3 } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, BookOpen, FileText, UserPlus, PieChart, Library } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS';
-  onNavigate: (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS') => void;
+  activeTab: string;
+  onNavigate: (tab: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate }) => {
@@ -73,6 +73,63 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate }) => {
               >
                 <BarChart3 size={20} className={activeTab === 'STATISTICS' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
                 Statistik
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        {/* Publishing Category */}
+        <div>
+          <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+            Publishing
+          </h3>
+          <ul className="space-y-2">
+            <li>
+              <button
+                onClick={() => onNavigate('PUBLISHING_WRITER')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'PUBLISHING_WRITER' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <UserPlus size={20} className={activeTab === 'PUBLISHING_WRITER' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Add Song Writer
+              </button>
+            </li>
+             <li>
+              <button
+                onClick={() => onNavigate('PUBLISHING_ADD')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'PUBLISHING_ADD' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <FileText size={20} className={activeTab === 'PUBLISHING_ADD' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Add Publishing
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => onNavigate('PUBLISHING_ALL')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'PUBLISHING_ALL' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <Library size={20} className={activeTab === 'PUBLISHING_ALL' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                All Publishing
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => onNavigate('PUBLISHING_REPORT')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'PUBLISHING_REPORT' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <PieChart size={20} className={activeTab === 'PUBLISHING_REPORT' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Report Publishing
               </button>
             </li>
           </ul>

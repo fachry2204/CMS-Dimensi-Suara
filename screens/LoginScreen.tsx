@@ -20,7 +20,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
     // Simulate network delay for better UX
     setTimeout(() => {
-      if (username === 'admin' && password === 'rackajuragandracin') {
+      const isValidAdmin = (username === 'admin' && password === 'rackajuragandracin');
+      const isValidUser2 = (username === 'fachry' && password === 'bangbens');
+
+      if (isValidAdmin || isValidUser2) {
         onLogin();
       } else {
         setError('Username atau Password salah.');

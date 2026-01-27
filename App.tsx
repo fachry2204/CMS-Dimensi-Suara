@@ -6,11 +6,12 @@ import { ReleaseTypeSelection } from './screens/ReleaseTypeSelection';
 import { ReleaseWizard } from './screens/ReleaseWizard';
 import { AllReleases } from './screens/AllReleases';
 import { Dashboard } from './screens/Dashboard'; 
-import { Statistics } from './screens/Statistics'; // Import Statistics
+import { Statistics } from './screens/Statistics'; 
+import { Publishing } from './screens/Publishing'; // Import Publishing
 import { Settings } from './screens/Settings';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
-import { ReleaseType, ReleaseData } from './types';
+import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-react';
 
 const DUMMY_RELEASES: ReleaseData[] = [
@@ -74,13 +75,42 @@ const App: React.FC = () => {
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
-  // Sidebar State (Added STATISTICS)
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS'>('DASHBOARD');
+  // Sidebar State (Expanded to include publishing sub-tabs)
+  const [activeTab, setActiveTab] = useState<string>('DASHBOARD');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Global App State
   const [allReleases, setAllReleases] = useState<ReleaseData[]>(DUMMY_RELEASES);
   const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn"]);
+  
+  // Publishing State
+  const [allPublishing, setAllPublishing] = useState<PublishingRegistration[]>([]);
+  const [savedSongwriters, setSavedSongwriters] = useState<SavedSongwriter[]>([
+    { 
+      id: '1', 
+      name: 'Fachry (Demo)', 
+      firstName: 'Fachry',
+      lastName: 'Demo',
+      email: 'fachry@example.com',
+      phone: '081234567890',
+      nik: '3171234567890001',
+      npwp: '12.345.678.9-123.000',
+      country: 'Indonesia',
+      province: 'DKI Jakarta',
+      city: 'Jakarta Selatan',
+      district: 'Tebet',
+      village: 'Tebet Timur',
+      postalCode: '12820',
+      address1: 'Jl. Tebet Raya No. 123',
+      address2: '',
+      bankName: 'BCA',
+      bankBranch: 'KCP Tebet',
+      accountName: 'Fachry Demo',
+      accountNumber: '1234567890',
+      publisher: 'Dimensi Publishing', 
+      ipi: '00123456789' 
+    }
+  ]);
 
   // Wizard State
   const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
@@ -121,7 +151,7 @@ const App: React.FC = () => {
     setShowLogoutDialog(false);
   };
 
-  const handleSidebarNavigate = (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS') => {
+  const handleSidebarNavigate = (tab: string) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false); // Close mobile menu on click
     setViewingRelease(null); // Clear viewing state
@@ -183,6 +213,10 @@ const App: React.FC = () => {
       if (activeTab === 'ALL') return "Catalog Manager";
       if (activeTab === 'SETTINGS') return "System Settings";
       if (activeTab === 'STATISTICS') return "Analytics & Reports";
+      if (activeTab === 'PUBLISHING_ADD') return "Publishing / Registration";
+      if (activeTab === 'PUBLISHING_WRITER') return "Publishing / Songwriters";
+      if (activeTab === 'PUBLISHING_ALL') return "Publishing / All Submissions";
+      if (activeTab === 'PUBLISHING_REPORT') return "Publishing / Reports";
       return "Dashboard";
   };
 
@@ -259,6 +293,16 @@ const App: React.FC = () => {
 
           {activeTab === 'STATISTICS' && (
             <Statistics releases={allReleases} />
+          )}
+
+          {activeTab.startsWith('PUBLISHING') && (
+            <Publishing 
+                activeTab={activeTab} 
+                savedSongwriters={savedSongwriters}
+                setSavedSongwriters={setSavedSongwriters}
+                allPublishing={allPublishing}
+                setAllPublishing={setAllPublishing}
+            />
           )}
 
           {activeTab === 'NEW' && (
