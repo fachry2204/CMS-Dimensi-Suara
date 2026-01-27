@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3 } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS';
-  onNavigate: (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS') => void;
+  activeTab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS';
+  onNavigate: (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS') => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate }) => {
@@ -61,6 +61,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate }) => {
               >
                 <ListMusic size={20} className={activeTab === 'ALL' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
                 All Release
+              </button>
+            </li>
+             <li>
+              <button
+                onClick={() => onNavigate('STATISTICS')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'STATISTICS' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <BarChart3 size={20} className={activeTab === 'STATISTICS' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Statistik
               </button>
             </li>
           </ul>

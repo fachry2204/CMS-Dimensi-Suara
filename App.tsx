@@ -5,7 +5,8 @@ import { Footer } from './components/Footer';
 import { ReleaseTypeSelection } from './screens/ReleaseTypeSelection';
 import { ReleaseWizard } from './screens/ReleaseWizard';
 import { AllReleases } from './screens/AllReleases';
-import { Dashboard } from './screens/Dashboard'; // Import Dashboard
+import { Dashboard } from './screens/Dashboard'; 
+import { Statistics } from './screens/Statistics'; // Import Statistics
 import { Settings } from './screens/Settings';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
@@ -73,8 +74,8 @@ const App: React.FC = () => {
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
-  // Sidebar State (Added DASHBOARD)
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS'>('DASHBOARD');
+  // Sidebar State (Added STATISTICS)
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS'>('DASHBOARD');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Global App State
@@ -120,7 +121,7 @@ const App: React.FC = () => {
     setShowLogoutDialog(false);
   };
 
-  const handleSidebarNavigate = (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS') => {
+  const handleSidebarNavigate = (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS' | 'STATISTICS') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false); // Close mobile menu on click
     setViewingRelease(null); // Clear viewing state
@@ -181,6 +182,7 @@ const App: React.FC = () => {
       if (activeTab === 'NEW') return "Music Distribution";
       if (activeTab === 'ALL') return "Catalog Manager";
       if (activeTab === 'SETTINGS') return "System Settings";
+      if (activeTab === 'STATISTICS') return "Analytics & Reports";
       return "Dashboard";
   };
 
@@ -253,6 +255,10 @@ const App: React.FC = () => {
                 onViewRelease={handleViewDetails}
                 onNavigateToAll={() => setActiveTab('ALL')}
             />
+          )}
+
+          {activeTab === 'STATISTICS' && (
+            <Statistics releases={allReleases} />
           )}
 
           {activeTab === 'NEW' && (
