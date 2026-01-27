@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Disc, Music, Calendar, Eye, Edit3, Barcode, Search, Filter } from 'lucide-react';
+import { Disc, Music, Calendar, Eye, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Globe } from 'lucide-react';
 import { ReleaseData } from '../types';
 
 interface Props {
@@ -10,11 +10,22 @@ interface Props {
   availableAggregators: string[];
 }
 
-export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdateRelease, availableAggregators }) => {
+type SortKey = 'title' | 'artist' | 'type' | 'date' | 'aggregator' | 'status';
+type SortDirection = 'asc' | 'desc';
+
+interface SortConfig {
+  key: SortKey;
+  direction: SortDirection;
+}
+
+export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availableAggregators }) => {
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
 
-  // Define Tabs and their mapping to data status
+  // Define Tabs
   const tabs = [
     { id: 'ALL', label: 'All Release', statusMap: null },
     { id: 'PENDING', label: 'Pending', statusMap: 'Pending' },
@@ -23,27 +34,78 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
     { id: 'REJECTED', label: 'Reject', statusMap: 'Rejected' },
   ];
 
-  // Helper to count items per tab
   const getCount = (statusMap: string | null) => {
     if (statusMap === null) return releases.length;
     return releases.filter(r => r.status === statusMap).length;
   };
 
-  // Filter Logic
+  // 1. Filter Logic
   const filteredReleases = releases.filter(release => {
-    // 1. Status Filter
+    // Status Filter
     const currentTab = tabs.find(t => t.id === activeStatusTab);
     const statusMatch = currentTab?.statusMap ? release.status === currentTab.statusMap : true;
     
-    // 2. Search Filter
+    // Search Filter (Expanded to include Aggregator)
     const searchLower = searchQuery.toLowerCase();
     const searchMatch = 
         release.title.toLowerCase().includes(searchLower) || 
         release.primaryArtists.some(a => a.toLowerCase().includes(searchLower)) ||
-        (release.upc && release.upc.includes(searchLower));
+        (release.upc && release.upc.includes(searchLower)) ||
+        (release.aggregator && release.aggregator.toLowerCase().includes(searchLower)); // Added Aggregator Search
 
     return statusMatch && searchMatch;
   });
+
+  // 2. Sorting Logic
+  const sortedReleases = [...filteredReleases].sort((a, b) => {
+    const direction = sortConfig.direction === 'asc' ? 1 : -1;
+    
+    switch (sortConfig.key) {
+        case 'title':
+            return a.title.localeCompare(b.title) * direction;
+        case 'artist':
+            return (a.primaryArtists[0] || '').localeCompare(b.primaryArtists[0] || '') * direction;
+        case 'aggregator':
+            return (a.aggregator || '').localeCompare(b.aggregator || '') * direction;
+        case 'status':
+            return (a.status || '').localeCompare(b.status || '') * direction;
+        case 'type':
+            const typeA = a.tracks.length > 1 ? "Album" : "Single";
+            const typeB = b.tracks.length > 1 ? "Album" : "Single";
+            return typeA.localeCompare(typeB) * direction;
+        case 'date':
+        default:
+            const dateA = a.plannedReleaseDate || a.submissionDate || '';
+            const dateB = b.plannedReleaseDate || b.submissionDate || '';
+            return dateA.localeCompare(dateB) * direction;
+    }
+  });
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
+     if (sortConfig.key !== columnKey) return <ArrowUpDown size={14} className="text-slate-300 opacity-0 group-hover:opacity-50" />;
+     return sortConfig.direction === 'asc' 
+        ? <ArrowUp size={14} className="text-blue-500" /> 
+        : <ArrowDown size={14} className="text-blue-500" />;
+  };
+
+  const ThSortable = ({ label, sortKey, align = 'left' }: { label: string, sortKey: SortKey, align?: 'left'|'right' }) => (
+      <th 
+        className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group text-${align}`}
+        onClick={() => handleSort(sortKey)}
+      >
+        <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
+            {label}
+            <SortIcon columnKey={sortKey} />
+        </div>
+      </th>
+  );
 
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
@@ -57,7 +119,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                     type="text" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by Title, Artist, UPC..." 
+                    placeholder="Search Title, Artist, UPC, Aggregator..." 
                     className="w-full md:w-80 pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all"
                 />
                 <Search size={18} className="absolute left-3 top-3 text-gray-400" />
@@ -95,16 +157,17 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-gray-100">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Release</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Release Date</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Codes (UPC / ISRC)</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                            <ThSortable label="Release" sortKey="title" />
+                            <ThSortable label="Type" sortKey="type" />
+                            <ThSortable label="Release Date" sortKey="date" />
+                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Codes</th>
+                            <ThSortable label="Aggregator" sortKey="aggregator" />
+                            <ThSortable label="Status" sortKey="status" />
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {filteredReleases.map((release) => {
+                        {sortedReleases.map((release) => {
                             // Determine type
                             const type = release.tracks.length > 1 ? "Album/EP" : "Single";
                             
@@ -175,6 +238,17 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                                             </div>
                                         </div>
                                     </td>
+                                    {/* NEW AGGREGATOR COLUMN */}
+                                    <td className="px-6 py-4">
+                                        {release.aggregator ? (
+                                            <div className="flex items-center gap-2 text-sm font-medium text-purple-700 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100 w-fit">
+                                                <Globe size={14} />
+                                                {release.aggregator}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-300 italic">Not set</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col items-start gap-1">
                                             <span 
@@ -183,9 +257,6 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                                             >
                                                 {status === 'Live' ? 'Released' : status}
                                             </span>
-                                            {release.aggregator && status !== 'Pending' && (
-                                                <span className="text-[10px] text-slate-400 font-medium px-1 truncate max-w-[100px]">via {release.aggregator}</span>
-                                            )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -206,16 +277,16 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                 </table>
             </div>
             
-            {filteredReleases.length === 0 && (
+            {sortedReleases.length === 0 && (
                 <div className="p-16 text-center">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Filter size={24} className="text-slate-300" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-700 mb-1">No releases found</h3>
                     <p className="text-slate-400 text-sm">
-                        {activeStatusTab === 'ALL' 
+                        {activeStatusTab === 'ALL' && searchQuery === ''
                             ? "You haven't created any releases yet." 
-                            : `There are no releases with status "${activeStatusTab.toLowerCase()}".`}
+                            : `No results found for your current filter/search.`}
                     </p>
                 </div>
             )}
