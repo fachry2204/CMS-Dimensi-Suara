@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Disc, Music, Calendar, Eye, Edit3, Barcode } from 'lucide-react';
+import { Disc, Music, Calendar, Eye, Edit3, Barcode, Search, Filter } from 'lucide-react';
 import { ReleaseData } from '../types';
 
 interface Props {
@@ -11,22 +11,83 @@ interface Props {
 }
 
 export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdateRelease, availableAggregators }) => {
-  // Modal state removed, using App.tsx routing instead
+  const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Define Tabs and their mapping to data status
+  const tabs = [
+    { id: 'ALL', label: 'All Release', statusMap: null },
+    { id: 'PENDING', label: 'Pending', statusMap: 'Pending' },
+    { id: 'PROCESSING', label: 'Proses', statusMap: 'Processing' },
+    { id: 'RELEASED', label: 'Released', statusMap: 'Live' },
+    { id: 'REJECTED', label: 'Reject', statusMap: 'Rejected' },
+  ];
+
+  // Helper to count items per tab
+  const getCount = (statusMap: string | null) => {
+    if (statusMap === null) return releases.length;
+    return releases.filter(r => r.status === statusMap).length;
+  };
+
+  // Filter Logic
+  const filteredReleases = releases.filter(release => {
+    // 1. Status Filter
+    const currentTab = tabs.find(t => t.id === activeStatusTab);
+    const statusMatch = currentTab?.statusMap ? release.status === currentTab.statusMap : true;
+    
+    // 2. Search Filter
+    const searchLower = searchQuery.toLowerCase();
+    const searchMatch = 
+        release.title.toLowerCase().includes(searchLower) || 
+        release.primaryArtists.some(a => a.toLowerCase().includes(searchLower)) ||
+        (release.upc && release.upc.includes(searchLower));
+
+    return statusMatch && searchMatch;
+  });
 
   return (
-    <div className="p-8 w-full max-w-[1400px] mx-auto min-h-screen">
-       <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
+       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-slate-800 tracking-tight">All Releases</h1>
-                <p className="text-slate-500 mt-1">Manage your music catalog.</p>
+                <p className="text-slate-500 mt-1">Manage and track your music catalog status.</p>
             </div>
-            <div className="flex gap-3">
+            <div className="relative w-full md:w-auto">
                 <input 
                     type="text" 
-                    placeholder="Search release..." 
-                    className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by Title, Artist, UPC..." 
+                    className="w-full md:w-80 pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all"
                 />
+                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
             </div>
+        </div>
+
+        {/* STATUS TABS NAVIGATION */}
+        <div className="flex overflow-x-auto pb-2 mb-6 gap-2 no-scrollbar">
+            {tabs.map((tab) => {
+                const isActive = activeStatusTab === tab.id;
+                const count = getCount(tab.statusMap);
+                
+                return (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveStatusTab(tab.id)}
+                        className={`
+                            whitespace-nowrap px-4 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 border
+                            ${isActive 
+                                ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' 
+                                : 'bg-white text-slate-500 border-gray-200 hover:border-slate-300 hover:bg-gray-50'}
+                        `}
+                    >
+                        {tab.label}
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] min-w-[20px] text-center ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                            {count}
+                        </span>
+                    </button>
+                );
+            })}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -43,7 +104,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {releases.map((release) => {
+                        {filteredReleases.map((release) => {
                             // Determine type
                             const type = release.tracks.length > 1 ? "Album/EP" : "Single";
                             
@@ -52,11 +113,11 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                             const status = release.status || "Pending";
 
                             // Determine color based on status
-                            let statusClass = "bg-gray-100 text-gray-600";
-                            if (status === 'Live') statusClass = "bg-green-100 text-green-700";
-                            if (status === 'Processing') statusClass = "bg-blue-100 text-blue-700";
-                            if (status === 'Pending') statusClass = "bg-yellow-100 text-yellow-700";
-                            if (status === 'Rejected') statusClass = "bg-red-100 text-red-700 cursor-help";
+                            let statusClass = "bg-gray-100 text-gray-600 border-gray-200";
+                            if (status === 'Live') statusClass = "bg-green-100 text-green-700 border-green-200";
+                            if (status === 'Processing') statusClass = "bg-blue-100 text-blue-700 border-blue-200";
+                            if (status === 'Pending') statusClass = "bg-yellow-100 text-yellow-700 border-yellow-200";
+                            if (status === 'Rejected') statusClass = "bg-red-100 text-red-700 border-red-200 cursor-help";
 
                             // ISRC Logic
                             const isSingle = release.tracks.length === 1;
@@ -70,10 +131,10 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                                 : undefined;
 
                             return (
-                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/50 transition-colors group">
+                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-lg bg-blue-100 overflow-hidden flex items-center justify-center text-slate-600 relative shrink-0`}>
+                                            <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
                                                     <img src={URL.createObjectURL(release.coverArt)} alt="Art" className="w-full h-full object-cover" />
                                                 ) : (
@@ -87,7 +148,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-slate-600 border border-gray-200 whitespace-nowrap shadow-sm">
                                             <Music size={12} />
                                             {type}
                                         </span>
@@ -118,9 +179,9 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                                         <div className="flex flex-col items-start gap-1">
                                             <span 
                                                 title={rejectionTooltip}
-                                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${statusClass}`}
+                                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap border ${statusClass}`}
                                             >
-                                                {status}
+                                                {status === 'Live' ? 'Released' : status}
                                             </span>
                                             {release.aggregator && status !== 'Pending' && (
                                                 <span className="text-[10px] text-slate-400 font-medium px-1 truncate max-w-[100px]">via {release.aggregator}</span>
@@ -145,9 +206,17 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, onUpdate
                 </table>
             </div>
             
-            {releases.length === 0 && (
-                <div className="p-10 text-center text-slate-500">
-                    No releases found. Create a new release to get started!
+            {filteredReleases.length === 0 && (
+                <div className="p-16 text-center">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Filter size={24} className="text-slate-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700 mb-1">No releases found</h3>
+                    <p className="text-slate-400 text-sm">
+                        {activeStatusTab === 'ALL' 
+                            ? "You haven't created any releases yet." 
+                            : `There are no releases with status "${activeStatusTab.toLowerCase()}".`}
+                    </p>
                 </div>
             )}
         </div>

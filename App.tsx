@@ -5,6 +5,7 @@ import { Footer } from './components/Footer';
 import { ReleaseTypeSelection } from './screens/ReleaseTypeSelection';
 import { ReleaseWizard } from './screens/ReleaseWizard';
 import { AllReleases } from './screens/AllReleases';
+import { Dashboard } from './screens/Dashboard'; // Import Dashboard
 import { Settings } from './screens/Settings';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
@@ -14,12 +15,15 @@ import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-rea
 const DUMMY_RELEASES: ReleaseData[] = [
     { 
         id: '101', 
-        title: "Summer Vibes", 
+        title: "Summer Vibes Vol. 1", 
         primaryArtists: ["The Weekend Band"], 
         status: 'Live', 
         aggregator: "LokaMusik",
-        submissionDate: "2023-10-12", 
-        coverArt: null, upc: "898921821", language: "", label: "", version: "", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: ""
+        submissionDate: "2023-10-01", 
+        coverArt: null, upc: "898921821", language: "Indonesia", label: "Indie Local", version: "Original", tracks: [
+            { id: 't1', title: 'Summer Start', trackNumber: '1', artists: [], contributors: [], explicitLyrics: 'No', genre: 'Pop', isrc: 'IDA012300001', composer: '', lyricist: '', duration: '', releaseDate: '', lyrics: '' },
+            { id: 't2', title: 'Sunset Drive', trackNumber: '2', artists: [], contributors: [], explicitLyrics: 'No', genre: 'Pop', isrc: 'IDA012300002', composer: '', lyricist: '', duration: '', releaseDate: '', lyrics: '' }
+        ], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-10-15"
     },
     { 
         id: '102', 
@@ -28,7 +32,36 @@ const DUMMY_RELEASES: ReleaseData[] = [
         status: 'Processing',
         aggregator: "SoundOn",
         submissionDate: "2023-11-05", 
-        coverArt: null, upc: "", language: "", label: "", version: "", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: ""
+        coverArt: null, upc: "", language: "English", label: "Sarah Music", version: "Original", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-11-20"
+    },
+    {
+        id: '103',
+        title: "Acoustic Sessions (Live)",
+        primaryArtists: ["John Doe"],
+        status: 'Pending',
+        aggregator: "",
+        submissionDate: "2023-11-28",
+        coverArt: null, upc: "", language: "Indonesia", label: "JD Records", version: "Live", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-12-05"
+    },
+    {
+        id: '104',
+        title: "Bootleg Remix 2023",
+        primaryArtists: ["DJ Unknown"],
+        status: 'Rejected',
+        aggregator: "",
+        submissionDate: "2023-11-25",
+        rejectionReason: "Isu Hak Cipta / Audio Sampling Ilegal",
+        rejectionDescription: "Rilis Anda ditolak karena terdeteksi menggunakan sampel audio tanpa lisensi resmi. Mohon lampirkan bukti lisensi atau hapus sampel tersebut.",
+        coverArt: null, upc: "", language: "English", label: "None", version: "Remix", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-11-30"
+    },
+    {
+        id: '105',
+        title: "Lagu Cinta Pertama",
+        primaryArtists: ["Budi Doremi KW"],
+        status: 'Pending',
+        aggregator: "",
+        submissionDate: "2023-11-29",
+        coverArt: null, upc: "", language: "Indonesia", label: "Self Release", version: "Original", tracks: [], isNewRelease: true, originalReleaseDate: "", plannedReleaseDate: "2023-12-10"
     }
 ];
 
@@ -40,13 +73,12 @@ const App: React.FC = () => {
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
-  // Sidebar State
-  const [activeTab, setActiveTab] = useState<'NEW' | 'ALL' | 'SETTINGS'>('NEW');
+  // Sidebar State (Added DASHBOARD)
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS'>('DASHBOARD');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Global App State
   const [allReleases, setAllReleases] = useState<ReleaseData[]>(DUMMY_RELEASES);
-  // UPDATED: Default Aggregators
   const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn"]);
 
   // Wizard State
@@ -80,7 +112,7 @@ const App: React.FC = () => {
     setIsAuthenticated(false);
     setShowLogoutDialog(false);
     // Reset states
-    setActiveTab('NEW');
+    setActiveTab('DASHBOARD');
     setWizardStep('SELECTION');
   };
 
@@ -88,7 +120,7 @@ const App: React.FC = () => {
     setShowLogoutDialog(false);
   };
 
-  const handleSidebarNavigate = (tab: 'NEW' | 'ALL' | 'SETTINGS') => {
+  const handleSidebarNavigate = (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS') => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false); // Close mobile menu on click
     setViewingRelease(null); // Clear viewing state
@@ -145,6 +177,7 @@ const App: React.FC = () => {
 
   // Determine Page Title for Header
   const getPageTitle = () => {
+      if (activeTab === 'DASHBOARD') return "Overview";
       if (activeTab === 'NEW') return "Music Distribution";
       if (activeTab === 'ALL') return "Catalog Manager";
       if (activeTab === 'SETTINGS') return "System Settings";
@@ -214,6 +247,14 @@ const App: React.FC = () => {
 
         {/* CONTENT */}
         <div className="flex-1">
+          {activeTab === 'DASHBOARD' && (
+            <Dashboard 
+                releases={allReleases}
+                onViewRelease={handleViewDetails}
+                onNavigateToAll={() => setActiveTab('ALL')}
+            />
+          )}
+
           {activeTab === 'NEW' && (
             <>
               {wizardStep === 'SELECTION' && (
@@ -239,7 +280,8 @@ const App: React.FC = () => {
             />
           )}
 
-          {activeTab === 'ALL' && viewingRelease && (
+          {/* SHARED MODAL FOR VIEWING DETAILS (Works for both Dashboard & All Releases) */}
+          {viewingRelease && (
             <ReleaseDetailModal 
                 release={viewingRelease}
                 isOpen={true} 

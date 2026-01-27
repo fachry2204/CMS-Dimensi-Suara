@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { PlusCircle, ListMusic, Music4, Settings } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'NEW' | 'ALL' | 'SETTINGS';
-  onNavigate: (tab: 'NEW' | 'ALL' | 'SETTINGS') => void;
+  activeTab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS';
+  onNavigate: (tab: 'DASHBOARD' | 'NEW' | 'ALL' | 'SETTINGS') => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate }) => {
@@ -21,12 +21,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate }) => {
       {/* Navigation */}
       <nav className="flex-1 py-8 px-4 space-y-8 overflow-y-auto">
         
-        {/* Category Group */}
+        {/* Main Menu */}
         <div>
           <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-            Rilis Musik
+            Menu Utama
           </h3>
           <ul className="space-y-2">
+            <li>
+              <button
+                onClick={() => onNavigate('DASHBOARD')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'DASHBOARD' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <LayoutDashboard size={20} className={activeTab === 'DASHBOARD' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Dashboard
+              </button>
+            </li>
             <li>
               <button
                 onClick={() => onNavigate('NEW')}
@@ -54,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate }) => {
           </ul>
         </div>
 
-        {/* Example of another category (Settings) */}
+        {/* Settings */}
         <div>
           <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
             Pengaturan
