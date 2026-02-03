@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, BookOpen, FileText, UserPlus, PieChart, Library } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, BookOpen, FileText, UserPlus, PieChart, Library, Users } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -154,6 +154,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
               >
                 <Settings size={20} className={activeTab === 'SETTINGS' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
                 Settings
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => onNavigate('USER_MANAGEMENT')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'USER_MANAGEMENT' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <Users size={20} className={activeTab === 'USER_MANAGEMENT' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                User Management
               </button>
             </li>
           </ul>

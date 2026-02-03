@@ -9,6 +9,7 @@ import { Dashboard } from './screens/Dashboard';
 import { Statistics } from './screens/Statistics'; 
 import { Publishing } from './screens/Publishing'; // Import Publishing
 import { Settings } from './screens/Settings';
+import { UserManagement } from './screens/UserManagement';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration } from './types';
@@ -157,6 +158,7 @@ const App: React.FC = () => {
       if (activeTab === 'NEW') return "Music Distribution";
       if (activeTab === 'ALL') return "Catalog Manager";
       if (activeTab === 'SETTINGS') return "System Settings";
+      if (activeTab === 'USER_MANAGEMENT') return "User Management";
       if (activeTab === 'STATISTICS') return "Analytics & Reports";
       if (activeTab === 'PUBLISHING_ADD') return "Publishing / Registration";
       if (activeTab === 'PUBLISHING_WRITER') return "Publishing / Songwriters";
@@ -290,6 +292,10 @@ const App: React.FC = () => {
 
           {activeTab === 'SETTINGS' && (
             <Settings aggregators={aggregators} setAggregators={setAggregators} />
+          )}
+
+          {activeTab === 'USER_MANAGEMENT' && (
+            <UserManagement />
           )}
         </div>
         

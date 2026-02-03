@@ -173,3 +173,15 @@ export interface PublishingRegistration {
   note: string;
   songwriters: Songwriter[];
 }
+
+// --- USER MANAGEMENT TYPES ---
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'Operator' | 'User'; // User = Registered User
+  status: 'Active' | 'Inactive';
+  joinedDate: string;
+  password?: string; // Optional for UI display
+}

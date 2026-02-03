@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Plus, Trash2, Save, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Plus, Trash2, Globe } from 'lucide-react';
 
 interface Props {
   aggregators: string[];
@@ -8,16 +7,15 @@ interface Props {
 }
 
 export const Settings: React.FC<Props> = ({ aggregators, setAggregators }) => {
+  // --- AGGREGATOR LOGIC ---
   const [newAgg, setNewAgg] = useState('');
-
-  const handleAdd = () => {
+  const handleAddAggregator = () => {
     if (newAgg.trim()) {
         setAggregators([...aggregators, newAgg.trim()]);
         setNewAgg('');
     }
   };
-
-  const handleRemove = (index: number) => {
+  const handleRemoveAggregator = (index: number) => {
     const newList = aggregators.filter((_, i) => i !== index);
     setAggregators(newList);
   };
@@ -34,7 +32,7 @@ export const Settings: React.FC<Props> = ({ aggregators, setAggregators }) => {
 
        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <div className="flex items-center gap-3 mb-6">
-                <div className="p-2bg-purple-50 rounded-lg text-purple-600">
+                <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
                     <Globe size={24} />
                 </div>
                 <div>
@@ -54,7 +52,7 @@ export const Settings: React.FC<Props> = ({ aggregators, setAggregators }) => {
                         className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
                     />
                     <button 
-                        onClick={handleAdd}
+                        onClick={handleAddAggregator}
                         className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
                     >
                         <Plus size={20} />
@@ -70,7 +68,7 @@ export const Settings: React.FC<Props> = ({ aggregators, setAggregators }) => {
                             <li key={idx} className="px-4 py-3 flex justify-between items-center bg-white">
                                 <span className="font-medium text-slate-700">{agg}</span>
                                 <button 
-                                    onClick={() => handleRemove(idx)}
+                                    onClick={() => handleRemoveAggregator(idx)}
                                     className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                 >
                                     <Trash2 size={16} />
