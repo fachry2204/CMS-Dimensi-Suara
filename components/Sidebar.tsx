@@ -6,9 +6,10 @@ interface SidebarProps {
   activeTab: string;
   onNavigate: (tab: string) => void;
   currentUser: string;
+  userRole?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, currentUser }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, currentUser, userRole }) => {
   return (
     <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-white/50 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
       {/* Brand Logo */}
@@ -201,6 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
                 Settings
               </button>
             </li>
+            {userRole === 'Admin' && (
             <li>
               <button 
                 onClick={() => onNavigate('USER_MANAGEMENT')}
@@ -213,6 +215,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
                 User Management
               </button>
             </li>
+            )}
           </ul>
         </div>
       </nav>

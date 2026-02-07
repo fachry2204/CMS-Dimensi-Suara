@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Users, 
     Shield, 
@@ -9,54 +9,23 @@ import {
     XCircle,
     Plus,
     Mail,
-    Lock
+    Lock,
+    Trash2
 } from 'lucide-react';
 import { User } from '../types';
-
-// Dummy Initial Data
-const INITIAL_USERS: User[] = [
-    {
-        id: '1',
-        name: 'Super Admin',
-        email: 'admin@dimensisuara.com',
-        role: 'Admin',
-        status: 'Active',
-        joinedDate: '2023-01-01',
-    },
-    {
-        id: '2',
-        name: 'Operator One',
-        email: 'operator1@dimensisuara.com',
-        role: 'Operator',
-        status: 'Active',
-        joinedDate: '2023-05-15',
-    },
-    {
-        id: '3',
-        name: 'John Doe',
-        email: 'johndoe@gmail.com',
-        role: 'User',
-        status: 'Active',
-        joinedDate: '2024-02-10',
-    },
-    {
-        id: '4',
-        name: 'Jane Smith',
-        email: 'jane.smith@yahoo.com',
-        role: 'User',
-        status: 'Inactive',
-        joinedDate: '2024-02-11',
-    }
-];
+import { api } from '../utils/api';
 
 export const UserManagement: React.FC = () => {
   // --- USER MANAGEMENT LOGIC ---
   const [userTab, setUserTab] = useState<'INTERNAL' | 'REGISTERED'>('INTERNAL');
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [token] = useState(localStorage.getItem('cms_token') || '');
   
   // Add User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -64,21 +33,50 @@ export const UserManagement: React.FC = () => {
     password: ''
   });
 
-  const handleAddUser = () => {
+  // Fetch Users
+  useEffect(() => {
+    fetchUsers();
+  }, [token]);
+
+  const fetchUsers = async () => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+        const data = await api.getUsers(token);
+        setUsers(data);
+    } catch (err) {
+        console.error("Failed to fetch users:", err);
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.password) return;
+    
+    setIsSubmitting(true);
+    try {
+        const response = await api.createUser(token, newUser);
+        setUsers(prev => [response.user, ...prev]);
+        setShowAddUserModal(false);
+        setNewUser({ name: '', email: '', role: 'Operator', password: '' });
+        alert('User created successfully');
+    } catch (err: any) {
+        alert(`Failed to create user: ${err.message}`);
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
 
-    const user: User = {
-        id: Date.now().toString(),
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        status: 'Active',
-        joinedDate: new Date().toISOString().split('T')[0]
-    };
-
-    setUsers([...users, user]);
-    setShowAddUserModal(false);
-    setNewUser({ name: '', email: '', role: 'Operator', password: '' });
+  const handleDeleteUser = async (userId: string) => {
+      if (!window.confirm('Are you sure you want to delete this user?')) return;
+      
+      try {
+          await api.deleteUser(token, userId);
+          setUsers(prev => prev.filter(u => u.id !== userId));
+      } catch (err: any) {
+          alert(`Failed to delete user: ${err.message}`);
+      }
   };
 
   const filteredUsers = users.filter(user => {
@@ -211,9 +209,15 @@ export const UserManagement: React.FC = () => {
                                         {user.joinedDate}
                                     </td>
                                     <td className="py-3 px-4 text-right">
-                                        <button className="text-slate-400 hover:text-slate-600">
-                                            <MoreVertical size={18} />
-                                        </button>
+                                        <div className="flex justify-end items-center gap-2">
+                                            <button 
+                                                onClick={() => handleDeleteUser(user.id)}
+                                                className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors"
+                                                title="Delete User"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

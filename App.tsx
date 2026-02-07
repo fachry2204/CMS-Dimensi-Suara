@@ -14,18 +14,29 @@ import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
-import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration, ReportData } from './types';
-import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-react';
+import { ProfileModal } from './components/ProfileModal';
+import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration, ReportData, Notification } from './types';
+import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 import { generateSongwriters, generatePublishing, generateReleases } from './utils/dummyData';
-import { api } from './utils/api';
+import { api, API_BASE_URL } from './utils/api';
 
 const App: React.FC = () => {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<string>('');
+  const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [token, setToken] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('');
   
+  // Notification State
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  
+  // Profile Modal State
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
@@ -88,6 +99,50 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated, token]);
 
+  // Fetch Notifications & User Profile
+  useEffect(() => {
+    if (isAuthenticated && token) {
+        // Fetch Profile
+        api.getProfile(token).then(user => {
+            setCurrentUserData(user);
+        }).catch(err => console.error("Failed to fetch profile", err));
+
+        // Fetch Notifications
+        const fetchNotifications = async () => {
+             try {
+                 const notifs = await api.getNotifications(token);
+                 setNotifications(notifs);
+                 setUnreadCount(notifs.filter((n: any) => !n.is_read).length);
+             } catch (err) {
+                 console.error("Failed to fetch notifications", err);
+             }
+        };
+        fetchNotifications();
+        
+        // Poll for notifications every 30 seconds
+        const interval = setInterval(fetchNotifications, 30000); 
+        return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, token]);
+
+  const handleNotificationClick = async (notif: Notification) => {
+    if (!notif.is_read) {
+        try {
+            await api.markNotificationRead(token, notif.id);
+            setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (err) {
+            console.error("Failed to mark notification read", err);
+        }
+    }
+  };
+
+  const handleUpdateUser = (updatedUser: any) => {
+    setCurrentUserData(updatedUser);
+    setCurrentUser(updatedUser.username); 
+    localStorage.setItem('cms_user', updatedUser.username);
+  };
+
   // Wizard State
   const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
   const [releaseType, setReleaseType] = useState<ReleaseType | null>(null);
@@ -101,11 +156,13 @@ const App: React.FC = () => {
     const storedAuth = localStorage.getItem('cms_auth');
     const storedUser = localStorage.getItem('cms_user');
     const storedToken = localStorage.getItem('cms_token');
+    const storedRole = localStorage.getItem('cms_role');
     
     if (storedAuth === 'true') {
       setIsAuthenticated(true);
       if (storedUser) setCurrentUser(storedUser);
       if (storedToken) setToken(storedToken);
+      if (storedRole) setUserRole(storedRole);
     }
     setIsAuthChecking(false);
   }, []);
@@ -114,8 +171,10 @@ const App: React.FC = () => {
     localStorage.setItem('cms_auth', 'true');
     localStorage.setItem('cms_user', user.username);
     localStorage.setItem('cms_token', token);
+    localStorage.setItem('cms_role', user.role || 'User');
     setCurrentUser(user.username);
     setToken(token);
+    setUserRole(user.role || 'User');
     setIsAuthenticated(true);
   };
 
@@ -127,9 +186,11 @@ const App: React.FC = () => {
     localStorage.removeItem('cms_auth');
     localStorage.removeItem('cms_user');
     localStorage.removeItem('cms_token');
+    localStorage.removeItem('cms_role');
     setIsAuthenticated(false);
     setCurrentUser('');
     setToken('');
+    setUserRole('');
     setShowLogoutDialog(false);
     // Reset states
     setActiveTab('DASHBOARD');
@@ -261,7 +322,7 @@ const App: React.FC = () => {
         fixed inset-0 z-40 transform transition-transform duration-300 md:relative md:translate-x-0 md:w-auto
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-         <Sidebar activeTab={activeTab} onNavigate={handleSidebarNavigate} currentUser={currentUser} />
+         <Sidebar activeTab={activeTab} onNavigate={handleSidebarNavigate} currentUser={currentUser} userRole={userRole} />
          <div 
             className={`absolute inset-0 bg-black/50 -z-10 md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}
             onClick={() => setIsMobileMenuOpen(false)}
@@ -278,21 +339,95 @@ const App: React.FC = () => {
             </h2>
             <div className="flex-1 md:flex-none flex justify-end items-center gap-6">
                 {/* Notifications */}
-                <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors group">
-                    <Bell size={20} />
-                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                </button>
+                <div className="relative">
+                    <button 
+                        className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors group"
+                        onClick={() => setShowNotifications(!showNotifications)}
+                    >
+                        <Bell size={20} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full border border-white text-[10px] flex items-center justify-center text-white font-bold">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
 
-                {/* Profile Dropdown Simulation */}
-                <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
+                    {/* Notification Dropdown */}
+                    {showNotifications && (
+                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                                <button 
+                                    onClick={() => setShowNotifications(false)}
+                                    className="text-slate-400 hover:text-slate-600"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="max-h-[400px] overflow-y-auto">
+                                {notifications.length === 0 ? (
+                                    <div className="p-8 text-center text-slate-400 text-sm">
+                                        <Bell size={32} className="mx-auto mb-3 opacity-20" />
+                                        No notifications yet
+                                    </div>
+                                ) : (
+                                    notifications.map(notif => (
+                                        <div 
+                                            key={notif.id}
+                                            onClick={() => handleNotificationClick(notif)}
+                                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors flex gap-3 ${!notif.is_read ? 'bg-blue-50/50' : ''}`}
+                                        >
+                                            <div className={`mt-1 flex-shrink-0 ${!notif.is_read ? 'text-blue-500' : 'text-slate-400'}`}>
+                                                {notif.type === 'RELEASE_STATUS' ? <CheckCircle size={16} /> : <Info size={16} />}
+                                            </div>
+                                            <div>
+                                                <p className={`text-sm ${!notif.is_read ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>
+                                                    {notif.message}
+                                                </p>
+                                                <span className="text-[10px] text-slate-400 mt-1 block">
+                                                    {new Date(notif.created_at).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            {!notif.is_read && (
+                                                <div className="flex-shrink-0 self-center">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Profile Dropdown */}
+                <div 
+                    className="flex items-center gap-3 pl-6 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setShowProfileModal(true)}
+                >
                     <div className="text-right hidden sm:block">
                         <div className="text-sm font-bold text-slate-800 capitalize">{currentUser}</div>
                         <div className="text-[10px] text-slate-500 font-medium">
-                            {currentUser === 'admin' ? 'Super Administrator' : 'Content Manager'}
+                            {userRole === 'Admin' ? 'Super Administrator' : (userRole === 'Operator' ? 'Content Manager' : 'Artist / Label')}
                         </div>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                        <User size={20} />
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 overflow-hidden relative">
+                        {currentUserData?.profile_picture ? (
+                            <img 
+                                src={`${API_BASE_URL.replace('/api', '')}${currentUserData.profile_picture}`} 
+                                alt={currentUser} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    // Fallback if image load fails
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                }}
+                            />
+                        ) : null}
+                         <div className={`absolute inset-0 flex items-center justify-center ${currentUserData?.profile_picture ? 'hidden' : ''}`}>
+                            <User size={20} />
+                        </div>
                     </div>
                 </div>
 
@@ -404,6 +539,14 @@ const App: React.FC = () => {
         
         <Footer />
         
+        {/* PROFILE MODAL */}
+        <ProfileModal 
+            isOpen={showProfileModal}
+            onClose={() => setShowProfileModal(false)}
+            token={token}
+            onUpdateUser={handleUpdateUser}
+        />
+
         {/* LOGOUT CONFIRMATION DIALOG */}
         {showLogoutDialog && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">

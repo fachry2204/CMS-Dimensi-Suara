@@ -184,6 +184,16 @@ export interface User {
   status: 'Active' | 'Inactive';
   joinedDate: string;
   password?: string; // Optional for UI display
+  profilePicture?: string;
+}
+
+export interface Notification {
+  id: number;
+  user_id: number;
+  type: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 // --- REPORT & REVENUE TYPES ---

@@ -95,7 +95,18 @@ const sanitizeName = (name) => {
 // GET ALL RELEASES
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM releases ORDER BY created_at DESC');
+        let query = 'SELECT * FROM releases';
+        const params = [];
+
+        // If user is restricted (e.g. 'User' role), only show their own releases
+        if (req.user.role === 'User') {
+            query += ' WHERE user_id = ?';
+            params.push(req.user.id);
+        }
+
+        query += ' ORDER BY created_at DESC';
+
+        const [rows] = await db.query(query, params);
         
         // Fetch tracks for all releases
         // Optimization: Fetch all tracks for these releases in one go
@@ -192,15 +203,12 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                 let audioPath = null;
                 
                 // Find corresponding audio file
-                // Expecting fieldname "track_0_audio", "track_1_audio", etc.
-                const trackFile = req.files.find(f => f.fieldname === `track_${i}_audio`);
-                
-                if (trackFile) {
-                    const safeTrackTitle = sanitizeName(track.title);
-                    const newFilename = `${i + 1}. ${safeTrackTitle}${path.extname(trackFile.originalname)}`;
-                    const newPath = path.join(targetDir, newFilename);
-                    fs.renameSync(trackFile.path, newPath);
-                    audioPath = `/uploads/${folderName}/${newFilename}`;
+                const audioFile = req.files.find(f => f.fieldname === `track_${i}_audio`);
+                if (audioFile) {
+                    const trackFilename = `track-${i + 1}-${sanitizeName(track.title)}${path.extname(audioFile.originalname)}`;
+                    const trackPath = path.join(targetDir, trackFilename);
+                    fs.renameSync(audioFile.path, trackPath);
+                    audioPath = `/uploads/${folderName}/${trackFilename}`;
                 }
 
                 await db.query(
@@ -210,37 +218,49 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     [
                         releaseId, 
                         track.title, 
-                        track.version || '', // Frontend might not send version yet
-                        JSON.stringify(track.artists || []), // Use 'artists' from frontend (mapped to primary_artists)
-                        track.lyricist || '', // Map lyricist to writer
-                        track.composer || '', // Map composer to composer
-                        JSON.stringify(track.contributors?.filter(c => c.type === 'Producer') || []), // Extract producers
+                        track.version || 'Original',
+                        JSON.stringify(track.primaryArtists || []),
+                        JSON.stringify(track.writers || []),
+                        JSON.stringify(track.composers || []),
+                        JSON.stringify(track.producers || []),
                         track.isrc,
-                        track.explicitLyrics === 'Yes' ? 1 : 0, // Frontend uses 'Yes'/'No'/'Clean'
+                        track.explicitLyrics === 'Yes',
                         audioPath
                     ]
                 );
             }
         }
-        
-        // Cleanup: Remove any temp files that weren't moved (optional, but good practice)
-        // (In this logic, we moved the files we needed. Any extra files in req.files should be deleted)
-        req.files.forEach(f => {
-            if (fs.existsSync(f.path)) {
-                fs.unlinkSync(f.path);
+
+        // 6. Send Notification to Admins
+        try {
+            // Find all admins
+            const [admins] = await db.query("SELECT id FROM users WHERE role = 'Admin'");
+            
+            // Notification message
+            const notifMessage = `New release submitted: "${title}" by ${artistName}`;
+            
+            // Insert notification for each admin
+            for (const admin of admins) {
+                await db.query(
+                    'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+                    [admin.id, 'release_created', notifMessage]
+                );
             }
-        });
+
+            // Send Confirmation Notification to the Submitter
+            await db.query(
+                'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+                [userId, 'RELEASE_STATUS', `Your release "${title}" has been successfully submitted and is pending review.`]
+            );
+
+        } catch (notifErr) {
+            console.error('Failed to send notifications:', notifErr);
+            // Don't fail the request just because notification failed
+        }
 
         res.status(201).json({ message: 'Release created successfully', id: releaseId });
-
     } catch (err) {
-        console.error("Release Upload Error:", err);
-        // Cleanup temp files on error
-        if (req.files) {
-            req.files.forEach(f => {
-                if (fs.existsSync(f.path)) fs.unlinkSync(f.path);
-            });
-        }
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });

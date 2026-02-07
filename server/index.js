@@ -10,6 +10,8 @@ import reportRoutes from './routes/reportRoutes.js';
 import songwriterRoutes from './routes/songwriterRoutes.js';
 import publishingRoutes from './routes/publishingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 // Configuration
 dotenv.config();
@@ -53,6 +55,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/songwriters', songwriterRoutes);
 app.use('/api/publishing', publishingRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Test Database Connection Route
 app.get('/api/health', async (req, res) => {

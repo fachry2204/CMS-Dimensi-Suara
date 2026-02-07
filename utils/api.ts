@@ -91,6 +91,61 @@ export const api = {
         return res.json();
     },
 
+    // Notifications
+    getNotifications: async (token) => {
+        const res = await fetch(`${API_BASE_URL}/notifications`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch notifications');
+        return res.json();
+    },
+
+    markNotificationRead: async (token, id) => {
+        const res = await fetch(`${API_BASE_URL}/notifications/mark-read`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ id })
+        });
+        if (!res.ok) throw new Error('Failed to mark notification');
+        return res.json();
+    },
+
+    // User Profile
+    getProfile: async (token) => {
+        const res = await fetch(`${API_BASE_URL}/users/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        return res.json();
+    },
+
+    updateProfile: async (token, data) => {
+        const formData = new FormData();
+        if (data.username) formData.append('username', data.username);
+        if (data.email) formData.append('email', data.email);
+        if (data.password) formData.append('password', data.password);
+        if (data.profilePicture instanceof File) {
+            formData.append('profilePicture', data.profilePicture);
+        }
+
+        const res = await fetch(`${API_BASE_URL}/users/profile`, {
+            method: 'PUT',
+            headers: { 
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Failed to update profile');
+        }
+        return res.json();
+    },
+
     // Songwriters
     getSongwriters: async (token) => {
         const res = await fetch(`${API_BASE_URL}/songwriters`, {
@@ -242,6 +297,43 @@ export const api = {
             body: JSON.stringify({ aggregators })
         });
         if (!res.ok) throw new Error('Failed to update aggregators');
+        return res.json();
+    },
+
+    // User Management
+    getUsers: async (token) => {
+        const res = await fetch(`${API_BASE_URL}/users`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch users');
+        return res.json();
+    },
+
+    createUser: async (token, userData) => {
+        const res = await fetch(`${API_BASE_URL}/users`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(userData)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Failed to create user');
+        }
+        return res.json();
+    },
+
+    deleteUser: async (token, userId) => {
+        const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+             const err = await res.json();
+             throw new Error(err.error || 'Failed to delete user');
+        }
         return res.json();
     }
 };
