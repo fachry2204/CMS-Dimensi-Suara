@@ -13,7 +13,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          utils: ['xlsx', 'lucide-react', 'jspdf', 'html2canvas']
+          utils: ['xlsx', 'lucide-react']
         }
       }
     }
