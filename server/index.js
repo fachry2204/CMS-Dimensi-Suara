@@ -12,17 +12,29 @@ import publishingRoutes from './routes/publishingRoutes.js';
 
 // Configuration
 dotenv.config();
-const app = express();
+
+// Fix for some environments where process.env might be undefined for some keys
 const PORT = process.env.PORT || 3000;
 
 // ESM __dirname fix
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const app = express();
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Global Error Handler for JSON parsing errors
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        console.error('Bad JSON:', err.message);
+        return res.status(400).json({ error: 'Invalid JSON format' });
+    }
+    next();
+});
 
 // Static Files (Serve the React Frontend)
 // Assuming "dist" is in the project root (one level up from server/)
@@ -42,6 +54,7 @@ app.get('/api/health', async (req, res) => {
         const [rows] = await db.query('SELECT 1 as val');
         res.json({ status: 'OK', db: 'Connected', val: rows[0].val });
     } catch (err) {
+        console.error('Database Health Check Failed:', err);
         res.status(500).json({ status: 'Error', error: err.message });
     }
 });
@@ -54,10 +67,27 @@ app.get('*', (req, res) => {
     }
 
     // Otherwise send index.html for React Router to handle
-    res.sendFile(path.join(distPath, 'index.html'));
+    res.sendFile(path.join(distPath, 'index.html'), (err) => {
+        if (err) {
+            console.error('Error sending index.html:', err);
+            res.status(500).send('Error loading application.');
+        }
+    });
 });
 
 // Start Server
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📂 Serving static files from: ${distPath}`);
 });
+
+// Handle Uncaught Exceptions to prevent crash without logging
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+    // Keep running if possible, or exit gracefully
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('UNHANDLED REJECTION:', reason);
+});
+
