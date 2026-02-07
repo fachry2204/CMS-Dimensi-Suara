@@ -40,6 +40,29 @@ const initDb = async () => {
                 await connection.query(statement);
             }
         }
+
+        // --- MIGRATIONS (Fix missing columns in existing tables) ---
+        console.log('🔄 Checking for schema updates...');
+
+        // 1. Check 'profile_picture' in 'users'
+        try {
+            await connection.query('SELECT profile_picture FROM users LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: profile_picture to users table');
+                await connection.query('ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255)');
+            }
+        }
+
+        // 2. Check 'cover_art' in 'releases'
+        try {
+            await connection.query('SELECT cover_art FROM releases LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: cover_art to releases table');
+                await connection.query('ALTER TABLE releases ADD COLUMN cover_art VARCHAR(255)');
+            }
+        }
         
         // Seed Default Admin
         const [users] = await connection.query("SELECT * FROM users WHERE role = 'Admin'");
