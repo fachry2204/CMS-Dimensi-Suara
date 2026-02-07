@@ -59,6 +59,28 @@ const initTables = async () => {
                 FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE
             )
         `);
+
+        // Ensure columns exist (for existing tables)
+        const trackColumns = [
+            { name: 'version', type: 'VARCHAR(100)' },
+            { name: 'writer', type: 'TEXT' },
+            { name: 'composer', type: 'TEXT' },
+            { name: 'producer', type: 'TEXT' },
+            { name: 'audio_file', type: 'VARCHAR(255)' }
+        ];
+
+        for (const col of trackColumns) {
+            try {
+                await db.query(`SELECT ${col.name} FROM tracks LIMIT 1`);
+            } catch (e) {
+                try {
+                    await db.query(`ALTER TABLE tracks ADD COLUMN ${col.name} ${col.type}`);
+                    console.log(`Added ${col.name} column to tracks table`);
+                } catch (alterErr) {
+                    console.error(`Failed to add ${col.name} to tracks:`, alterErr.message);
+                }
+            }
+        }
     } catch (err) {
         console.error('Table init error:', err);
     }
@@ -153,13 +175,13 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     [
                         releaseId, 
                         track.title, 
-                        track.version, 
-                        JSON.stringify(track.primaryArtists || []),
-                        JSON.stringify(track.writers || []), // Assuming these fields exist
-                        JSON.stringify(track.composers || []),
-                        JSON.stringify(track.producers || []),
+                        track.version || '', // Frontend might not send version yet
+                        JSON.stringify(track.artists || []), // Use 'artists' from frontend (mapped to primary_artists)
+                        track.lyricist || '', // Map lyricist to writer
+                        track.composer || '', // Map composer to composer
+                        JSON.stringify(track.contributors?.filter(c => c.type === 'Producer') || []), // Extract producers
                         track.isrc,
-                        track.explicit ? 1 : 0,
+                        track.explicitLyrics === 'Yes' ? 1 : 0, // Frontend uses 'Yes'/'No'/'Clean'
                         audioPath
                     ]
                 );
