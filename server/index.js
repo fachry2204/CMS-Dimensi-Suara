@@ -8,6 +8,7 @@ import authRoutes from './routes/authRoutes.js';
 import releaseRoutes from './routes/releaseRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import songwriterRoutes from './routes/songwriterRoutes.js';
+import publishingRoutes from './routes/publishingRoutes.js';
 
 // Configuration
 dotenv.config();
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/releases', releaseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/songwriters', songwriterRoutes);
+app.use('/api/publishing', publishingRoutes);
 
 // Test Database Connection Route
 app.get('/api/health', async (req, res) => {

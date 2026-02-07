@@ -135,4 +135,5 @@ CREATE TABLE IF NOT EXISTS reports (
 -- Default Admin User (Password: admin123)
 -- Hash generated via bcrypt (cost 10)
 INSERT INTO users (username, email, password_hash, role, status) 
-VALUES ('admin', 'admin@dimensisuara.com', '$2b$10$YourHashedPasswordHere', 'Admin', 'Active');
+VALUES ('admin', 'admin@dimensisuara.com', '$2b$10$5yTRGLzhuaO0aET1Vs2/M.BjjM/QJc2SeFe/d0nwpkUisUYbgzDHS', 'Admin', 'Active')
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Plus, Trash2, Save, CheckCircle, AlertCircle, UserPlus, BarChart2, Users, List, CreditCard, MapPin, User, Search, ChevronDown, Loader2, Library, ArrowRight, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PublishingRegistration, Songwriter, SavedSongwriter } from '../types';
+import { api } from '../utils/api';
 
 interface Props {
   activeTab: string;
@@ -8,6 +9,7 @@ interface Props {
   setSavedSongwriters: React.Dispatch<React.SetStateAction<SavedSongwriter[]>>;
   allPublishing?: PublishingRegistration[];
   setAllPublishing?: React.Dispatch<React.SetStateAction<PublishingRegistration[]>>;
+  token?: string;
 }
 
 interface Region {
@@ -15,7 +17,7 @@ interface Region {
     name: string;
 }
 
-export const Publishing: React.FC<Props> = ({ activeTab, savedSongwriters, setSavedSongwriters, allPublishing = [], setAllPublishing = () => {} }) => {
+export const Publishing: React.FC<Props> = ({ activeTab, savedSongwriters, setSavedSongwriters, allPublishing = [], setAllPublishing = () => {}, token = '' }) => {
   // Map external tab to internal logic
   // PUBLISHING_ADD -> ADD_PUBLISHING
   // PUBLISHING_WRITER -> ADD_SONGWRITER
@@ -245,7 +247,7 @@ export const Publishing: React.FC<Props> = ({ activeTab, savedSongwriters, setSa
     return formData.songwriters.reduce((acc, curr) => acc + Number(curr.share), 0);
   };
 
-  const handleSubmitPublishing = (e: React.FormEvent) => {
+  const handleSubmitPublishing = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -260,21 +262,44 @@ export const Publishing: React.FC<Props> = ({ activeTab, savedSongwriters, setSa
     }
 
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      const newSubmission: PublishingRegistration = {
-          ...formData,
-          id: Date.now().toString(),
-          status: 'Pending',
-          submissionDate: new Date().toISOString().split('T')[0]
-      };
-      
-      setAllPublishing(prev => [newSubmission, ...prev]);
-      
-      setIsSubmitting(false);
-      setSuccess(true);
-      window.scrollTo(0,0);
-    }, 1500);
+    
+    if (token) {
+        try {
+            const res = await api.createPublishing(token, formData);
+            
+            const newSubmission: PublishingRegistration = {
+                ...formData,
+                id: res.id,
+                status: 'Pending',
+                submissionDate: new Date().toISOString().split('T')[0]
+            };
+            
+            setAllPublishing(prev => [newSubmission, ...prev]);
+            setIsSubmitting(false);
+            setSuccess(true);
+            window.scrollTo(0,0);
+        } catch (err) {
+            console.error("Failed to submit publishing registration:", err);
+            alert("Failed to submit. Please try again.");
+            setIsSubmitting(false);
+        }
+    } else {
+        // Fallback
+        setTimeout(() => {
+          const newSubmission: PublishingRegistration = {
+              ...formData,
+              id: Date.now().toString(),
+              status: 'Pending',
+              submissionDate: new Date().toISOString().split('T')[0]
+          };
+          
+          setAllPublishing(prev => [newSubmission, ...prev]);
+          
+          setIsSubmitting(false);
+          setSuccess(true);
+          window.scrollTo(0,0);
+        }, 1500);
+    }
   };
 
   // --- Handlers: Add Songwriter ---
@@ -409,19 +434,43 @@ export const Publishing: React.FC<Props> = ({ activeTab, savedSongwriters, setSa
       setWriterStep(prev => prev - 1);
   };
 
-  const handleSubmitWriter = (e: React.FormEvent) => {
+  const handleSubmitWriter = async (e: React.FormEvent) => {
       e.preventDefault();
       
       const fullName = `${writerForm.firstName} ${writerForm.lastName}`.trim();
 
-      const newWriter: SavedSongwriter = {
-          ...writerForm,
-          id: Date.now().toString(),
-          name: fullName // Computed field for easier display
-      };
-
-      setSavedSongwriters(prev => [newWriter, ...prev]); // Add to top
-      setWriterSuccess(true);
+      // Check for API integration if token exists
+      if (token) {
+        try {
+            const res = await api.createSongwriter(token, {
+                ...writerForm,
+                name: fullName
+            });
+            
+            // Assuming API returns { message, id }
+            const newWriter: SavedSongwriter = {
+                ...writerForm,
+                id: res.id, // Use real ID from DB
+                name: fullName
+            };
+            
+            setSavedSongwriters(prev => [newWriter, ...prev]);
+            setWriterSuccess(true);
+        } catch (err) {
+            console.error("Failed to save songwriter:", err);
+            alert("Failed to save songwriter. Please try again.");
+            return;
+        }
+      } else {
+        // Fallback for no token (or dev mode)
+        const newWriter: SavedSongwriter = {
+            ...writerForm,
+            id: Date.now().toString(),
+            name: fullName
+        };
+        setSavedSongwriters(prev => [newWriter, ...prev]);
+        setWriterSuccess(true);
+      }
       
       // Reset Form
       setWriterForm({

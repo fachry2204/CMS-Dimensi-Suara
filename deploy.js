@@ -16,12 +16,28 @@ const config = {
     password: process.env.FTP_PASSWORD,
     host: process.env.FTP_HOST,
     port: 21,
-    localRoot: join(__dirname, 'dist'),
+    localRoot: __dirname, // Deploy from root
     remoteRoot: process.env.FTP_REMOTE_ROOT || '/httpdocs/',
-    // include: ["*", "**/*"],      // this would upload everything except dot files
-    include: ["*", "**/*", ".htaccess", "web.config"],
-    // e.g. exclude sourcemaps, and THAT'S ALL
-    exclude: ["dist/**/*.map", "node_modules/**", "node_modules/**/.*", ".git/**"],
+    // Include specific folders/files
+    include: [
+        "dist/**/*",
+        "server/**/*",
+        "package.json",
+        ".env.example" 
+        // Note: .env is usually not uploaded for security, but .env.example is good. 
+        // If user wants to deploy .env, they should add it manually or we can add it here.
+    ],
+    // Exclude source files, git, node_modules, etc.
+    exclude: [
+        "src/**",
+        "public/**", // content of public is already in dist
+        "node_modules/**", 
+        ".git/**", 
+        ".gitignore",
+        "deploy.js", // Don't upload the deploy script itself
+        "README.md",
+        "*.log"
+    ],
     // delete ALL existing files at destination before uploading, if true
     deleteRemote: false,
     // Passive mode is generally more reliable

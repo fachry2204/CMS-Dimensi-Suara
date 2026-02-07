@@ -57,16 +57,16 @@ const App: React.FC = () => {
             const reports = await api.getReports(token);
             setReportData(reports);
 
-            // TODO: Add endpoints for songwriters and publishing and fetch them here
-            // For now, using dummy data for missing endpoints to prevent crash
-            const writers = generateSongwriters(60);
+            // 3. Fetch Songwriters
+            const writers = await api.getSongwriters(token);
             setSavedSongwriters(writers);
-            const pubs = generatePublishing(70, writers);
+
+            // 4. Fetch Publishing Registrations
+            const pubs = await api.getPublishing(token);
             setAllPublishing(pubs);
 
         } catch (err) {
             console.error("Failed to fetch data from API, falling back to local data:", err);
-            // Fallback to dummy data
             setSavedSongwriters(generateSongwriters(60));
             setAllPublishing(generatePublishing(70, generateSongwriters(60)));
             setAllReleases(generateReleases(55));
@@ -287,6 +287,7 @@ const App: React.FC = () => {
                 setSavedSongwriters={setSavedSongwriters}
                 allPublishing={allPublishing}
                 setAllPublishing={setAllPublishing}
+                token={token}
             />
           )}
 
