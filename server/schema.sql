@@ -1,6 +1,6 @@
 -- Database Schema for Dimensi Suara CMS
 
--- 1. Users Table (Admin/Operator/User)
+-- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(100) NOT NULL,
@@ -8,11 +8,23 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('Admin', 'Operator', 'User') DEFAULT 'User',
     status ENUM('Active', 'Inactive') DEFAULT 'Active',
+    profile_picture VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- 2. Saved Songwriters (Master Data)
+-- 2. Notifications Table
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    type VARCHAR(50),
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 3. Saved Songwriters (Master Data)
 CREATE TABLE IF NOT EXISTS saved_songwriters (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -39,7 +51,7 @@ CREATE TABLE IF NOT EXISTS saved_songwriters (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Releases
+-- 4. Releases
 CREATE TABLE IF NOT EXISTS releases (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT, -- Who submitted it
@@ -63,11 +75,12 @@ CREATE TABLE IF NOT EXISTS releases (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- 4. Tracks
+-- 5. Tracks
 CREATE TABLE IF NOT EXISTS tracks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     release_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
+    version VARCHAR(100),
     isrc VARCHAR(50),
     track_number VARCHAR(10),
     disk_number VARCHAR(10) DEFAULT '1',
@@ -76,16 +89,18 @@ CREATE TABLE IF NOT EXISTS tracks (
     release_date DATE,
     genre VARCHAR(100),
     explicit_lyrics VARCHAR(20), -- Yes, No, Clean
-    composer VARCHAR(255),
-    lyricist VARCHAR(255),
+    explicit BOOLEAN, -- Alternative boolean flag
+    primary_artists TEXT, -- JSON string or text
+    writer TEXT, -- JSON string or text
+    composer TEXT, -- JSON string or text
+    producer TEXT, -- JSON string or text
     lyrics TEXT,
-    artists JSON, -- Array of objects {name, role}
     contributors JSON, -- Array of objects {name, type, role}
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE
 );
 
--- 5. Publishing Registrations
+-- 6. Publishing Registrations
 CREATE TABLE IF NOT EXISTS publishing_registrations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
@@ -98,39 +113,5 @@ CREATE TABLE IF NOT EXISTS publishing_registrations (
     rights_granted JSON, -- {synchronization: true, ...}
     performer VARCHAR(255),
     duration VARCHAR(20),
-    genre VARCHAR(100),
-    language VARCHAR(50),
-    region VARCHAR(100),
-    iswc VARCHAR(50),
-    isrc VARCHAR(50),
-    lyrics TEXT,
-    note TEXT,
-    songwriters JSON, -- Array of {id, name, role, share}
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
-
--- 6. Reports (Revenue Data)
-CREATE TABLE IF NOT EXISTS reports (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    period VARCHAR(20) NOT NULL, -- YYYY-MM
-    upc VARCHAR(50),
-    isrc VARCHAR(50),
-    title VARCHAR(255),
-    artist VARCHAR(255),
-    platform VARCHAR(100),
-    country VARCHAR(50),
-    quantity INT DEFAULT 0,
-    revenue DECIMAL(15, 4) DEFAULT 0,
-    original_file_name VARCHAR(255),
-    upload_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('Pending', 'Reviewed') DEFAULT 'Pending',
-    verification_status ENUM('Unchecked', 'Valid', 'No User') DEFAULT 'Unchecked',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
--- Default Admin User (Password: admin123)
--- Hash generated via bcrypt (cost 10)
-INSERT INTO users (username, email, password_hash, role, status) 
-VALUES ('admin', 'admin@dimensisuara.com', '$2b$10$5yTRGLzhuaO0aET1Vs2/M.BjjM/QJc2SeFe/d0nwpkUisUYbgzDHS', 'Admin', 'Active')
-ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash);

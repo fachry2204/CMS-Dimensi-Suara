@@ -31,62 +31,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Database Initialization (Lazy)
-const initTables = async () => {
-    try {
-        // Add cover_art to releases if not exists
-        try {
-            await db.query('SELECT cover_art FROM releases LIMIT 1');
-        } catch (e) {
-            await db.query('ALTER TABLE releases ADD COLUMN cover_art VARCHAR(255)');
-            console.log('Added cover_art column to releases table');
-        }
-
-        // Create tracks table
-        await db.query(`
-            CREATE TABLE IF NOT EXISTS tracks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                release_id INT,
-                title VARCHAR(255),
-                version VARCHAR(100),
-                primary_artists TEXT,
-                writer TEXT,
-                composer TEXT,
-                producer TEXT,
-                isrc VARCHAR(50),
-                explicit BOOLEAN,
-                audio_file VARCHAR(255),
-                FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE
-            )
-        `);
-
-        // Ensure columns exist (for existing tables)
-        const trackColumns = [
-            { name: 'version', type: 'VARCHAR(100)' },
-            { name: 'writer', type: 'TEXT' },
-            { name: 'composer', type: 'TEXT' },
-            { name: 'producer', type: 'TEXT' },
-            { name: 'audio_file', type: 'VARCHAR(255)' }
-        ];
-
-        for (const col of trackColumns) {
-            try {
-                await db.query(`SELECT ${col.name} FROM tracks LIMIT 1`);
-            } catch (e) {
-                try {
-                    await db.query(`ALTER TABLE tracks ADD COLUMN ${col.name} ${col.type}`);
-                    console.log(`Added ${col.name} column to tracks table`);
-                } catch (alterErr) {
-                    console.error(`Failed to add ${col.name} to tracks:`, alterErr.message);
-                }
-            }
-        }
-    } catch (err) {
-        console.error('Table init error:', err);
-    }
-};
-initTables();
-
 // Helper: Sanitize Folder Name
 const sanitizeName = (name) => {
     return name.replace(/[^a-zA-Z0-9 \-_]/g, '').trim();

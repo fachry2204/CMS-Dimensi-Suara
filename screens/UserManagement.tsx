@@ -17,7 +17,7 @@ import { api } from '../utils/api';
 
 export const UserManagement: React.FC = () => {
   // --- USER MANAGEMENT LOGIC ---
-  const [userTab, setUserTab] = useState<'INTERNAL' | 'REGISTERED'>('INTERNAL');
+  const [userTab, setUserTab] = useState<'ALL' | 'INTERNAL' | 'REGISTERED'>('ALL');
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -85,8 +85,10 @@ export const UserManagement: React.FC = () => {
     
     if (userTab === 'INTERNAL') {
         return matchesSearch && (user.role === 'Admin' || user.role === 'Operator');
-    } else {
+    } else if (userTab === 'REGISTERED') {
         return matchesSearch && user.role === 'User';
+    } else {
+        return matchesSearch; // ALL
     }
   });
 
@@ -125,6 +127,17 @@ export const UserManagement: React.FC = () => {
 
             {/* Tabs */}
             <div className="flex border-b border-gray-200 mb-6">
+                <button
+                    onClick={() => setUserTab('ALL')}
+                    className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                        userTab === 'ALL' 
+                        ? 'border-blue-600 text-blue-600' 
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    <Users size={16} />
+                    All Users
+                </button>
                 <button
                     onClick={() => setUserTab('INTERNAL')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${

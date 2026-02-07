@@ -34,8 +34,28 @@ const initDb = async () => {
 
         // Execute schema
         console.log('🚀 Running schema.sql...');
-        await connection.query(schemaSql);
+        const statements = schemaSql.split(';').filter(stmt => stmt.trim());
+        for (const statement of statements) {
+            if (statement.trim()) {
+                await connection.query(statement);
+            }
+        }
         
+        // Seed Default Admin
+        const [users] = await connection.query("SELECT * FROM users WHERE role = 'Admin'");
+        if (users.length === 0) {
+            console.log("Creating default admin user...");
+            const bcrypt = (await import('bcryptjs')).default;
+            const salt = await bcrypt.genSalt(10);
+            const hash = await bcrypt.hash('admin123', salt);
+            
+            await connection.query(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+                ['Admin', 'admin@dimensisuara.com', hash, 'Admin']
+            );
+            console.log("Default admin created: admin@dimensisuara.com / admin123");
+        }
+
         console.log('✅ Database initialized successfully!');
         
         await connection.end();

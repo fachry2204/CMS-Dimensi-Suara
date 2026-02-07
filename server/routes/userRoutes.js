@@ -30,49 +30,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Initialize Users Table & Default Admin
-const initUserTable = async () => {
-    try {
-        // Add profile_picture column if not exists
-        try {
-            await db.query('SELECT profile_picture FROM users LIMIT 1');
-        } catch (e) {
-            await db.query('ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255)');
-            console.log('Added profile_picture column to users table');
-        }
-
-        await db.query(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50) UNIQUE NOT NULL,
-                email VARCHAR(100) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                role ENUM('Admin', 'Operator', 'User') DEFAULT 'User',
-                status ENUM('Active', 'Inactive') DEFAULT 'Active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                profile_picture VARCHAR(255)
-            )
-        `);
-
-        // Check if any admin exists
-        const [rows] = await db.query("SELECT * FROM users WHERE role = 'Admin'");
-        if (rows.length === 0) {
-            console.log("Creating default admin user...");
-            const salt = await bcrypt.genSalt(10);
-            const hash = await bcrypt.hash('admin123', salt); // Default password
-            
-            await db.query(
-                "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
-                ['Admin', 'admin@dimensisuara.com', hash, 'Admin']
-            );
-        }
-    } catch (err) {
-        console.error('Error initializing users table:', err);
-    }
-};
-
-initUserTable();
-
 // GET CURRENT USER PROFILE
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
