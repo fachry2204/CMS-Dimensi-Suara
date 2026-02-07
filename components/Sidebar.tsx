@@ -202,7 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
                 Settings
               </button>
             </li>
-            {userRole === 'Admin' && (
+            {(userRole === 'Admin' || userRole === 'Operator') && (
             <li>
               <button 
                 onClick={() => onNavigate('USER_MANAGEMENT')}

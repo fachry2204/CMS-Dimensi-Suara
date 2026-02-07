@@ -105,6 +105,11 @@ const App: React.FC = () => {
         // Fetch Profile
         api.getProfile(token).then(user => {
             setCurrentUserData(user);
+            // Sync role from DB to State/LocalStorage
+            if (user.role && user.role !== userRole) {
+                setUserRole(user.role);
+                localStorage.setItem('cms_role', user.role);
+            }
         }).catch(err => console.error("Failed to fetch profile", err));
 
         // Fetch Notifications

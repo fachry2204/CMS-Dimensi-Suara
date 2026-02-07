@@ -69,6 +69,11 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// API 404 Handler (Must be after all API routes)
+app.use('/api/*', (req, res) => {
+    res.status(404).json({ error: `API endpoint ${req.method} ${req.originalUrl} not found` });
+});
+
 // Catch-All Route for SPA (Must be last)
 app.get('*', (req, res) => {
     // If request starts with /api, return 404 JSON immediately
