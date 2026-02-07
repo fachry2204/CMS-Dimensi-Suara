@@ -1,8 +1,5 @@
 -- Database Schema for Dimensi Suara CMS
 
-CREATE DATABASE IF NOT EXISTS dimensi_suara_db;
-USE dimensi_suara_db;
-
 -- 1. Users Table (Admin/Operator/User)
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,

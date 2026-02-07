@@ -84,29 +84,28 @@ Jika Anda menggunakan hosting dengan panel Plesk, ikuti langkah berikut:
 ### 1. Persiapan di Hosting
 1.  Pastikan hosting Anda mendukung **Node.js**.
 2.  Masuk ke Plesk, pilih menu **Node.js**.
-3.  Aktifkan Node.js untuk domain/subdomain Anda.
-4.  Buat database MySQL baru di menu **Databases**:
-    - Catat **Database Name**, **Username**, dan **Password**.
+3.  Aktifkan Node.js untuk subdomain **cms.dimensisuara.id**.
+4.  Buat database MySQL baru di menu **Databases** (sesuai langkah sebelumnya).
 
 ### 2. Upload File
-Ada dua cara untuk upload:
+Karena Anda menggunakan subdomain, lokasi folder biasanya bukan di `httpdocs`, melainkan di folder dengan nama subdomain tersebut (misal: `/cms.dimensisuara.id`).
 
 **Cara A: Menggunakan Git (Recomended)**
 1.  Pastikan project sudah di-push ke GitHub/GitLab.
 2.  Masuk ke Plesk, pilih menu **Git**.
 3.  Tambahkan repository Anda.
-4.  Plesk akan otomatis clone file ke folder `httpdocs`.
+4.  Plesk akan otomatis clone file. Pastikan target direktorinya adalah root dari subdomain Anda (misal: `/cms.dimensisuara.id`).
 5.  Setiap ada update, cukup klik **Pull Updates** di Plesk.
 
 **Cara B: Upload Manual (ZIP)**
 1.  Di komputer lokal, jalankan `npm run build`.
 2.  Compress/ZIP folder project (kecuali `node_modules` dan `.git`).
-3.  Upload ZIP ke File Manager Plesk (folder `httpdocs` atau sesuai root domain).
+3.  Upload ZIP ke File Manager Plesk (masuk ke folder subdomain: `/cms.dimensisuara.id`).
 4.  Extract file ZIP tersebut.
 
 ### 3. Konfigurasi Node.js di Plesk
 Setelah file terupload, masuk ke menu **Node.js** di Plesk dan atur:
--   **Document Root:** `/httpdocs` (atau folder tempat file berada)
+-   **Document Root:** `/cms.dimensisuara.id` (atau sesuai nama folder subdomain Anda)
 -   **Application Mode:** `Production`
 -   **Application Startup File:** `server/index.js`
 -   **Package Manager:** `npm`
@@ -120,14 +119,16 @@ Di menu Node.js, klik tombol **Environment Variables** (atau edit file `.env` se
 DB_HOST=localhost
 DB_USER=nama_user_db_plesk
 DB_PASSWORD=password_db_plesk
-DB_NAME=nama_database_plesk
+DB_NAME=cmsdimensi
 PORT=3000
 JWT_SECRET=rahasia_aman_123
 ```
 
 ### 5. Import Database
+Karena database Anda bernama `cmsdimensi`, kita import tabelnya secara manual:
+
 1.  Buka **phpMyAdmin** di Plesk.
-2.  Pilih database yang baru dibuat.
+2.  Pilih database **cmsdimensi**.
 3.  Klik tab **Import**.
 4.  Upload file `server/schema.sql` dari folder project Anda.
 5.  Klik **Go/Kirim**.

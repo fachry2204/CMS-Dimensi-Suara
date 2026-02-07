@@ -21,6 +21,13 @@ const initDb = async () => {
 
         console.log('🔌 Connected to MySQL server');
 
+        const dbName = process.env.DB_NAME || 'dimensi_suara_db';
+        
+        // Create DB if not exists and Use it
+        console.log(`🔨 Creating/Selecting database: ${dbName}...`);
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+        await connection.query(`USE \`${dbName}\``);
+
         // Read schema.sql
         const schemaPath = path.join(__dirname, 'schema.sql');
         const schemaSql = fs.readFileSync(schemaPath, 'utf8');
