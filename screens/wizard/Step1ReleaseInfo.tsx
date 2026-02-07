@@ -109,7 +109,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
                   </div>
                 ) : data.coverArt ? (
                   <img 
-                      src={URL.createObjectURL(data.coverArt)} 
+                      src={typeof data.coverArt === 'string' ? data.coverArt : URL.createObjectURL(data.coverArt)} 
                       alt="Cover" 
                       className="w-full h-full object-cover shadow-lg" 
                   />

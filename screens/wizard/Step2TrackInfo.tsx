@@ -11,10 +11,14 @@ interface Props {
 }
 
 // Sub-component for Audio Preview
-const AudioPreview: React.FC<{ file: File }> = ({ file }) => {
+const AudioPreview: React.FC<{ file: File | string }> = ({ file }) => {
     const [url, setUrl] = useState<string | null>(null);
 
     useEffect(() => {
+        if (typeof file === 'string') {
+            setUrl(file);
+            return;
+        }
         const objectUrl = URL.createObjectURL(file);
         setUrl(objectUrl);
         return () => URL.revokeObjectURL(objectUrl);
@@ -24,7 +28,7 @@ const AudioPreview: React.FC<{ file: File }> = ({ file }) => {
 
     return (
         <audio controls className="w-full mt-2 h-8">
-            <source src={url} type={file.type} />
+            <source src={url} type={typeof file === 'string' ? 'audio/mpeg' : file.type} />
             Your browser does not support the audio element.
         </audio>
     );
@@ -405,7 +409,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             {track.audioFile ? (
                                                 <div className="mt-2">
                                                     <p className="text-[10px] text-green-600 font-bold mb-1 truncate">
-                                                        ✅ Uploaded: {track.audioFile.name}
+                                                        ✅ Uploaded: {typeof track.audioFile === 'string' ? 'Existing Audio' : track.audioFile.name}
                                                     </p>
                                                     <AudioPreview file={track.audioFile} />
                                                 </div>
@@ -448,7 +452,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             {track.audioClip ? (
                                                 <div className="mt-2">
                                                     <p className="text-[10px] text-orange-600 font-bold mb-1 truncate">
-                                                        ✂️ Clipped: {track.audioClip.name}
+                                                        ✂️ Clipped: {typeof track.audioClip === 'string' ? 'Existing Clip' : track.audioClip.name}
                                                     </p>
                                                     <AudioPreview file={track.audioClip} />
                                                 </div>

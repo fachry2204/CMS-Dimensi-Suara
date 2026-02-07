@@ -65,6 +65,16 @@ const App: React.FC = () => {
             const pubs = await api.getPublishing(token);
             setAllPublishing(pubs);
 
+            // 5. Fetch Aggregators
+            try {
+                const aggs = await api.getAggregators(token);
+                if (aggs && Array.isArray(aggs) && aggs.length > 0) {
+                    setAggregators(aggs);
+                }
+            } catch (aggErr) {
+                console.warn("Failed to fetch aggregators, using defaults", aggErr);
+            }
+
         } catch (err) {
             console.error("Failed to fetch data from API, falling back to local data:", err);
             setSavedSongwriters(generateSongwriters(60));
@@ -158,14 +168,34 @@ const App: React.FC = () => {
     setReleaseType(null);
   };
 
-  const handleSaveRelease = (data: ReleaseData) => {
-      if (data.id && allReleases.some(r => r.id === data.id)) {
-          setAllReleases(prev => prev.map(r => r.id === data.id ? data : r));
-      } else {
-          setAllReleases(prev => [data, ...prev]);
+  const handleSaveRelease = async (data: ReleaseData) => {
+      try {
+          if (data.id && allReleases.some(r => r.id === data.id)) {
+              // Update Logic (Local for now, API update to be implemented)
+              setAllReleases(prev => prev.map(r => r.id === data.id ? data : r));
+          } else {
+              // Create New Release via API
+              if (isAuthenticated && token) {
+                  const response = await api.createRelease(token, data);
+                  // Merge response ID with data
+                  const newRelease = { 
+                      ...data, 
+                      id: response.id, 
+                      status: 'Pending', 
+                      submissionDate: new Date().toISOString() 
+                  };
+                  setAllReleases(prev => [newRelease, ...prev]);
+              } else {
+                  // Fallback for offline/demo mode
+                  setAllReleases(prev => [data, ...prev]);
+              }
+          }
+          setActiveTab('ALL'); 
+          setViewingRelease(null);
+      } catch (err: any) {
+          console.error("Failed to save release:", err);
+          alert(`Failed to save release: ${err.message || 'Unknown error'}`);
       }
-      setActiveTab('ALL'); 
-      setViewingRelease(null);
   };
 
   const handleUpdateRelease = (updated: ReleaseData) => {
@@ -177,6 +207,18 @@ const App: React.FC = () => {
 
   const handleViewDetails = (release: ReleaseData) => {
       setViewingRelease(release);
+  };
+
+  const handleSaveAggregators = async (newList: string[]) => {
+      setAggregators(newList);
+      if (token) {
+          try {
+              await api.updateAggregators(token, newList);
+          } catch (err) {
+              console.error("Failed to save aggregators:", err);
+              // Optionally revert state or show notification
+          }
+      }
   };
 
   if (isAuthChecking) return null;
@@ -328,7 +370,7 @@ const App: React.FC = () => {
           )}
 
           {activeTab === 'SETTINGS' && (
-            <Settings aggregators={aggregators} setAggregators={setAggregators} />
+            <Settings aggregators={aggregators} setAggregators={handleSaveAggregators} />
           )}
 
           {activeTab === 'USER_MANAGEMENT' && (

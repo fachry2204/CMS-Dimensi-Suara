@@ -35,15 +35,37 @@ export const api = {
     },
 
     createRelease: async (token, data) => {
+        const formData = new FormData();
+        
+        // Append files
+        if (data.coverArt instanceof File) {
+            formData.append('coverArt', data.coverArt);
+        }
+        
+        if (data.tracks && Array.isArray(data.tracks)) {
+            data.tracks.forEach((track, index) => {
+                if (track.audioFile instanceof File) {
+                    formData.append(`track_${index}_audio`, track.audioFile);
+                }
+            });
+        }
+
+        // Append JSON data
+        formData.append('data', JSON.stringify(data));
+
         const res = await fetch(`${API_BASE_URL}/releases`, {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
+                // Content-Type must be undefined for FormData
             },
-            body: JSON.stringify(data)
+            body: formData
         });
-        if (!res.ok) throw new Error('Failed to create release');
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Failed to create release');
+        }
         return res.json();
     },
 
@@ -198,6 +220,28 @@ export const api = {
             body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('Failed to create publishing registration');
+        return res.json();
+    },
+
+    // Settings
+    getAggregators: async (token) => {
+        const res = await fetch(`${API_BASE_URL}/settings/aggregators`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch aggregators');
+        return res.json();
+    },
+
+    updateAggregators: async (token, aggregators) => {
+        const res = await fetch(`${API_BASE_URL}/settings/aggregators`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ aggregators })
+        });
+        if (!res.ok) throw new Error('Failed to update aggregators');
         return res.json();
     }
 };

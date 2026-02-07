@@ -9,6 +9,7 @@ import releaseRoutes from './routes/releaseRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import songwriterRoutes from './routes/songwriterRoutes.js';
 import publishingRoutes from './routes/publishingRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 
 // Configuration
 dotenv.config();
@@ -41,12 +42,17 @@ app.use((err, req, res, next) => {
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
 
+// Serve Uploads
+const uploadsPath = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/releases', releaseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/songwriters', songwriterRoutes);
 app.use('/api/publishing', publishingRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Test Database Connection Route
 app.get('/api/health', async (req, res) => {

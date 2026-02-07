@@ -77,8 +77,8 @@ export interface ReleaseData {
   rejectionDescription?: string;
 
   // Step 1
-  coverArt: File | null;
-  upc: string; 
+  coverArt: File | string | null;
+  upc: string;  
   title: string;
   language: string; 
   primaryArtists: string[];
