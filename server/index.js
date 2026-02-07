@@ -48,7 +48,12 @@ app.get('/api/health', async (req, res) => {
 
 // Catch-All Route for SPA (Must be last)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+    // If request accepts html, send index.html, otherwise 404
+    if (req.accepts('html')) {
+        res.sendFile(path.join(distPath, 'index.html'));
+        return;
+    }
+    res.status(404).json({ error: 'Not found' });
 });
 
 // Start Server
