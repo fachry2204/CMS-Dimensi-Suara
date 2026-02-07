@@ -2,8 +2,10 @@
 import React, { useState } from 'react';
 import { Music4, User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 
+import { api } from '../utils/api';
+
 interface Props {
-  onLogin: (username: string) => void;
+  onLogin: (user: any, token: string) => void;
 }
 
 export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
@@ -13,23 +15,26 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Simulate network delay for better UX
-    setTimeout(() => {
-      const isValidAdmin = (username === 'admin' && password === 'rackajuragandracin');
-      const isValidUser2 = (username === 'fachry' && password === 'bangbens');
-
-      if (isValidAdmin || isValidUser2) {
-        onLogin(username);
-      } else {
-        setError('Username atau Password salah.');
+    try {
+      // Try API login first
+      const data = await api.login(username, password);
+      onLogin(data.user, data.token);
+    } catch (err: any) {
+        // Fallback for demo if API fails (Optional, but user asked for DB only)
+        // But since I can't run DB locally, I must keep the demo logic OR explain it won't work without DB.
+        // User said "agar menyimpan data BUKAN di lokal".
+        // So I should enforce API.
+        // However, to prevent "broken" app for me right now, I'll add a check.
+        // If API fails, I'll show error.
+        console.error(err);
+        setError(err.message || 'Login gagal. Pastikan server berjalan.');
         setIsLoading(false);
-      }
-    }, 800);
+    }
   };
 
   return (

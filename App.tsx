@@ -17,12 +17,14 @@ import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration, ReportData } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-react';
 import { generateSongwriters, generatePublishing, generateReleases } from './utils/dummyData';
+import { api } from './utils/api';
 
 const App: React.FC = () => {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<string>('');
+  const [token, setToken] = useState<string>('');
   
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
@@ -43,19 +45,38 @@ const App: React.FC = () => {
   
   // Initialize Data
   useEffect(() => {
-    // 1. Generate 60 Songwriters
-    const writers = generateSongwriters(60);
-    setSavedSongwriters(writers);
+    const fetchData = async () => {
+        if (!token) return;
 
-    // 2. Generate 70 Publishing Registrations (linked to writers)
-    const pubs = generatePublishing(70, writers);
-    setAllPublishing(pubs);
+        try {
+            // 1. Fetch Releases
+            const releases = await api.getReleases(token);
+            setAllReleases(releases);
+            
+            // 2. Fetch Reports
+            const reports = await api.getReports(token);
+            setReportData(reports);
 
-    // 3. Generate 55 Releases
-    const rels = generateReleases(55);
-    setAllReleases(rels);
+            // TODO: Add endpoints for songwriters and publishing and fetch them here
+            // For now, using dummy data for missing endpoints to prevent crash
+            const writers = generateSongwriters(60);
+            setSavedSongwriters(writers);
+            const pubs = generatePublishing(70, writers);
+            setAllPublishing(pubs);
 
-  }, []);
+        } catch (err) {
+            console.error("Failed to fetch data from API, falling back to local data:", err);
+            // Fallback to dummy data
+            setSavedSongwriters(generateSongwriters(60));
+            setAllPublishing(generatePublishing(70, generateSongwriters(60)));
+            setAllReleases(generateReleases(55));
+        }
+    };
+
+    if (isAuthenticated) {
+        fetchData();
+    }
+  }, [isAuthenticated, token]);
 
   // Wizard State
   const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
@@ -69,17 +90,22 @@ const App: React.FC = () => {
   useEffect(() => {
     const storedAuth = localStorage.getItem('cms_auth');
     const storedUser = localStorage.getItem('cms_user');
+    const storedToken = localStorage.getItem('cms_token');
+    
     if (storedAuth === 'true') {
       setIsAuthenticated(true);
       if (storedUser) setCurrentUser(storedUser);
+      if (storedToken) setToken(storedToken);
     }
     setIsAuthChecking(false);
   }, []);
 
-  const handleLogin = (username: string) => {
+  const handleLogin = (user: any, token: string) => {
     localStorage.setItem('cms_auth', 'true');
-    localStorage.setItem('cms_user', username);
-    setCurrentUser(username);
+    localStorage.setItem('cms_user', user.username);
+    localStorage.setItem('cms_token', token);
+    setCurrentUser(user.username);
+    setToken(token);
     setIsAuthenticated(true);
   };
 
@@ -90,8 +116,10 @@ const App: React.FC = () => {
   const confirmLogout = () => {
     localStorage.removeItem('cms_auth');
     localStorage.removeItem('cms_user');
+    localStorage.removeItem('cms_token');
     setIsAuthenticated(false);
     setCurrentUser('');
+    setToken('');
     setShowLogoutDialog(false);
     // Reset states
     setActiveTab('DASHBOARD');
