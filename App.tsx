@@ -10,9 +10,11 @@ import { Statistics } from './screens/Statistics';
 import { Publishing } from './screens/Publishing'; // Import Publishing
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
+import { ReportScreen } from './screens/ReportScreen';
+import { RevenueScreen } from './screens/RevenueScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
-import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration } from './types';
+import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration, ReportData } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-react';
 import { generateSongwriters, generatePublishing, generateReleases } from './utils/dummyData';
 
@@ -33,6 +35,9 @@ const App: React.FC = () => {
   const [savedSongwriters, setSavedSongwriters] = useState<SavedSongwriter[]>([]);
   const [allPublishing, setAllPublishing] = useState<PublishingRegistration[]>([]);
   const [allReleases, setAllReleases] = useState<ReleaseData[]>([]);
+  
+  // IMPORTED REPORT DATA STATE
+  const [reportData, setReportData] = useState<ReportData[]>([]);
 
   const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn", "Tunecore", "Believe"]);
   
@@ -159,6 +164,9 @@ const App: React.FC = () => {
       if (activeTab === 'ALL') return "Catalog Manager";
       if (activeTab === 'SETTINGS') return "System Settings";
       if (activeTab === 'USER_MANAGEMENT') return "User Management";
+      if (activeTab === 'REPORT_MAIN') return "Laporan";
+      if (activeTab === 'IMPORT_REPORT') return "Import Laporan";
+      if (activeTab === 'REVENUE') return "Pendapatan";
       if (activeTab === 'STATISTICS') return "Analytics & Reports";
       if (activeTab === 'PUBLISHING_ADD') return "Publishing / Registration";
       if (activeTab === 'PUBLISHING_WRITER') return "Publishing / Songwriters";
@@ -241,7 +249,7 @@ const App: React.FC = () => {
           )}
 
           {activeTab === 'STATISTICS' && (
-            <Statistics releases={allReleases} />
+            <Statistics releases={allReleases} reportData={reportData} />
           )}
 
           {activeTab.startsWith('PUBLISHING') && currentUser === 'fachry' && (
@@ -296,6 +304,30 @@ const App: React.FC = () => {
 
           {activeTab === 'USER_MANAGEMENT' && (
             <UserManagement />
+          )}
+
+          {activeTab === 'REPORT_MAIN' && (
+            <ReportScreen 
+              onImport={(data) => setReportData(data)} 
+              data={reportData}
+              releases={allReleases}
+              aggregators={aggregators}
+              mode="view"
+            />
+          )}
+
+          {activeTab === 'IMPORT_REPORT' && (
+            <ReportScreen 
+              onImport={(data) => setReportData(data)} 
+              data={reportData}
+              releases={allReleases}
+              aggregators={aggregators}
+              mode="import"
+            />
+          )}
+
+          {activeTab === 'REVENUE' && (
+            <RevenueScreen data={reportData} />
           )}
         </div>
         

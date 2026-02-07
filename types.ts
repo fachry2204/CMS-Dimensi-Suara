@@ -185,3 +185,32 @@ export interface User {
   joinedDate: string;
   password?: string; // Optional for UI display
 }
+
+// --- REPORT & REVENUE TYPES ---
+
+export interface ReportData {
+  id: string;
+  upc: string;
+  isrc: string;
+  title: string;
+  artist: string;
+  platform: string;
+  country: string;
+  quantity: number;
+  revenue: number;
+  period: string; // YYYY-MM
+  originalFileName: string;
+  uploadTimestamp?: string;
+  status?: 'Pending' | 'Reviewed';
+  verificationStatus?: 'Unchecked' | 'Valid' | 'No User';
+}
+
+export interface AggregatedStats {
+  totalRevenue: number;
+  totalStreams: number;
+  topTracks: { title: string; revenue: number; streams: number }[];
+  topPlatforms: { name: string; revenue: number }[];
+  topCountries: { code: string; revenue: number }[];
+  monthlyRevenue: { month: string; revenue: number }[];
+}
+

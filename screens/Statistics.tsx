@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { ReleaseData } from '../types';
+import React, { useMemo } from 'react';
+import { ReleaseData, ReportData } from '../types';
 import { 
     Music, 
     Disc, 
@@ -16,9 +15,10 @@ import {
 
 interface Props {
   releases: ReleaseData[];
+  reportData: ReportData[];
 }
 
-export const Statistics: React.FC<Props> = ({ releases }) => {
+export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
   
   // 1. Calculate Catalog Stats
   const stats = {
@@ -28,17 +28,43 @@ export const Statistics: React.FC<Props> = ({ releases }) => {
     albums: releases.filter(r => r.tracks.length > 6).length,
   };
 
-  // 2. Mock Analytics Data
-  const platformData = [
-    { name: 'Spotify', streams: 850400, revenue: 3500000, trend: '+12.5%', isUp: true, color: 'bg-green-500', icon: 'S' },
-    { name: 'Apple Music', streams: 320100, revenue: 1800000, trend: '+5.2%', isUp: true, color: 'bg-red-500', icon: 'A' },
-    { name: 'YouTube Music', streams: 1200500, revenue: 950000, trend: '-2.1%', isUp: false, color: 'bg-red-600', icon: 'Y' },
-    { name: 'TikTok', streams: 2500000, revenue: 450000, trend: '+24.8%', isUp: true, color: 'bg-black', icon: 'T' },
-    { name: 'Resso', streams: 150000, revenue: 200000, trend: '+1.0%', isUp: true, color: 'bg-orange-500', icon: 'R' }
-  ];
+  // 2. Aggregate Report Data
+  const aggregatedData = useMemo(() => {
+    const platformStats: Record<string, { streams: number, revenue: number }> = {};
+    let totalRev = 0;
+    let totalStr = 0;
 
-  const totalRevenue = platformData.reduce((acc, curr) => acc + curr.revenue, 0);
-  const totalStreams = platformData.reduce((acc, curr) => acc + curr.streams, 0);
+    reportData.forEach(item => {
+        totalRev += item.revenue;
+        totalStr += item.quantity;
+        
+        const platform = item.platform || 'Unknown';
+        if (!platformStats[platform]) {
+            platformStats[platform] = { streams: 0, revenue: 0 };
+        }
+        platformStats[platform].streams += item.quantity;
+        platformStats[platform].revenue += item.revenue;
+    });
+
+    const platforms = Object.entries(platformStats).map(([name, data]) => ({
+        name,
+        streams: data.streams,
+        revenue: data.revenue,
+        // Mock trend for now as we don't have historical data comparison in simple report
+        trend: '0%', 
+        isUp: true,
+        color: getColorForPlatform(name),
+        icon: name.charAt(0).toUpperCase()
+    })).sort((a, b) => b.revenue - a.revenue); // Sort by revenue
+
+    return {
+        totalRevenue: totalRev,
+        totalStreams: totalStr,
+        platforms
+    };
+  }, [reportData]);
+
+  const { totalRevenue, totalStreams, platforms } = aggregatedData;
 
   // Helper formatting
   const formatIDR = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -100,124 +126,145 @@ export const Statistics: React.FC<Props> = ({ releases }) => {
             />
        </div>
 
-       {/* REVENUE & STREAM OVERVIEW */}
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            {/* Main Metrics */}
-            <div className="lg:col-span-2 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
-                <div className="relative z-10">
-                    <h3 className="text-slate-300 font-medium mb-1 flex items-center gap-2">
-                        <TrendingUp size={18} /> Estimasi Pendapatan (Bulan Ini)
-                    </h3>
-                    <div className="text-4xl md:text-5xl font-bold mb-8">
-                        {formatIDR(totalRevenue)}
+       {/* ANALYTICS SECTION */}
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Stats */}
+            <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <TrendingUp size={20} className="text-blue-600" />
+                            Performa Keseluruhan
+                        </h3>
+                        <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-600 rounded-full">
+                            Berdasarkan Data Import
+                        </span>
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-8 border-t border-slate-700 pt-6">
-                        <div>
-                            <p className="text-slate-400 text-sm mb-1 flex items-center gap-2">
-                                <PlayCircle size={14} /> Total Streams
-                            </p>
-                            <p className="text-2xl font-bold">{formatNumber(totalStreams)}</p>
-                            <span className="text-green-400 text-xs font-bold flex items-center mt-1">
-                                <ArrowUpRight size={12} className="mr-1" /> +14.2%
-                            </span>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-green-500 text-white rounded-lg shadow-lg shadow-green-500/20">
+                                    <DollarSign size={20} />
+                                </div>
+                                <span className="text-slate-500 font-bold text-sm uppercase tracking-wide">Total Pendapatan</span>
+                            </div>
+                            <h2 className="text-3xl md:text-4xl font-black text-slate-800 mt-4">{formatIDR(totalRevenue)}</h2>
+                            <p className="text-slate-500 text-sm mt-2">Akumulasi dari laporan yang diimpor</p>
                         </div>
-                        <div>
-                            <p className="text-slate-400 text-sm mb-1 flex items-center gap-2">
-                                <Users size={14} /> Pendengar Aktif
-                            </p>
-                            <p className="text-2xl font-bold">{formatNumber(Math.round(totalStreams / 12))}</p>
-                            <span className="text-green-400 text-xs font-bold flex items-center mt-1">
-                                <ArrowUpRight size={12} className="mr-1" /> +8.5%
-                            </span>
+
+                        <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                             <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-blue-500 text-white rounded-lg shadow-lg shadow-blue-500/20">
+                                    <PlayCircle size={20} />
+                                </div>
+                                <span className="text-slate-500 font-bold text-sm uppercase tracking-wide">Total Streams</span>
+                            </div>
+                            <h2 className="text-3xl md:text-4xl font-black text-slate-800 mt-4">{formatNumber(totalStreams)}</h2>
+                            <p className="text-slate-500 text-sm mt-2">Total kuantitas stream/penjualan</p>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Top Song Demo */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
-                <h3 className="font-bold text-slate-800 mb-6">Top Performing Song</h3>
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 shadow-lg mb-4 flex items-center justify-center text-white">
-                        <Music size={48} />
+                {/* Platform Breakdown */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-800">Performa Platform</h3>
                     </div>
-                    <h4 className="font-bold text-lg text-slate-800">Summer Vibes Vol. 1</h4>
-                    <p className="text-slate-500 text-sm mb-4">The Weekend Band</p>
-                    <div className="flex gap-4 text-center">
-                         <div>
-                             <div className="text-xs text-slate-400 uppercase font-bold">Streams</div>
-                             <div className="font-bold text-slate-700">450k</div>
-                         </div>
-                         <div>
-                             <div className="text-xs text-slate-400 uppercase font-bold">Revenue</div>
-                             <div className="font-bold text-slate-700">Rp 1.2jt</div>
-                         </div>
-                    </div>
-                </div>
-            </div>
-       </div>
-
-       {/* PLATFORM BREAKDOWN TABLE */}
-       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-                <h3 className="font-bold text-lg text-slate-800">Analitik Platform (Demo Data)</h3>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b border-gray-100">
-                        <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Platform</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase w-1/3">Performance Share</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Streams</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Pendapatan</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Trend</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {platformData.map((platform, idx) => {
-                            // Calculate percentage for bar width
-                            const percentage = (platform.streams / totalStreams) * 100;
-
-                            return (
-                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg ${platform.color} flex items-center justify-center text-white font-bold text-xs shadow-sm`}>
-                                                {platform.icon}
-                                            </div>
-                                            <span className="font-bold text-slate-700">{platform.name}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                            <div 
-                                                className={`h-full rounded-full ${platform.color}`} 
-                                                style={{ width: `${percentage}%` }}
-                                            ></div>
-                                        </div>
-                                        <div className="text-[10px] text-slate-400 mt-1">{percentage.toFixed(1)}% Share</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-mono text-sm text-slate-600">
-                                        {formatNumber(platform.streams)}
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-bold text-sm text-slate-700">
-                                        {formatIDR(platform.revenue)}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${platform.isUp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            {platform.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                                            {platform.trend}
-                                        </span>
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Platform</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Streams</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Pendapatan</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">%</th>
                                 </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {platforms.length > 0 ? (
+                                    platforms.map((platform, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs mr-3 ${platform.color}`}>
+                                                        {platform.icon}
+                                                    </div>
+                                                    <span className="font-bold text-slate-700">{platform.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right font-medium text-slate-600">
+                                                {formatNumber(platform.streams)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-slate-800">
+                                                {formatIDR(platform.revenue)}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center">
+                                                    <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden mr-2">
+                                                        <div 
+                                                            className={`h-full ${platform.color.replace('bg-', 'bg-')}`} 
+                                                            style={{ width: `${(platform.revenue / totalRevenue) * 100}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-xs text-slate-500 font-medium">
+                                                        {((platform.revenue / totalRevenue) * 100).toFixed(1)}%
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                                            DATA BELUM TERSEDIA
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* Sidebar Stats */}
+            <div className="space-y-6">
+                <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-900/10">
+                    <h3 className="font-bold text-lg mb-1">Top Pendapatan</h3>
+                    <p className="text-slate-400 text-sm mb-6">Berdasarkan data import terakhir</p>
+                    
+                    {platforms.length > 0 ? (
+                        <div className="space-y-6">
+                            <div>
+                                <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-2">Platform Terbaik</p>
+                                <div className="flex items-center justify-between">
+                                    <span className="font-bold text-xl">{platforms[0].name}</span>
+                                    <span className="text-emerald-400 font-bold">{formatIDR(platforms[0].revenue)}</span>
+                                </div>
+                                <div className="w-full bg-slate-700/50 h-1.5 rounded-full mt-2">
+                                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: '100%' }}></div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-slate-400 italic">Data belum tersedia</p>
+                    )}
+                </div>
+                
+{/* Info section removed */}
             </div>
        </div>
     </div>
   );
 };
+
+function getColorForPlatform(name: string): string {
+    const n = name.toLowerCase();
+    if (n.includes('spotify')) return 'bg-green-500';
+    if (n.includes('apple') || n.includes('itunes')) return 'bg-red-500';
+    if (n.includes('youtube')) return 'bg-red-600';
+    if (n.includes('tiktok')) return 'bg-black';
+    if (n.includes('resso')) return 'bg-orange-500';
+    if (n.includes('joox')) return 'bg-green-600';
+    return 'bg-blue-500';
+}

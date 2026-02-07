@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, BookOpen, FileText, UserPlus, PieChart, Library, Users } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, BookOpen, FileText, UserPlus, PieChart, Library, Users, ClipboardList, DollarSign, Upload } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -64,7 +64,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
                 All Release
               </button>
             </li>
-             <li>
+          </ul>
+        </div>
+
+        {/* Report Section */}
+        <div>
+          <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+            Report
+          </h3>
+          <ul className="space-y-2">
+            <li>
               <button
                 onClick={() => onNavigate('STATISTICS')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
@@ -74,6 +83,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
               >
                 <BarChart3 size={20} className={activeTab === 'STATISTICS' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
                 Statistik
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => onNavigate('REPORT_MAIN')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'REPORT_MAIN' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <ClipboardList size={20} className={activeTab === 'REPORT_MAIN' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Laporan
+              </button>
+            </li>
+             <li>
+              <button
+                onClick={() => onNavigate('REVENUE')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'REVENUE' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <DollarSign size={20} className={activeTab === 'REVENUE' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Pendapatan
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => onNavigate('IMPORT_REPORT')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
+                  ${activeTab === 'IMPORT_REPORT' 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
+                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
+              >
+                <Upload size={20} className={activeTab === 'IMPORT_REPORT' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
+                Import Laporan
               </button>
             </li>
           </ul>
@@ -138,12 +183,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
           </div>
         )}
 
-        {/* Settings */}
+        {/* System / Settings Section */}
         <div>
-          <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-            Pengaturan
-          </h3>
-          <ul className="space-y-2">
+            <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+              System
+            </h3>
+            <ul className="space-y-2">
             <li>
               <button 
                 onClick={() => onNavigate('SETTINGS')}
