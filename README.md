@@ -41,12 +41,6 @@ DB_NAME=dimensi_suara_db
 # Konfigurasi Server
 PORT=3000
 JWT_SECRET=rahasia_super_aman_ganti_ini
-
-# Konfigurasi FTP (Untuk Deploy)
-FTP_HOST=ftp.namadomain.com
-FTP_USER=user
-FTP_PASSWORD=pass
-FTP_REMOTE_ROOT=/
 ```
 *Catatan: Pastikan `DB_PASSWORD` sesuai dengan password root MySQL di komputer Anda.*
 
@@ -97,15 +91,18 @@ Jika Anda menggunakan hosting dengan panel Plesk, ikuti langkah berikut:
 ### 2. Upload File
 Ada dua cara untuk upload:
 
-**Cara A: Upload Manual (ZIP)**
+**Cara A: Menggunakan Git (Recomended)**
+1.  Pastikan project sudah di-push ke GitHub/GitLab.
+2.  Masuk ke Plesk, pilih menu **Git**.
+3.  Tambahkan repository Anda.
+4.  Plesk akan otomatis clone file ke folder `httpdocs`.
+5.  Setiap ada update, cukup klik **Pull Updates** di Plesk.
+
+**Cara B: Upload Manual (ZIP)**
 1.  Di komputer lokal, jalankan `npm run build`.
 2.  Compress/ZIP folder project (kecuali `node_modules` dan `.git`).
 3.  Upload ZIP ke File Manager Plesk (folder `httpdocs` atau sesuai root domain).
 4.  Extract file ZIP tersebut.
-
-**Cara B: Menggunakan Script Deploy**
-1.  Isi konfigurasi FTP di file `.env` lokal Anda.
-2.  Jalankan `npm run deploy` dari terminal lokal.
 
 ### 3. Konfigurasi Node.js di Plesk
 Setelah file terupload, masuk ke menu **Node.js** di Plesk dan atur:

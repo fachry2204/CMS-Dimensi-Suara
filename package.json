@@ -9,7 +9,6 @@
     "start": "node server/index.js",
     "server": "nodemon server/index.js",
     "db:init": "node server/init-db.js",
-    "deploy": "npm run build && node deploy.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -32,7 +31,6 @@
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.24",
     "dotenv": "^17.2.4",
-    "ftp-deploy": "^2.4.7",
     "nodemon": "^3.1.11",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
