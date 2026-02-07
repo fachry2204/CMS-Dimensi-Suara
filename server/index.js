@@ -48,12 +48,13 @@ app.get('/api/health', async (req, res) => {
 
 // Catch-All Route for SPA (Must be last)
 app.get('*', (req, res) => {
-    // If request accepts html, send index.html, otherwise 404
-    if (req.accepts('html')) {
-        res.sendFile(path.join(distPath, 'index.html'));
-        return;
+    // If request starts with /api, return 404 JSON immediately
+    if (req.originalUrl.startsWith('/api')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
     }
-    res.status(404).json({ error: 'Not found' });
+
+    // Otherwise send index.html for React Router to handle
+    res.sendFile(path.join(distPath, 'index.html'));
 });
 
 // Start Server
