@@ -134,7 +134,10 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                                     <td className="px-6 py-3">
                                         <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden border border-gray-200">
                                             {release.coverArt ? (
-                                                <img src={URL.createObjectURL(release.coverArt)} className="w-full h-full object-cover" />
+                                                <img 
+                                                    src={typeof release.coverArt === 'string' ? release.coverArt : URL.createObjectURL(release.coverArt)} 
+                                                    className="w-full h-full object-cover" 
+                                                />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-gray-400"><Disc size={16} /></div>
                                             )}
@@ -144,7 +147,7 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                                         {release.title}
                                     </td>
                                     <td className="px-6 py-3 text-sm text-slate-600">
-                                        {release.primaryArtists[0]}
+                                        {(release.primaryArtists || [])[0] || "Unknown"}
                                     </td>
                                     <td className="px-6 py-3 text-sm">
                                         {release.aggregator ? (

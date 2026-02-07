@@ -59,7 +59,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
     const searchLower = searchQuery.toLowerCase();
     const searchMatch = 
         release.title.toLowerCase().includes(searchLower) || 
-        release.primaryArtists.some(a => a.toLowerCase().includes(searchLower)) ||
+        (release.primaryArtists || []).some(a => a.toLowerCase().includes(searchLower)) ||
         (release.upc && release.upc.includes(searchLower)) ||
         (release.aggregator && release.aggregator.toLowerCase().includes(searchLower)); // Added Aggregator Search
 
@@ -74,14 +74,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
         case 'title':
             return a.title.localeCompare(b.title) * direction;
         case 'artist':
-            return (a.primaryArtists[0] || '').localeCompare(b.primaryArtists[0] || '') * direction;
+            return ((a.primaryArtists || [])[0] || '').localeCompare((b.primaryArtists || [])[0] || '') * direction;
         case 'aggregator':
             return (a.aggregator || '').localeCompare(b.aggregator || '') * direction;
         case 'status':
             return (a.status || '').localeCompare(b.status || '') * direction;
         case 'type':
-            const typeA = a.tracks.length > 1 ? "Album" : "Single";
-            const typeB = b.tracks.length > 1 ? "Album" : "Single";
+            const typeA = (a.tracks || []).length > 1 ? "Album" : "Single";
+            const typeB = (b.tracks || []).length > 1 ? "Album" : "Single";
             return typeA.localeCompare(typeB) * direction;
         case 'date':
         default:
@@ -187,7 +187,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                     <tbody className="divide-y divide-gray-100">
                         {displayedReleases.map((release) => {
                             // Determine type
-                            const type = release.tracks.length > 1 ? "Album/EP" : "Single";
+                            const type = (release.tracks || []).length > 1 ? "Album/EP" : "Single";
                             
                             // Date priority: Planned > Original > Submission
                             const displayDate = release.plannedReleaseDate || release.originalReleaseDate || release.submissionDate || "N/A";
@@ -201,10 +201,10 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                             if (status === 'Rejected') statusClass = "bg-red-100 text-red-700 border-red-200 cursor-help";
 
                             // ISRC Logic
-                            const isSingle = release.tracks.length === 1;
+                            const isSingle = (release.tracks || []).length === 1;
                             const isrcDisplay = isSingle 
-                                ? (release.tracks[0]?.isrc || "-") 
-                                : (release.tracks.length > 0 ? `${release.tracks.length} Tracks` : "-");
+                                ? (release.tracks?.[0]?.isrc || "-") 
+                                : ((release.tracks || []).length > 0 ? `${release.tracks.length} Tracks` : "-");
 
                             // Rejection Tooltip Logic
                             const rejectionTooltip = status === 'Rejected' && release.rejectionReason 
@@ -217,14 +217,18 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
-                                                    <img src={URL.createObjectURL(release.coverArt)} alt="Art" className="w-full h-full object-cover" />
+                                                    <img 
+                                                        src={typeof release.coverArt === 'string' ? release.coverArt : URL.createObjectURL(release.coverArt)} 
+                                                        alt="Art" 
+                                                        className="w-full h-full object-cover" 
+                                                    />
                                                 ) : (
                                                     <Disc size={20} />
                                                 )}
                                             </div>
                                             <div className="min-w-[150px]">
                                                 <div className="font-bold text-slate-800 truncate max-w-[200px]" title={release.title}>{release.title || "Untitled Release"}</div>
-                                                <div className="text-xs text-slate-500 truncate max-w-[200px]">{release.primaryArtists[0] || "Unknown Artist"}</div>
+                                                <div className="text-xs text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
                                             </div>
                                         </div>
                                     </td>

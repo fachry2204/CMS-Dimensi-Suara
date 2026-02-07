@@ -96,11 +96,46 @@ const sanitizeName = (name) => {
 router.get('/', authenticateToken, async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM releases ORDER BY created_at DESC');
-        const releases = rows.map(r => ({
-            ...r,
-            primary_artists: typeof r.primary_artists === 'string' ? JSON.parse(r.primary_artists) : r.primary_artists,
-            coverArt: r.cover_art // Map to frontend expected prop
-        }));
+        
+        // Fetch tracks for all releases
+        // Optimization: Fetch all tracks for these releases in one go
+        const releaseIds = rows.map(r => r.id);
+        let tracksByRelease = {};
+
+        if (releaseIds.length > 0) {
+            const [trackRows] = await db.query('SELECT * FROM tracks WHERE release_id IN (?)', [releaseIds]);
+            trackRows.forEach(t => {
+                if (!tracksByRelease[t.release_id]) {
+                    tracksByRelease[t.release_id] = [];
+                }
+                tracksByRelease[t.release_id].push({
+                    ...t,
+                    primaryArtists: typeof t.primary_artists === 'string' ? JSON.parse(t.primary_artists || '[]') : t.primary_artists,
+                    writers: typeof t.writer === 'string' ? [t.writer] : t.writer, // Map writer string to array
+                    composers: typeof t.composer === 'string' ? [t.composer] : t.composer, // Map composer string to array
+                    producers: typeof t.producer === 'string' ? JSON.parse(t.producer || '[]') : t.producer,
+                    explicitLyrics: t.explicit ? 'Yes' : 'No'
+                });
+            });
+        }
+
+        const releases = rows.map(r => {
+            let parsedArtists = [];
+            try {
+                parsedArtists = typeof r.primary_artists === 'string' ? JSON.parse(r.primary_artists) : r.primary_artists;
+            } catch (e) {
+                parsedArtists = [];
+            }
+            // Ensure parsedArtists is an array
+            if (!Array.isArray(parsedArtists)) parsedArtists = [];
+
+            return {
+                ...r,
+                primaryArtists: parsedArtists,
+                coverArt: r.cover_art, // Map to frontend expected prop
+                tracks: tracksByRelease[r.id] || [] // Attach tracks
+            };
+        });
         res.json(releases);
     } catch (err) {
         res.status(500).json({ error: err.message });
