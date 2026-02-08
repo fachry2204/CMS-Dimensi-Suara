@@ -102,10 +102,13 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
     try {
         // 1. Parse Data
         // Frontend should send a 'data' field containing the JSON
+        console.log('--- RAW BODY ---', req.body);
         let releaseData;
         try {
             releaseData = JSON.parse(req.body.data);
+            console.log('--- PARSED DATA ---', releaseData);
         } catch (e) {
+            console.error('JSON Parse Error:', e);
             return res.status(400).json({ error: 'Invalid data format. Expected "data" JSON string.' });
         }
 
@@ -138,19 +141,19 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW(), ?)`,
             [
                 userId, 
-                title, 
-                upc, 
-                JSON.stringify(primaryArtists || []), 
-                otherData.label, 
-                otherData.genre, 
-                otherData.language, 
-                otherData.pLine, 
-                otherData.cLine,
-                otherData.type, // release_type
-                otherData.version,
-                otherData.isNewRelease,
-                otherData.originalReleaseDate,
-                otherData.plannedReleaseDate,
+                releaseData.title, 
+                releaseData.upc, 
+                JSON.stringify(releaseData.primaryArtists || []), 
+                releaseData.label || null, 
+                releaseData.genre || null, 
+                releaseData.language || null, 
+                releaseData.pLine || null, 
+                releaseData.cLine || null, 
+                releaseData.type || null, // release_type
+                releaseData.version || null,
+                releaseData.isNewRelease !== undefined ? releaseData.isNewRelease : null,
+                releaseData.originalReleaseDate || null,
+                releaseData.plannedReleaseDate || null,
                 coverArtPath
             ]
         );
