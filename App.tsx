@@ -505,9 +505,25 @@ const App: React.FC = () => {
                     token={token}
                 />
             } />
-            <Route path="/reports" element={<ReportScreen activeTab="REPORT_MAIN" reportData={reportData} />} />
-            <Route path="/import-reports" element={<ReportScreen activeTab="IMPORT_REPORT" reportData={reportData} />} />
-            <Route path="/revenue" element={<RevenueScreen reportData={reportData} />} />
+            <Route path="/reports" element={
+                <ReportScreen 
+                    mode="view" 
+                    data={reportData} 
+                    releases={allReleases}
+                    onImport={setReportData}
+                    aggregators={aggregators}
+                />
+            } />
+            <Route path="/import-reports" element={
+                <ReportScreen 
+                    mode="import" 
+                    data={reportData} 
+                    releases={allReleases}
+                    onImport={setReportData}
+                    aggregators={aggregators}
+                />
+            } />
+            <Route path="/revenue" element={<RevenueScreen data={reportData} />} />
           </Routes>
         </div>
 
