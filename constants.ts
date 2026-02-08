@@ -74,10 +74,7 @@ export const TRACK_GENRES = [
   "Soul"
 ];
 
-// Placeholder for Google API Config
+// Placeholder for Google API Config (Removed)
 export const GOOGLE_CONFIG = {
-  CLIENT_ID: "YOUR_GOOGLE_CLIENT_ID",
-  API_KEY: "YOUR_GOOGLE_API_KEY",
-  SHEET_ID: "YOUR_SPREADSHEET_ID",
-  FOLDER_ID: "YOUR_DRIVE_FOLDER_ID"
+  // Removed as per user request
 };

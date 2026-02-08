@@ -18,7 +18,6 @@ import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
-import { generateSongwriters, generatePublishing, generateReleases } from './utils/dummyData';
 import { api, API_BASE_URL } from './utils/api';
 import { getProfileImageUrl } from './utils/imageUtils';
 
@@ -91,10 +90,11 @@ const App: React.FC = () => {
             }
 
         } catch (err) {
-            console.error("Failed to fetch data from API, falling back to local data:", err);
-            setSavedSongwriters(generateSongwriters(60));
-            setAllPublishing(generatePublishing(70, generateSongwriters(60)));
-            setAllReleases(generateReleases(55));
+            console.error("Failed to fetch data from API:", err);
+            // Fallback removed as per request (use DB only)
+            setAllReleases([]);
+            setSavedSongwriters([]);
+            setAllPublishing([]);
         }
     };
 

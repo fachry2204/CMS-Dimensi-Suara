@@ -86,7 +86,8 @@ const initDb = async () => {
             { name: 'c_line', type: "VARCHAR(255)" },
             { name: 'language', type: "VARCHAR(50)" },
             { name: 'label', type: "VARCHAR(100)" },
-            { name: 'upc', type: "VARCHAR(50)" }
+            { name: 'upc', type: "VARCHAR(50)" },
+            { name: 'aggregator', type: "VARCHAR(50)" }
         ];
 
         for (const col of releaseColumns) {
@@ -107,9 +108,13 @@ const initDb = async () => {
             { name: 'genre', type: "VARCHAR(100)" },
             { name: 'lyrics', type: "TEXT" },
             { name: 'contributors', type: "JSON" },
-             { name: 'version', type: "VARCHAR(100)" },
-             { name: 'isrc', type: "VARCHAR(50)" },
-             { name: 'explicit', type: "BOOLEAN" }
+            { name: 'version', type: "VARCHAR(100)" },
+            { name: 'isrc', type: "VARCHAR(50)" },
+            { name: 'explicit', type: "BOOLEAN" },
+            { name: 'primary_artists', type: "JSON" },
+            { name: 'writer', type: "JSON" },
+            { name: 'composer', type: "JSON" },
+            { name: 'producer', type: "JSON" }
         ];
 
         for (const col of trackColumns) {
