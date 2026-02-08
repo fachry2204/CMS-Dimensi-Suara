@@ -544,9 +544,10 @@ const App: React.FC = () => {
 
         {showProfileModal && (
             <ProfileModal 
+                isOpen={true}
                 user={currentUserData || { username: currentUser, email: '', role: userRole }}
                 onClose={() => setShowProfileModal(false)}
-                onUpdate={handleUpdateUser}
+                onUpdateUser={handleUpdateUser}
                 token={token}
             />
         )}
