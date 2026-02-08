@@ -218,9 +218,15 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
                                                     <img 
-                                                        src={typeof release.coverArt === 'string' ? release.coverArt : URL.createObjectURL(release.coverArt)} 
+                                                        src={typeof release.coverArt === 'string' 
+                                                            ? (release.coverArt.startsWith('/') ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}${release.coverArt}` : release.coverArt)
+                                                            : URL.createObjectURL(release.coverArt)} 
                                                         alt="Art" 
                                                         className="w-full h-full object-cover" 
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                                                            console.error("Failed to load image:", release.coverArt);
+                                                        }}
                                                     />
                                                 ) : (
                                                     <Disc size={20} />
