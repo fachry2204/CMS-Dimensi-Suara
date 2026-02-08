@@ -134,9 +134,25 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         // 4. Insert Release
         const [result] = await db.query(
             `INSERT INTO releases 
-            (user_id, title, upc, primary_artists, status, submission_date, cover_art) 
-            VALUES (?, ?, ?, ?, 'Pending', NOW(), ?)`,
-            [userId, title, upc, JSON.stringify(primaryArtists || []), coverArtPath]
+            (user_id, title, upc, primary_artists, label, genre, language, p_line, c_line, release_type, version, is_new_release, original_release_date, planned_release_date, status, submission_date, cover_art) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW(), ?)`,
+            [
+                userId, 
+                title, 
+                upc, 
+                JSON.stringify(primaryArtists || []), 
+                otherData.label, 
+                otherData.genre, 
+                otherData.language, 
+                otherData.pLine, 
+                otherData.cLine,
+                otherData.type, // release_type
+                otherData.version,
+                otherData.isNewRelease,
+                otherData.originalReleaseDate,
+                otherData.plannedReleaseDate,
+                coverArtPath
+            ]
         );
         const releaseId = result.insertId;
 

@@ -78,6 +78,7 @@ export interface ReleaseData {
 
   // Step 1
   coverArt: File | string | null;
+  type?: 'SINGLE' | 'ALBUM'; // Added type
   upc: string;  
   title: string;
   language: string; 

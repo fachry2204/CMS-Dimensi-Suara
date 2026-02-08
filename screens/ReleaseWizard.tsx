@@ -87,7 +87,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} />;
         case Step.TRACKS: return <Step2TrackInfo data={data} updateData={updateData} releaseType={type} />;
         case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} />;
-        case Step.REVIEW: return <Step4Review data={data} onSave={onSave} />;
+        case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} />;
         default: return null;
     }
   };
