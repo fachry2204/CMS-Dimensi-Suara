@@ -8,20 +8,29 @@ interface ProfileModalProps {
     onClose: () => void;
     token: string;
     onUpdateUser: (user: any) => void;
+    user: any; // Add user prop
 }
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, token, onUpdateUser }) => {
+export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, token, onUpdateUser, user }) => {
     const [loading, setLoading] = useState(false);
     const [userData, setUserData] = useState({
-        username: '',
-        email: '',
+        username: user?.username || '',
+        email: user?.email || '',
         password: '',
-        profilePicture: null as string | null
+        profilePicture: user?.profile_picture || null
     });
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-    // Fetch current profile data when modal opens
+    // Initialize preview URL if user has profile picture
+    useEffect(() => {
+        if (user?.profile_picture) {
+             const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
+             setPreviewUrl(`${baseUrl}${user.profile_picture}`);
+        }
+    }, [user]);
+
+    // Fetch latest profile data when modal opens (optional, but good for sync)
     useEffect(() => {
         if (isOpen && token) {
             fetchProfile();
