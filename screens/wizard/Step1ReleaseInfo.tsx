@@ -196,7 +196,28 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
                 placeholder="Your Label Name"
               />
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                  <TextInput 
+                    label="P-Line (Copyright)" 
+                    value={data.pLine} 
+                    onChange={(e) => updateData({ pLine: e.target.value })} 
+                    placeholder="2024 Your Name/Label"
+                  />
+                  <TextInput 
+                    label="C-Line (Publishing)" 
+                    value={data.cLine} 
+                    onChange={(e) => updateData({ cLine: e.target.value })} 
+                    placeholder="2024 Your Name/Label"
+                  />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <SelectInput 
+                    label="Genre"
+                    options={["Pop", "Rock", "Hip Hop", "Jazz", "Electronic", "Classical", "Folk", "R&B", "Country", "Latin", "Metal", "Blues", "Reggae", "Funk", "Soul", "Punk", "Indie", "Alternative", "Dance", "World"]}
+                    value={data.genre}
+                    onChange={(e) => updateData({ genre: e.target.value })}
+                  />
                   <SelectInput 
                     label="Language / Territory"
                     options={LANGUAGES}

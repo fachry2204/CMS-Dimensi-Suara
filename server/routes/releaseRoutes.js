@@ -171,21 +171,32 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     audioPath = `/uploads/${folderName}/${trackFilename}`;
                 }
 
+                // Map frontend fields to backend fields
+                const artists = track.artists || track.primaryArtists || [];
+                const writers = track.writers || (track.lyricist ? [track.lyricist] : []);
+                const composers = track.composers || (track.composer ? [track.composer] : []);
+                const producers = track.producers || [];
+                
                 await db.query(
                     `INSERT INTO tracks 
-                    (release_id, title, version, primary_artists, writer, composer, producer, isrc, explicit, audio_file) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    (release_id, title, version, primary_artists, writer, composer, producer, isrc, explicit, audio_file, track_number, duration, genre, lyrics, contributors) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         releaseId, 
                         track.title, 
                         track.version || 'Original',
-                        JSON.stringify(track.primaryArtists || []),
-                        JSON.stringify(track.writers || []),
-                        JSON.stringify(track.composers || []),
-                        JSON.stringify(track.producers || []),
+                        JSON.stringify(artists),
+                        JSON.stringify(writers),
+                        JSON.stringify(composers),
+                        JSON.stringify(producers),
                         track.isrc,
                         track.explicitLyrics === 'Yes',
-                        audioPath
+                        audioPath,
+                        track.trackNumber || (i + 1).toString(),
+                        track.duration || '00:00',
+                        track.genre,
+                        track.lyrics,
+                        JSON.stringify(track.contributors || [])
                     ]
                 );
             }

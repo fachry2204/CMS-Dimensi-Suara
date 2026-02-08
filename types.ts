@@ -84,6 +84,9 @@ export interface ReleaseData {
   language: string; 
   primaryArtists: string[];
   label: string;
+  genre?: string;
+  pLine?: string;
+  cLine?: string;
   version: string;
 
   // Step 2
