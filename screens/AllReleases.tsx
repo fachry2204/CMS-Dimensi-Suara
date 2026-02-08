@@ -57,11 +57,18 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
     
     // Search Filter (Expanded to include Aggregator)
     const searchLower = searchQuery.toLowerCase();
+    
+    // Safely handle potential undefined/null fields
+    const title = release.title || '';
+    const artists = Array.isArray(release.primaryArtists) ? release.primaryArtists : (typeof release.primaryArtists === 'string' ? [release.primaryArtists] : []);
+    const upc = release.upc || '';
+    const aggregator = release.aggregator || '';
+
     const searchMatch = 
-        release.title.toLowerCase().includes(searchLower) || 
-        (release.primaryArtists || []).some(a => a.toLowerCase().includes(searchLower)) ||
-        (release.upc && release.upc.includes(searchLower)) ||
-        (release.aggregator && release.aggregator.toLowerCase().includes(searchLower)); // Added Aggregator Search
+        title.toLowerCase().includes(searchLower) || 
+        artists.some(a => (a || '').toLowerCase().includes(searchLower)) ||
+        upc.includes(searchLower) ||
+        aggregator.toLowerCase().includes(searchLower);
 
     return statusMatch && searchMatch;
   });

@@ -1,246 +1,238 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
-import multer from 'multer';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Ensure Uploads Directory Exists
+// Configure Multer for Audio and Cover Art
+// Ensure directories exist
 const UPLOADS_ROOT = path.join(__dirname, '../../uploads');
-const TEMP_DIR = path.join(UPLOADS_ROOT, 'temp');
+const RELEASES_DIR = path.join(UPLOADS_ROOT, 'releases');
 
-if (!fs.existsSync(UPLOADS_ROOT)) fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
-if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
+if (!fs.existsSync(RELEASES_DIR)) {
+    fs.mkdirSync(RELEASES_DIR, { recursive: true });
+}
 
-// Configure Multer (Temp Storage)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, TEMP_DIR);
+        // Organize by user/release-title if possible, or just flat/date-based
+        // To keep it simple and avoid collision, use timestamp
+        cb(null, RELEASES_DIR);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        // Clean filename
+        const cleanName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+        cb(null, `${file.fieldname}-${uniqueSuffix}-${cleanName}`);
     }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit (adjust as needed for WAV)
+});
 
-// Helper: Sanitize Folder Name
-const sanitizeName = (name) => {
-    return name.replace(/[^a-zA-Z0-9 \-_]/g, '').trim();
-};
+// CREATE NEW RELEASE
+// Expects: JSON data in 'data' field, and files in 'files'
+// But for simplicity in this MVP, we might accept JSON first, then files, OR multipart/form-data.
+// Let's stick to the Wizard approach: 
+// 1. Upload files individually (returns path) -> handled by /upload endpoint (we need one)
+// 2. Submit final JSON with file paths.
+//
+// OR: Step 4 submits everything. 
+// Given the frontend code in Step4Review doesn't seem to use FormData for the *final* submit (it calls api.createRelease(token, data)), 
+// we assume files were uploaded in previous steps? 
+// WAIT: The frontend snippet showed `track.audioFile` as a File object?
+// If `Step4Review` sends JSON, it cannot send File objects.
+// Let's check `api.createRelease`. 
 
-// GET ALL RELEASES
+router.post('/', authenticateToken, async (req, res) => {
+    try {
+        const releaseData = req.body;
+        const userId = req.user.id;
+
+        // --- DUPLICATE CHECK ---
+        // Prevent double submission of the same release
+        // Check if a pending release with same Title and Version exists for this user
+        const [existing] = await db.query(
+            'SELECT id FROM releases WHERE user_id = ? AND title = ? AND version = ? AND status != "Rejected"',
+            [userId, releaseData.title, releaseData.version]
+        );
+
+        if (existing.length > 0) {
+            // Return the existing one instead of creating duplicate
+            // Or return error. Returning the existing ID is safer for idempotency.
+            console.log(`Duplicate submission detected for ${releaseData.title}. Returning existing ID.`);
+            return res.status(200).json({ 
+                message: 'Release already exists', 
+                id: existing[0].id,
+                isDuplicate: true 
+            });
+        }
+        // -----------------------
+
+        // 1. Insert Release
+        const [releaseResult] = await db.query(
+            `INSERT INTO releases (
+                user_id, title, version, release_type, 
+                primary_artists, cover_art, label, 
+                production_year, p_line, c_line, 
+                genre, sub_genre, language, 
+                upc, original_release_date, submission_date, 
+                status, aggregator
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Pending', ?)`,
+            [
+                userId,
+                releaseData.title,
+                releaseData.version,
+                releaseData.type, // 'SINGLE' or 'ALBUM'
+                JSON.stringify(releaseData.primaryArtists),
+                releaseData.coverArt, // Path string
+                releaseData.label,
+                releaseData.productionYear,
+                releaseData.pLine,
+                releaseData.cLine,
+                releaseData.genre,
+                releaseData.subGenre,
+                releaseData.language,
+                releaseData.upc,
+                releaseData.originalReleaseDate,
+                releaseData.aggregator || null
+            ]
+        );
+
+        const releaseId = releaseResult.insertId;
+
+        // 2. Insert Tracks
+        if (releaseData.tracks && releaseData.tracks.length > 0) {
+            const trackValues = releaseData.tracks.map(track => [
+                releaseId,
+                track.trackNumber,
+                track.title,
+                track.version,
+                JSON.stringify(track.primaryArtists),
+                JSON.stringify(track.featuredArtists),
+                track.audioFile, // Path string
+                track.isrc,
+                track.explicitLyrics,
+                track.composer,
+                track.lyricist,
+                track.producer,
+                track.genre,
+                track.subGenre,
+                track.previewStart
+            ]);
+
+            await db.query(
+                `INSERT INTO tracks (
+                    release_id, track_number, title, version, 
+                    primary_artists, featured_artists, audio_file, 
+                    isrc, explicit_lyrics, composer, 
+                    lyricist, producer, genre, sub_genre, 
+                    preview_start
+                ) VALUES ?`,
+                [trackValues]
+            );
+        }
+
+        res.status(201).json({ message: 'Release submitted successfully', id: releaseId });
+
+    } catch (err) {
+        console.error("Create Release Error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET MY RELEASES
 router.get('/', authenticateToken, async (req, res) => {
     try {
         let query = 'SELECT * FROM releases';
         const params = [];
 
-        // If user is restricted (e.g. 'User' role), only show their own releases
         if (req.user.role === 'User') {
             query += ' WHERE user_id = ?';
             params.push(req.user.id);
         }
 
-        query += ' ORDER BY created_at DESC';
+        query += ' ORDER BY submission_date DESC';
 
-        const [rows] = await db.query(query, params);
+        const [releases] = await db.query(query, params);
+
+        // Fetch tracks for each release (optional, or fetch on detail)
+        // For list view, we might not need tracks, but the frontend type expects them?
+        // Let's just return basic info + primary artists parsed
         
-        // Fetch tracks for all releases
-        // Optimization: Fetch all tracks for these releases in one go
-        const releaseIds = rows.map(r => r.id);
-        let tracksByRelease = {};
-
-        if (releaseIds.length > 0) {
-            const [trackRows] = await db.query('SELECT * FROM tracks WHERE release_id IN (?)', [releaseIds]);
-            trackRows.forEach(t => {
-                if (!tracksByRelease[t.release_id]) {
-                    tracksByRelease[t.release_id] = [];
-                }
-                tracksByRelease[t.release_id].push({
-                    ...t,
-                    primaryArtists: typeof t.primary_artists === 'string' ? JSON.parse(t.primary_artists || '[]') : t.primary_artists,
-                    writers: typeof t.writer === 'string' ? [t.writer] : t.writer, // Map writer string to array
-                    composers: typeof t.composer === 'string' ? [t.composer] : t.composer, // Map composer string to array
-                    producers: typeof t.producer === 'string' ? JSON.parse(t.producer || '[]') : t.producer,
-                    explicitLyrics: t.explicit ? 'Yes' : 'No'
-                });
-            });
-        }
-
-        const releases = rows.map(r => {
+        const processedReleases = releases.map(r => {
             let parsedArtists = [];
             try {
                 parsedArtists = typeof r.primary_artists === 'string' ? JSON.parse(r.primary_artists) : r.primary_artists;
             } catch (e) {
-                parsedArtists = [];
+                parsedArtists = [r.primary_artists]; // Fallback
             }
-            // Ensure parsedArtists is an array
-            if (!Array.isArray(parsedArtists)) parsedArtists = [];
 
             return {
-                ...r,
+                id: r.id,
+                title: r.title,
+                status: r.status,
+                coverArt: r.cover_art,
                 primaryArtists: parsedArtists,
-                coverArt: r.cover_art, // Map to frontend expected prop
-                tracks: tracksByRelease[r.id] || [] // Attach tracks
+                releaseDate: r.submission_date,
+                submissionDate: r.submission_date,
+                upc: r.upc,
+                label: r.label,
+                version: r.version,
+                type: r.release_type,
+                aggregator: r.aggregator,
+                tracks: [] // Empty for list view to save bandwidth
             };
         });
-        res.json(releases);
+
+        res.json(processedReleases);
+
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// CREATE RELEASE (With File Uploads)
-router.post('/', authenticateToken, upload.any(), async (req, res) => {
+// GET SINGLE RELEASE
+router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        console.log('--- START CREATE RELEASE ---');
-        console.log('Headers:', req.headers['content-type']);
-        console.log('Files:', req.files);
-        console.log('Body:', req.body);
+        const [releases] = await db.query('SELECT * FROM releases WHERE id = ?', [req.params.id]);
+        if (releases.length === 0) return res.status(404).json({ error: 'Release not found' });
 
-        // 1. Parse Data
-        // Frontend should send a 'data' field containing the JSON
-        console.log('--- RAW BODY ---', req.body);
-        let releaseData;
-        try {
-            releaseData = JSON.parse(req.body.data);
-            console.log('--- PARSED DATA ---', releaseData);
-        } catch (e) {
-            console.error('JSON Parse Error:', e);
-            console.error('Raw data content:', req.body.data);
-            return res.status(400).json({ error: 'Invalid data format. Expected "data" JSON string.' });
+        const release = releases[0];
+
+        // Check ownership
+        if (req.user.role === 'User' && release.user_id !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied' });
         }
 
-        const userId = req.user.id;
-        const { title, upc, primaryArtists, ...otherData } = releaseData;
-        const artistName = Array.isArray(releaseData.primaryArtists) ? releaseData.primaryArtists[0] : (releaseData.primaryArtists || 'Unknown');
+        // Get Tracks
+        const [tracks] = await db.query('SELECT * FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [release.id]);
+
+        // Parse JSON fields
+        release.primaryArtists = typeof release.primary_artists === 'string' ? JSON.parse(release.primary_artists) : release.primary_artists;
         
-        // 2. Prepare Target Directory
-        const folderName = `${sanitizeName(artistName)} - ${sanitizeName(releaseData.title)}`; 
-        const targetDir = path.join(UPLOADS_ROOT, folderName);
-        
-        if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-        }
+        const processedTracks = tracks.map(t => ({
+            ...t,
+            primaryArtists: typeof t.primary_artists === 'string' ? JSON.parse(t.primary_artists) : t.primary_artists,
+            featuredArtists: typeof t.featured_artists === 'string' ? JSON.parse(t.featured_artists) : t.featured_artists,
+            contributors: [] // If you have a separate contributors table
+        }));
 
-        // 3. Handle Cover Art
-        let coverArtPath = null;
-        const coverFile = req.files.find(f => f.fieldname === 'coverArt');
-        if (coverFile) {
-            const newFilename = `cover${path.extname(coverFile.originalname)}`;
-            const newPath = path.join(targetDir, newFilename);
-            fs.renameSync(coverFile.path, newPath);
-            coverArtPath = `/uploads/${folderName}/${newFilename}`; // Web-accessible path
-        }
+        res.json({
+            ...release,
+            tracks: processedTracks
+        });
 
-        // 4. Insert Release
-        const [result] = await db.query(
-            `INSERT INTO releases 
-            (user_id, title, upc, primary_artists, label, genre, language, p_line, c_line, release_type, version, is_new_release, original_release_date, planned_release_date, status, submission_date, cover_art) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW(), ?)`,
-            [
-                userId, 
-                releaseData.title, 
-                releaseData.upc, 
-                JSON.stringify(releaseData.primaryArtists || []), 
-                releaseData.label || null, 
-                releaseData.genre || null, 
-                releaseData.language || null, 
-                releaseData.pLine || null, 
-                releaseData.cLine || null, 
-                releaseData.type || null, // release_type
-                releaseData.version || null,
-                releaseData.isNewRelease !== undefined ? releaseData.isNewRelease : null,
-                releaseData.originalReleaseDate || null,
-                releaseData.plannedReleaseDate || null,
-                coverArtPath
-            ]
-        );
-        const releaseId = result.insertId;
-
-        // 5. Handle Tracks
-        if (releaseData.tracks && Array.isArray(releaseData.tracks)) {
-            for (let i = 0; i < releaseData.tracks.length; i++) {
-                const track = releaseData.tracks[i];
-                let audioPath = null;
-                
-                // Find corresponding audio file
-                const audioFile = req.files.find(f => f.fieldname === `track_${i}_audio`);
-                if (audioFile) {
-                    const trackFilename = `track-${i + 1}-${sanitizeName(track.title)}${path.extname(audioFile.originalname)}`;
-                    const trackPath = path.join(targetDir, trackFilename);
-                    fs.renameSync(audioFile.path, trackPath);
-                    audioPath = `/uploads/${folderName}/${trackFilename}`;
-                }
-
-                // Map frontend fields to backend fields
-                const artists = track.artists || track.primaryArtists || [];
-                const writers = track.writers || (track.lyricist ? [track.lyricist] : []);
-                const composers = track.composers || (track.composer ? [track.composer] : []);
-                const producers = track.producers || [];
-                
-                await db.query(
-                    `INSERT INTO tracks 
-                    (release_id, title, version, primary_artists, writer, composer, producer, isrc, explicit, audio_file, track_number, duration, genre, lyrics, contributors) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        releaseId, 
-                        track.title, 
-                        track.version || 'Original',
-                        JSON.stringify(artists),
-                        JSON.stringify(writers),
-                        JSON.stringify(composers),
-                        JSON.stringify(producers),
-                        track.isrc,
-                        track.explicitLyrics === 'Yes',
-                        audioPath,
-                        track.trackNumber || (i + 1).toString(),
-                        track.duration || '00:00',
-                        track.genre,
-                        track.lyrics,
-                        JSON.stringify(track.contributors || [])
-                    ]
-                );
-            }
-        }
-
-        // 6. Send Notification to Admins
-        try {
-            // Find all admins
-            const [admins] = await db.query("SELECT id FROM users WHERE role = 'Admin'");
-            
-            // Notification message
-            const notifMessage = `New release submitted: "${releaseData.title}" by ${Array.isArray(releaseData.primaryArtists) ? releaseData.primaryArtists[0] : (releaseData.primaryArtists || 'Unknown')}`;
-            
-            // Insert notification for each admin
-            for (const admin of admins) {
-                await db.query(
-                    'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
-                    [admin.id, 'release_created', notifMessage]
-                );
-            }
-
-            // Send Confirmation Notification to the Submitter
-            await db.query(
-                'INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
-                [userId, 'RELEASE_STATUS', `Your release "${title}" has been successfully submitted and is pending review.`]
-            );
-
-        } catch (notifErr) {
-            console.error('Failed to send notifications:', notifErr);
-            // Don't fail the request just because notification failed
-        }
-
-        res.status(201).json({ message: 'Release created successfully', id: releaseId });
     } catch (err) {
-        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });

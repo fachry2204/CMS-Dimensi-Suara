@@ -222,6 +222,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave }) => {
       <div className="mt-12 flex flex-col items-end border-t border-gray-100 pt-8 pb-12">
         
         <button 
+            type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
             className={`
