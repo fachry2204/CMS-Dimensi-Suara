@@ -109,9 +109,22 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, tok
                         {/* Profile Picture Upload */}
                         <div className="flex flex-col items-center justify-center mb-6">
                             <div className="relative group cursor-pointer">
-                                <div className="w-24 h-24 rounded-full bg-slate-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center">
+                                <div className="w-24 h-24 rounded-full bg-slate-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center relative">
                                     {previewUrl ? (
-                                        <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
+                                        <>
+                                            <img 
+                                                src={previewUrl} 
+                                                alt="Profile" 
+                                                className="w-full h-full object-cover relative z-10" 
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                }}
+                                            />
+                                            {/* Fallback behind image */}
+                                            <div className="absolute inset-0 flex items-center justify-center z-0">
+                                                <User size={40} className="text-slate-400" />
+                                            </div>
+                                        </>
                                     ) : (
                                         <User size={40} className="text-slate-400" />
                                     )}

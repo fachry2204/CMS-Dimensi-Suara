@@ -23,5 +23,7 @@ export const getProfileImageUrl = (path: string | null | undefined): string | nu
     // Ensure path starts with /
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
-    return `${baseUrl}${cleanPath}`;
+    const fullUrl = `${baseUrl}${cleanPath}`;
+    // console.log("Generated Profile URL:", fullUrl); // Debugging
+    return fullUrl;
 };

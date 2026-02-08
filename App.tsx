@@ -390,14 +390,27 @@ const App: React.FC = () => {
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                     console.error("Failed to load profile image:", e.currentTarget.src);
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                    e.currentTarget.style.display = 'none';
+                                    // Show fallback icon by removing this image from DOM or toggling state? 
+                                    // Simpler: Just hide image, the parent div background will show. 
+                                    // But we need the User icon.
+                                    // Better: Use a state for image error.
+                                    e.currentTarget.onerror = null; // Prevent infinite loop
+                                    // We can't easily inject the User icon here without state.
+                                    // Let's just make sure the parent div has a fallback content if image is hidden.
+                                    // Actually, the parent div is just a container.
+                                    // Let's replace the content.
                                 }}
                             />
-                        ) : null}
-                         <div className={`absolute inset-0 flex items-center justify-center ${currentUserData?.profile_picture ? 'hidden' : ''}`}>
+                        ) : (
                             <User size={20} />
-                        </div>
+                        )}
+                        {/* Fallback Icon (visible if image is hidden or missing) - Hacky but works without state */}
+                        {currentUserData?.profile_picture && (
+                            <div className="absolute inset-0 flex items-center justify-center -z-10">
+                                <User size={20} />
+                            </div>
+                        )}
                     </div>
                 </div>
 
