@@ -178,6 +178,7 @@ const App: React.FC = () => {
     setCurrentUser(user.username);
     setToken(token);
     setUserRole(user.role || 'User');
+    setCurrentUserData(user);
     setIsAuthenticated(true);
     navigate('/dashboard');
   };
