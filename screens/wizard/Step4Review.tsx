@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ReleaseData } from '../../types';
-import { uploadReleaseToGoogle } from '../../services/googleService';
+import { api } from '../../utils/api';
 import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle } from 'lucide-react';
 
 interface Props {
@@ -16,22 +16,26 @@ export const Step4Review: React.FC<Props> = ({ data, onSave }) => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-        const result = await uploadReleaseToGoogle(data);
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error("No auth token found");
+
+        const result = await api.createRelease(token, data);
         
         // Finalize Data
         const finalizedData: ReleaseData = {
             ...data,
-            id: Date.now().toString(),
-            status: 'Processing',
+            id: result.id || Date.now().toString(),
+            status: 'Pending',
             submissionDate: new Date().toISOString().split('T')[0]
         };
         
         // Propagate to App
         onSave(finalizedData);
-        setSuccessMsg(result.message);
+        setSuccessMsg(result.message || 'Release submitted successfully');
         
-    } catch (error) {
-        alert("Upload failed. Please try again.");
+    } catch (error: any) {
+        console.error("Submission failed:", error);
+        alert(`Upload failed: ${error.message || "Please try again."}`);
     } finally {
         setIsSubmitting(false);
     }
@@ -44,30 +48,30 @@ export const Step4Review: React.FC<Props> = ({ data, onSave }) => {
                   <CheckCircle size={48} className="text-green-500" />
               </div>
               <h2 className="text-3xl font-bold text-slate-800 mb-2">Submission Successful!</h2>
-              <p className="text-slate-500 mt-2 text-lg">Your release has been queued for distribution.</p>
+              <p className="text-slate-500 mt-2 text-lg">Your release has been submitted for review.</p>
               
               <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 text-left text-sm max-w-lg shadow-inner">
                 <p className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                    <AlertCircle size={16} /> Technical Summary:
+                    <AlertCircle size={16} /> Status Summary:
                 </p>
                 <ul className="space-y-2 text-slate-600">
                     <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5"></span>
-                        Files uploaded to Google Drive
+                        Files uploaded to Server
                     </li>
                     <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5"></span>
-                        Metadata synced to Google Sheets
+                        Metadata saved to Database
                     </li>
-                     <li className="flex items-start gap-2">
+                    <li className="flex items-start gap-2">
                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5"></span>
-                        Visible in "All Releases" menu
+                        Status: Pending Review
                     </li>
                 </ul>
               </div>
 
               <div className="mt-10">
-                 <p className="text-slate-400 text-sm mb-4">You can now view this in the "All Releases" tab.</p>
+                 <p className="text-slate-400 text-sm mb-4">You can view this in the "All Releases" tab.</p>
               </div>
           </div>
       )

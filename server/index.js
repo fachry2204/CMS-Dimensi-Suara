@@ -13,6 +13,8 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 
+import { initDb } from './init-db.js';
+
 // Configuration
 dotenv.config();
 
@@ -22,6 +24,13 @@ const PORT = process.env.PORT || 3000;
 // ESM __dirname fix
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Run Database Migration on Startup
+initDb().then(() => {
+    console.log('Database migration check completed.');
+}).catch(err => {
+    console.error('Database migration check failed:', err);
+});
 
 const app = express();
 

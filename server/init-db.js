@@ -143,8 +143,16 @@ const initDb = async () => {
         await connection.end();
     } catch (err) {
         console.error('❌ Error initializing database:', err);
-        process.exit(1);
+        // Don't exit process if imported
+        if (process.argv[1] === fileURLToPath(import.meta.url)) {
+            process.exit(1);
+        }
     }
 };
 
-initDb();
+// Run if called directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    initDb();
+}
+
+export { initDb };
