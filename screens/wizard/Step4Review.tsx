@@ -16,8 +16,8 @@ export const Step4Review: React.FC<Props> = ({ data, onSave }) => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-        const token = localStorage.getItem('token');
-        if (!token) throw new Error("No auth token found");
+        const token = localStorage.getItem('cms_token');
+        if (!token) throw new Error("No auth token found. Please login again.");
 
         const result = await api.createRelease(token, data);
         
