@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const checkColumns = async () => {
     try {

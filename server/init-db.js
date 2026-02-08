@@ -4,19 +4,23 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config({ path: path.join(__dirname, '../.env') });
+console.log('DEBUG: DB_HOST from env:', process.env.DB_HOST);
+console.log('DEBUG: CWD:', process.cwd());
+
 const initDb = async () => {
     try {
+        console.log('Connecting to host:', process.env.DB_HOST);
         // Create connection without database selected
         const connection = await mysql.createConnection({
             host: process.env.DB_HOST || 'localhost',
             user: process.env.DB_USER || 'root',
             password: process.env.DB_PASSWORD || '',
-            multipleStatements: true
+            multipleStatements: true,
+            connectTimeout: 60000
         });
 
         console.log('🔌 Connected to MySQL server');

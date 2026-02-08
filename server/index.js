@@ -15,15 +15,15 @@ import userRoutes from './routes/userRoutes.js';
 
 import { initDb } from './init-db.js';
 
-// Configuration
-dotenv.config();
-
-// Fix for some environments where process.env might be undefined for some keys
-const PORT = process.env.PORT || 3000;
-
 // ESM __dirname fix
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Configuration
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+// Fix for some environments where process.env might be undefined for some keys
+const PORT = process.env.PORT || 3000;
 
 // Run Database Migration on Startup
 initDb().then(() => {

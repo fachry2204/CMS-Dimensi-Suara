@@ -17,6 +17,7 @@ export const getProfileImageUrl = (path: string | null | undefined): string | nu
     // Get the base URL without the /api suffix
     // Example: /api -> "" (empty string, relies on proxy or relative path)
     // Example: http://localhost:3000/api -> http://localhost:3000
+    // Example: https://cms.dimensisuara.id/api -> https://cms.dimensisuara.id
     const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
     
     // Ensure path starts with /
