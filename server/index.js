@@ -48,6 +48,10 @@ app.use(express.static(distPath));
 const uploadsPath = path.join(__dirname, '../uploads');
 console.log("Serving uploads from:", uploadsPath);
 app.use('/uploads', express.static(uploadsPath));
+// Prevent SPA fallback for missing images
+app.use('/uploads', (req, res) => {
+    res.status(404).send('Image not found');
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);

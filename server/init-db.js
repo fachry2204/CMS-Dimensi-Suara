@@ -63,6 +63,65 @@ const initDb = async () => {
                 await connection.query('ALTER TABLE releases ADD COLUMN cover_art VARCHAR(255)');
             }
         }
+
+        // 3. Check 'primary_artists' in 'releases'
+        try {
+            await connection.query('SELECT primary_artists FROM releases LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: primary_artists to releases table');
+                await connection.query('ALTER TABLE releases ADD COLUMN primary_artists JSON');
+            }
+        }
+
+        // 4. Check other missing columns in 'releases'
+        const releaseColumns = [
+            { name: 'release_type', type: "ENUM('SINGLE', 'ALBUM')" },
+            { name: 'version', type: "VARCHAR(50)" },
+            { name: 'is_new_release', type: "BOOLEAN" },
+            { name: 'original_release_date', type: "DATE" },
+            { name: 'planned_release_date', type: "DATE" },
+            { name: 'genre', type: "VARCHAR(100)" },
+            { name: 'p_line', type: "VARCHAR(255)" },
+            { name: 'c_line', type: "VARCHAR(255)" },
+            { name: 'language', type: "VARCHAR(50)" },
+            { name: 'label', type: "VARCHAR(100)" },
+            { name: 'upc', type: "VARCHAR(50)" }
+        ];
+
+        for (const col of releaseColumns) {
+            try {
+                await connection.query(`SELECT \`${col.name}\` FROM releases LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to releases table`);
+                    await connection.query(`ALTER TABLE releases ADD COLUMN \`${col.name}\` ${col.type}`);
+                }
+            }
+        }
+
+        // 5. Check missing columns in 'tracks'
+        const trackColumns = [
+            { name: 'track_number', type: "VARCHAR(10)" },
+            { name: 'duration', type: "VARCHAR(20)" },
+            { name: 'genre', type: "VARCHAR(100)" },
+            { name: 'lyrics', type: "TEXT" },
+            { name: 'contributors', type: "JSON" },
+             { name: 'version', type: "VARCHAR(100)" },
+             { name: 'isrc', type: "VARCHAR(50)" },
+             { name: 'explicit', type: "BOOLEAN" }
+        ];
+
+        for (const col of trackColumns) {
+             try {
+                await connection.query(`SELECT \`${col.name}\` FROM tracks LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to tracks table`);
+                    await connection.query(`ALTER TABLE tracks ADD COLUMN \`${col.name}\` ${col.type}`);
+                }
+            }
+        }
         
         // Seed Default Admin
         const [users] = await connection.query("SELECT * FROM users WHERE role = 'Admin'");
