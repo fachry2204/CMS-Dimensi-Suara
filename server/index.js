@@ -46,6 +46,7 @@ app.use(express.static(distPath));
 
 // Serve Uploads
 const uploadsPath = path.join(__dirname, '../uploads');
+console.log("Serving uploads from:", uploadsPath);
 app.use('/uploads', express.static(uploadsPath));
 
 // API Routes

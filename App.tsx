@@ -13,12 +13,14 @@ import { UserManagement } from './screens/UserManagement';
 import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
+import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 import { generateSongwriters, generatePublishing, generateReleases } from './utils/dummyData';
 import { api, API_BASE_URL } from './utils/api';
+import { getProfileImageUrl } from './utils/imageUtils';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -274,46 +276,6 @@ const App: React.FC = () => {
       return "Dashboard";
   };
 
-  // Wrapper for New Release Wizard Logic
-  const NewReleaseWrapper = () => {
-    const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
-    const [releaseType, setReleaseType] = useState<ReleaseType | null>(null);
-
-    // Initial state setup if editing
-    useEffect(() => {
-        if (editingRelease) {
-            setReleaseType(editingRelease.type as ReleaseType);
-            setWizardStep('WIZARD');
-        }
-    }, []);
-
-    const handleSelectType = (type: ReleaseType) => {
-        setReleaseType(type);
-        setWizardStep('WIZARD');
-    };
-
-    const handleBack = () => {
-        setWizardStep('SELECTION');
-        setReleaseType(null);
-        setEditingRelease(null); // Clear editing state when going back
-    };
-
-    if (wizardStep === 'WIZARD' && releaseType) {
-        return (
-            <ReleaseWizard 
-                type={releaseType} 
-                onBack={handleBack}
-                onSave={handleSaveRelease}
-                initialData={editingRelease || undefined}
-                savedSongwriters={savedSongwriters}
-                onAddSongwriter={() => navigate('/publishing/writer')} 
-            />
-        );
-    }
-
-    return <ReleaseTypeSelection onSelect={handleSelectType} />;
-  };
-
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 font-sans">
       
@@ -423,10 +385,11 @@ const App: React.FC = () => {
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 overflow-hidden relative">
                         {currentUserData?.profile_picture ? (
                             <img 
-                                src={`${API_BASE_URL.replace('/api', '')}${currentUserData.profile_picture}`} 
+                                src={getProfileImageUrl(currentUserData.profile_picture) || ''} 
                                 alt={currentUser} 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
+                                    console.error("Failed to load profile image:", e.currentTarget.src);
                                     (e.target as HTMLImageElement).style.display = 'none';
                                     (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                                 }}
@@ -461,7 +424,14 @@ const App: React.FC = () => {
                     onNavigateToAll={() => navigate('/releases')}
                 />
             } />
-            <Route path="/new-release" element={<NewReleaseWrapper />} />
+            <Route path="/new-release" element={
+                <NewReleaseFlow 
+                    editingRelease={editingRelease}
+                    setEditingRelease={setEditingRelease}
+                    savedSongwriters={savedSongwriters}
+                    onSaveRelease={handleSaveRelease}
+                />
+            } />
             <Route path="/releases" element={
                  <AllReleases 
                     releases={allReleases} 

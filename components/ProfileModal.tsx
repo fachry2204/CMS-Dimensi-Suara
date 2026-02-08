@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Camera, Save, User, Mail, Lock } from 'lucide-react';
 import { api, API_BASE_URL } from '../utils/api';
+import { getProfileImageUrl } from '../utils/imageUtils';
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -25,8 +26,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, tok
     // Initialize preview URL if user has profile picture
     useEffect(() => {
         if (user?.profile_picture) {
-             const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
-             setPreviewUrl(`${baseUrl}${user.profile_picture}`);
+             setPreviewUrl(getProfileImageUrl(user.profile_picture));
         }
     }, [user]);
 
@@ -47,8 +47,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, tok
                 profilePicture: data.profile_picture
             });
             if (data.profile_picture) {
-                const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
-                setPreviewUrl(`${baseUrl}${data.profile_picture}`);
+                setPreviewUrl(getProfileImageUrl(data.profile_picture));
             }
         } catch (err) {
             console.error("Failed to fetch profile:", err);
