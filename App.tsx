@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
 import { ReleaseTypeSelection } from './screens/ReleaseTypeSelection';
@@ -7,7 +7,7 @@ import { ReleaseWizard } from './screens/ReleaseWizard';
 import { AllReleases } from './screens/AllReleases';
 import { Dashboard } from './screens/Dashboard'; 
 import { Statistics } from './screens/Statistics'; 
-import { Publishing } from './screens/Publishing'; // Import Publishing
+import { Publishing } from './screens/Publishing';
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
 import { ReportScreen } from './screens/ReportScreen';
@@ -21,6 +21,9 @@ import { generateSongwriters, generatePublishing, generateReleases } from './uti
 import { api, API_BASE_URL } from './utils/api';
 
 const App: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
@@ -40,8 +43,7 @@ const App: React.FC = () => {
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
 
-  // Sidebar State (Expanded to include publishing sub-tabs)
-  const [activeTab, setActiveTab] = useState<string>('DASHBOARD');
+  // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Global App State with GENERATED DATA (50+)
@@ -148,11 +150,7 @@ const App: React.FC = () => {
     localStorage.setItem('cms_user', updatedUser.username);
   };
 
-  // Wizard State
-  const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
-  const [releaseType, setReleaseType] = useState<ReleaseType | null>(null);
-  
-  // Detail/Edit State
+  // Wizard State (Managed internally by ReleaseWizardWrapper now, or kept here if needed for cross-component state)
   const [editingRelease, setEditingRelease] = useState<ReleaseData | null>(null); 
   const [viewingRelease, setViewingRelease] = useState<ReleaseData | null>(null); 
 
@@ -181,6 +179,7 @@ const App: React.FC = () => {
     setToken(token);
     setUserRole(user.role || 'User');
     setIsAuthenticated(true);
+    navigate('/dashboard');
   };
 
   const handleLogoutClick = () => {
@@ -197,53 +196,20 @@ const App: React.FC = () => {
     setToken('');
     setUserRole('');
     setShowLogoutDialog(false);
-    // Reset states
-    setActiveTab('DASHBOARD');
-    setWizardStep('SELECTION');
+    navigate('/');
   };
 
   const cancelLogout = () => {
     setShowLogoutDialog(false);
   };
 
-  const handleSidebarNavigate = (tab: string) => {
-    setActiveTab(tab);
-    setIsMobileMenuOpen(false); // Close mobile menu on click
-    setViewingRelease(null); // Clear viewing state
-    if (tab === 'NEW') {
-      // Reset wizard when clicking New Release
-      setWizardStep('SELECTION');
-      setReleaseType(null);
-      setEditingRelease(null);
-    }
-  };
-
-  const handleSelectType = (type: ReleaseType) => {
-    setReleaseType(type);
-    setWizardStep('WIZARD');
-    setEditingRelease(null); 
-  };
-
-  const handleBackToSelection = () => {
-    if (activeTab === 'ALL') {
-        setEditingRelease(null);
-        setWizardStep('SELECTION'); 
-        return;
-    }
-    setWizardStep('SELECTION');
-    setReleaseType(null);
-  };
-
   const handleSaveRelease = async (data: ReleaseData) => {
       try {
           if (data.id && allReleases.some(r => r.id === data.id)) {
-              // Update Logic (Local for now, API update to be implemented)
               setAllReleases(prev => prev.map(r => r.id === data.id ? data : r));
           } else {
-              // Create New Release via API
               if (isAuthenticated && token) {
                   const response = await api.createRelease(token, data);
-                  // Merge response ID with data
                   const newRelease = { 
                       ...data, 
                       id: response.id, 
@@ -252,11 +218,10 @@ const App: React.FC = () => {
                   };
                   setAllReleases(prev => [newRelease, ...prev]);
               } else {
-                  // Fallback for offline/demo mode
                   setAllReleases(prev => [data, ...prev]);
               }
           }
-          setActiveTab('ALL'); 
+          navigate('/releases');
           setViewingRelease(null);
       } catch (err: any) {
           console.error("Failed to save release:", err);
@@ -282,7 +247,6 @@ const App: React.FC = () => {
               await api.updateAggregators(token, newList);
           } catch (err) {
               console.error("Failed to save aggregators:", err);
-              // Optionally revert state or show notification
           }
       }
   };
@@ -295,20 +259,58 @@ const App: React.FC = () => {
 
   // Determine Page Title for Header
   const getPageTitle = () => {
-      if (activeTab === 'DASHBOARD') return "Overview";
-      if (activeTab === 'NEW') return "Music Distribution";
-      if (activeTab === 'ALL') return "Catalog Manager";
-      if (activeTab === 'SETTINGS') return "System Settings";
-      if (activeTab === 'USER_MANAGEMENT') return "User Management";
-      if (activeTab === 'REPORT_MAIN') return "Laporan";
-      if (activeTab === 'IMPORT_REPORT') return "Import Laporan";
-      if (activeTab === 'REVENUE') return "Pendapatan";
-      if (activeTab === 'STATISTICS') return "Analytics & Reports";
-      if (activeTab === 'PUBLISHING_ADD') return "Publishing / Registration";
-      if (activeTab === 'PUBLISHING_WRITER') return "Publishing / Songwriters";
-      if (activeTab === 'PUBLISHING_ALL') return "Publishing / All Submissions";
-      if (activeTab === 'PUBLISHING_REPORT') return "Publishing / Reports";
+      const path = location.pathname;
+      if (path === '/dashboard') return "Overview";
+      if (path === '/new-release') return "Music Distribution";
+      if (path === '/releases') return "Catalog Manager";
+      if (path === '/settings') return "System Settings";
+      if (path === '/users') return "User Management";
+      if (path === '/reports') return "Laporan";
+      if (path === '/import-reports') return "Import Laporan";
+      if (path === '/revenue') return "Pendapatan";
+      if (path === '/statistics') return "Analytics & Reports";
+      if (path.startsWith('/publishing')) return "Publishing";
       return "Dashboard";
+  };
+
+  // Wrapper for New Release Wizard Logic
+  const NewReleaseWrapper = () => {
+    const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
+    const [releaseType, setReleaseType] = useState<ReleaseType | null>(null);
+
+    // Initial state setup if editing
+    useEffect(() => {
+        if (editingRelease) {
+            setReleaseType(editingRelease.type as ReleaseType);
+            setWizardStep('WIZARD');
+        }
+    }, []);
+
+    const handleSelectType = (type: ReleaseType) => {
+        setReleaseType(type);
+        setWizardStep('WIZARD');
+    };
+
+    const handleBack = () => {
+        setWizardStep('SELECTION');
+        setReleaseType(null);
+        setEditingRelease(null); // Clear editing state when going back
+    };
+
+    if (wizardStep === 'WIZARD' && releaseType) {
+        return (
+            <ReleaseWizard 
+                type={releaseType} 
+                onBack={handleBack}
+                onSave={handleSaveRelease}
+                initialData={editingRelease || undefined}
+                savedSongwriters={savedSongwriters}
+                onAddSongwriter={() => navigate('/publishing/writer')} 
+            />
+        );
+    }
+
+    return <ReleaseTypeSelection onSelect={handleSelectType} />;
   };
 
   return (
@@ -327,7 +329,7 @@ const App: React.FC = () => {
         fixed inset-0 z-40 transform transition-transform duration-300 md:relative md:translate-x-0 md:w-auto
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-         <Sidebar activeTab={activeTab} onNavigate={handleSidebarNavigate} currentUser={currentUser} userRole={userRole} />
+         <Sidebar currentUser={currentUser} userRole={userRole} />
          <div 
             className={`absolute inset-0 bg-black/50 -z-10 md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}
             onClick={() => setIsMobileMenuOpen(false)}
@@ -424,7 +426,6 @@ const App: React.FC = () => {
                                 alt={currentUser} 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                    // Fallback if image load fails
                                     (e.target as HTMLImageElement).style.display = 'none';
                                     (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                                 }}
@@ -450,141 +451,115 @@ const App: React.FC = () => {
 
         {/* CONTENT */}
         <div className="flex-1">
-          {activeTab === 'DASHBOARD' && (
-            <Dashboard 
-                releases={allReleases}
-                onViewRelease={handleViewDetails}
-                onNavigateToAll={() => setActiveTab('ALL')}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={
+                <Dashboard 
+                    releases={allReleases}
+                    onViewRelease={handleViewDetails}
+                    onNavigateToAll={() => navigate('/releases')}
+                />
+            } />
+            <Route path="/new-release" element={<NewReleaseWrapper />} />
+            <Route path="/releases" element={
+                 <AllReleases 
+                    releases={allReleases} 
+                    onViewDetails={handleViewDetails}
+                    onEdit={(release) => {
+                        setEditingRelease(release);
+                        navigate('/new-release'); 
+                    }}
+                />
+            } />
+            <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
+            <Route path="/publishing/*" element={
+                 <Publishing 
+                    activeTab={location.pathname.includes('writer') ? 'PUBLISHING_WRITER' : 
+                               location.pathname.includes('add') ? 'PUBLISHING_ADD' : 
+                               location.pathname.includes('all') ? 'PUBLISHING_ALL' : 'PUBLISHING_REPORT'} 
+                    savedSongwriters={savedSongwriters}
+                    allPublishing={allPublishing}
+                    onAddSongwriter={async (data) => {
+                         if (token) {
+                             const newWriter = await api.createSongwriter(token, data);
+                             setSavedSongwriters(prev => [...prev, newWriter]);
+                         }
+                    }}
+                    onAddPublishing={async (data) => {
+                         if (token) {
+                             const newPub = await api.createPublishing(token, data);
+                             setAllPublishing(prev => [...prev, newPub]);
+                         }
+                    }}
+                />
+            } />
+            <Route path="/settings" element={
+                 <Settings 
+                    aggregators={aggregators} 
+                    onSaveAggregators={handleSaveAggregators} 
+                />
+            } />
+            <Route path="/users" element={
+                <UserManagement 
+                    currentUserRole={userRole} 
+                    token={token}
+                />
+            } />
+            <Route path="/reports" element={<ReportScreen activeTab="REPORT_MAIN" reportData={reportData} />} />
+            <Route path="/import-reports" element={<ReportScreen activeTab="IMPORT_REPORT" reportData={reportData} />} />
+            <Route path="/revenue" element={<RevenueScreen reportData={reportData} />} />
+          </Routes>
+        </div>
+
+        <Footer />
+
+        {/* Modals */}
+        {viewingRelease && (
+            <ReleaseDetailModal 
+                release={viewingRelease} 
+                onClose={() => setViewingRelease(null)} 
+                onEdit={() => {
+                    setEditingRelease(viewingRelease);
+                    setViewingRelease(null);
+                    navigate('/new-release');
+                }}
             />
-          )}
+        )}
 
-          {activeTab === 'STATISTICS' && (
-            <Statistics releases={allReleases} reportData={reportData} />
-          )}
-
-          {activeTab.startsWith('PUBLISHING') && currentUser === 'fachry' && (
-            <Publishing 
-                activeTab={activeTab} 
-                savedSongwriters={savedSongwriters}
-                setSavedSongwriters={setSavedSongwriters}
-                allPublishing={allPublishing}
-                setAllPublishing={setAllPublishing}
+        {showProfileModal && (
+            <ProfileModal 
+                user={currentUserData || { username: currentUser, email: '', role: userRole }}
+                onClose={() => setShowProfileModal(false)}
+                onUpdate={handleUpdateUser}
                 token={token}
             />
-          )}
+        )}
 
-          {activeTab === 'NEW' && (
-            <>
-              {wizardStep === 'SELECTION' && (
-                <ReleaseTypeSelection onSelect={handleSelectType} />
-              )}
-              {wizardStep === 'WIZARD' && releaseType && (
-                <ReleaseWizard 
-                  type={releaseType} 
-                  onBack={handleBackToSelection} 
-                  onSave={handleSaveRelease}
-                  initialData={editingRelease}
-                />
-              )}
-            </>
-          )}
-
-          {activeTab === 'ALL' && !viewingRelease && (
-            <AllReleases 
-                releases={allReleases} 
-                onViewRelease={handleViewDetails} 
-                onUpdateRelease={handleUpdateRelease} 
-                availableAggregators={aggregators}
-            />
-          )}
-
-          {/* SHARED MODAL FOR VIEWING DETAILS (Works for both Dashboard & All Releases) */}
-          {viewingRelease && (
-            <ReleaseDetailModal 
-                release={viewingRelease}
-                isOpen={true} 
-                onClose={() => setViewingRelease(null)}
-                onUpdate={handleUpdateRelease}
-                availableAggregators={aggregators}
-            />
-          )}
-
-          {activeTab === 'SETTINGS' && (
-            <Settings aggregators={aggregators} setAggregators={handleSaveAggregators} />
-          )}
-
-          {activeTab === 'USER_MANAGEMENT' && (
-            <UserManagement />
-          )}
-
-          {activeTab === 'REPORT_MAIN' && (
-            <ReportScreen 
-              onImport={(data) => setReportData(data)} 
-              data={reportData}
-              releases={allReleases}
-              aggregators={aggregators}
-              mode="view"
-            />
-          )}
-
-          {activeTab === 'IMPORT_REPORT' && (
-            <ReportScreen 
-              onImport={(data) => setReportData(data)} 
-              data={reportData}
-              releases={allReleases}
-              aggregators={aggregators}
-              mode="import"
-            />
-          )}
-
-          {activeTab === 'REVENUE' && (
-            <RevenueScreen data={reportData} />
-          )}
-        </div>
-        
-        <Footer />
-        
-        {/* PROFILE MODAL */}
-        <ProfileModal 
-            isOpen={showProfileModal}
-            onClose={() => setShowProfileModal(false)}
-            token={token}
-            onUpdateUser={handleUpdateUser}
-        />
-
-        {/* LOGOUT CONFIRMATION DIALOG */}
         {showLogoutDialog && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                {/* Backdrop */}
-                <div 
-                    className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-                    onClick={cancelLogout}
-                ></div>
-                
-                {/* Dialog Card */}
-                <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm relative z-10 animate-fade-in-up border border-white">
-                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4 mx-auto">
-                        <AlertTriangle size={24} />
-                    </div>
-                    
-                    <h3 className="text-xl font-bold text-slate-800 text-center mb-2">Konfirmasi Logout</h3>
-                    <p className="text-slate-500 text-center text-sm mb-8">
-                        Apakah anda yakin ingin keluar dari aplikasi? Anda harus login kembali untuk mengakses data.
-                    </p>
-                    
-                    <div className="flex gap-3">
-                        <button 
-                            onClick={cancelLogout}
-                            className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm"
-                        >
-                            Batal
-                        </button>
-                        <button 
-                            onClick={confirmLogout}
-                            className="flex-1 px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-lg shadow-red-500/30 transition-colors text-sm"
-                        >
-                            Ya, Keluar
-                        </button>
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all scale-100">
+                    <div className="p-6 text-center">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle size={32} className="text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Sign Out?</h3>
+                        <p className="text-slate-500 text-sm mb-6">
+                            Are you sure you want to sign out? You will need to login again to access your dashboard.
+                        </p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={cancelLogout}
+                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmLogout}
+                                className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
+                            >
+                                Sign Out
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

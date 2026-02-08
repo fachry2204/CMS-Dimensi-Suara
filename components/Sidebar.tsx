@@ -1,15 +1,23 @@
-
 import React from 'react';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, BookOpen, FileText, UserPlus, PieChart, Library, Users, ClipboardList, DollarSign, Upload } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: string;
-  onNavigate: (tab: string) => void;
   currentUser: string;
   userRole?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, currentUser, userRole }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
+  const getLinkClass = (isActive: boolean) => 
+    `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm ${
+      isActive
+        ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100'
+        : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'
+    }`;
+
+  const getIconClass = (isActive: boolean) =>
+    isActive ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600';
+
   return (
     <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-white/50 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
       {/* Brand Logo */}
@@ -30,40 +38,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
           </h3>
           <ul className="space-y-2">
             <li>
-              <button
-                onClick={() => onNavigate('DASHBOARD')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'DASHBOARD' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <LayoutDashboard size={20} className={activeTab === 'DASHBOARD' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                Dashboard
-              </button>
+              <NavLink to="/dashboard" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <LayoutDashboard size={20} className={getIconClass(isActive)} />
+                    Dashboard
+                  </>
+                )}
+              </NavLink>
             </li>
             <li>
-              <button
-                onClick={() => onNavigate('NEW')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'NEW' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <PlusCircle size={20} className={activeTab === 'NEW' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                New Release
-              </button>
+              <NavLink to="/new-release" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <PlusCircle size={20} className={getIconClass(isActive)} />
+                    New Release
+                  </>
+                )}
+              </NavLink>
             </li>
             <li>
-              <button
-                onClick={() => onNavigate('ALL')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'ALL' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <ListMusic size={20} className={activeTab === 'ALL' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                All Release
-              </button>
+              <NavLink to="/releases" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <ListMusic size={20} className={getIconClass(isActive)} />
+                    All Release
+                  </>
+                )}
+              </NavLink>
             </li>
           </ul>
         </div>
@@ -75,52 +77,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
           </h3>
           <ul className="space-y-2">
             <li>
-              <button
-                onClick={() => onNavigate('STATISTICS')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'STATISTICS' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <BarChart3 size={20} className={activeTab === 'STATISTICS' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                Statistik
-              </button>
+              <NavLink to="/statistics" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <BarChart3 size={20} className={getIconClass(isActive)} />
+                    Statistik
+                  </>
+                )}
+              </NavLink>
             </li>
             <li>
-              <button
-                onClick={() => onNavigate('REPORT_MAIN')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'REPORT_MAIN' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <ClipboardList size={20} className={activeTab === 'REPORT_MAIN' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                Laporan
-              </button>
+              <NavLink to="/reports" className={({ isActive }) => getLinkClass(isActive)}>
+                 {({ isActive }) => (
+                  <>
+                    <ClipboardList size={20} className={getIconClass(isActive)} />
+                    Laporan
+                  </>
+                )}
+              </NavLink>
             </li>
              <li>
-              <button
-                onClick={() => onNavigate('REVENUE')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'REVENUE' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <DollarSign size={20} className={activeTab === 'REVENUE' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                Pendapatan
-              </button>
+              <NavLink to="/revenue" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <DollarSign size={20} className={getIconClass(isActive)} />
+                    Pendapatan
+                  </>
+                )}
+              </NavLink>
             </li>
             <li>
-              <button
-                onClick={() => onNavigate('IMPORT_REPORT')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'IMPORT_REPORT' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <Upload size={20} className={activeTab === 'IMPORT_REPORT' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                Import Laporan
-              </button>
+              <NavLink to="/import-reports" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <Upload size={20} className={getIconClass(isActive)} />
+                    Import Laporan
+                  </>
+                )}
+              </NavLink>
             </li>
           </ul>
         </div>
@@ -133,52 +127,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
             </h3>
             <ul className="space-y-2">
               <li>
-                <button
-                  onClick={() => onNavigate('PUBLISHING_WRITER')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                    ${activeTab === 'PUBLISHING_WRITER' 
-                      ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                      : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-                >
-                  <UserPlus size={20} className={activeTab === 'PUBLISHING_WRITER' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                  Add Song Writer
-                </button>
+                <NavLink to="/publishing/writer" className={({ isActive }) => getLinkClass(isActive)}>
+                  {({ isActive }) => (
+                    <>
+                      <UserPlus size={20} className={getIconClass(isActive)} />
+                      Add Song Writer
+                    </>
+                  )}
+                </NavLink>
               </li>
                <li>
-                <button
-                  onClick={() => onNavigate('PUBLISHING_ADD')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                    ${activeTab === 'PUBLISHING_ADD' 
-                      ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                      : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-                >
-                  <FileText size={20} className={activeTab === 'PUBLISHING_ADD' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                  Add Publishing
-                </button>
+                <NavLink to="/publishing/add" className={({ isActive }) => getLinkClass(isActive)}>
+                   {({ isActive }) => (
+                    <>
+                      <FileText size={20} className={getIconClass(isActive)} />
+                      Add Publishing
+                    </>
+                  )}
+                </NavLink>
               </li>
               <li>
-                <button
-                  onClick={() => onNavigate('PUBLISHING_ALL')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                    ${activeTab === 'PUBLISHING_ALL' 
-                      ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                      : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-                >
-                  <Library size={20} className={activeTab === 'PUBLISHING_ALL' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                  All Publishing
-                </button>
+                <NavLink to="/publishing/all" className={({ isActive }) => getLinkClass(isActive)}>
+                  {({ isActive }) => (
+                    <>
+                      <Library size={20} className={getIconClass(isActive)} />
+                      All Publishing
+                    </>
+                  )}
+                </NavLink>
               </li>
               <li>
-                <button
-                  onClick={() => onNavigate('PUBLISHING_REPORT')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                    ${activeTab === 'PUBLISHING_REPORT' 
-                      ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                      : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-                >
-                  <PieChart size={20} className={activeTab === 'PUBLISHING_REPORT' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                  Report Publishing
-                </button>
+                <NavLink to="/publishing/report" className={({ isActive }) => getLinkClass(isActive)}>
+                  {({ isActive }) => (
+                    <>
+                      <PieChart size={20} className={getIconClass(isActive)} />
+                      Report Publishing
+                    </>
+                  )}
+                </NavLink>
               </li>
             </ul>
           </div>
@@ -191,29 +177,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, current
             </h3>
             <ul className="space-y-2">
             <li>
-              <button 
-                onClick={() => onNavigate('SETTINGS')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'SETTINGS' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <Settings size={20} className={activeTab === 'SETTINGS' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                Settings
-              </button>
+              <NavLink to="/settings" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <Settings size={20} className={getIconClass(isActive)} />
+                    Settings
+                  </>
+                )}
+              </NavLink>
             </li>
             {(userRole === 'Admin' || userRole === 'Operator') && (
             <li>
-              <button 
-                onClick={() => onNavigate('USER_MANAGEMENT')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group font-medium text-sm
-                  ${activeTab === 'USER_MANAGEMENT' 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' 
-                    : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'}`}
-              >
-                <Users size={20} className={activeTab === 'USER_MANAGEMENT' ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600'} />
-                User Management
-              </button>
+              <NavLink to="/users" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <Users size={20} className={getIconClass(isActive)} />
+                    User Management
+                  </>
+                )}
+              </NavLink>
             </li>
             )}
           </ul>
