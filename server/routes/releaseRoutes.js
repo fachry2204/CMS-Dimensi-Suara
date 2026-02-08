@@ -100,6 +100,11 @@ router.get('/', authenticateToken, async (req, res) => {
 // CREATE RELEASE (With File Uploads)
 router.post('/', authenticateToken, upload.any(), async (req, res) => {
     try {
+        console.log('--- START CREATE RELEASE ---');
+        console.log('Headers:', req.headers['content-type']);
+        console.log('Files:', req.files);
+        console.log('Body:', req.body);
+
         // 1. Parse Data
         // Frontend should send a 'data' field containing the JSON
         console.log('--- RAW BODY ---', req.body);
@@ -109,15 +114,16 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             console.log('--- PARSED DATA ---', releaseData);
         } catch (e) {
             console.error('JSON Parse Error:', e);
+            console.error('Raw data content:', req.body.data);
             return res.status(400).json({ error: 'Invalid data format. Expected "data" JSON string.' });
         }
 
         const userId = req.user.id;
         const { title, upc, primaryArtists, ...otherData } = releaseData;
-        const artistName = Array.isArray(primaryArtists) ? primaryArtists[0] : (primaryArtists || 'Unknown');
+        const artistName = Array.isArray(releaseData.primaryArtists) ? releaseData.primaryArtists[0] : (releaseData.primaryArtists || 'Unknown');
         
         // 2. Prepare Target Directory
-        const folderName = `${sanitizeName(artistName)} - ${sanitizeName(title)}`;
+        const folderName = `${sanitizeName(artistName)} - ${sanitizeName(releaseData.title)}`; 
         const targetDir = path.join(UPLOADS_ROOT, folderName);
         
         if (!fs.existsSync(targetDir)) {
@@ -211,7 +217,7 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             const [admins] = await db.query("SELECT id FROM users WHERE role = 'Admin'");
             
             // Notification message
-            const notifMessage = `New release submitted: "${title}" by ${artistName}`;
+            const notifMessage = `New release submitted: "${releaseData.title}" by ${Array.isArray(releaseData.primaryArtists) ? releaseData.primaryArtists[0] : (releaseData.primaryArtists || 'Unknown')}`;
             
             // Insert notification for each admin
             for (const admin of admins) {
