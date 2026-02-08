@@ -83,11 +83,11 @@ router.post('/', authenticateToken, async (req, res) => {
             `INSERT INTO releases (
                 user_id, title, version, release_type, 
                 primary_artists, cover_art, label, 
-                production_year, p_line, c_line, 
+                p_line, c_line, 
                 genre, sub_genre, language, 
                 upc, original_release_date, submission_date, 
                 status, aggregator
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Pending', ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Pending', ?)`,
             [
                 userId,
                 releaseData.title,
@@ -96,7 +96,6 @@ router.post('/', authenticateToken, async (req, res) => {
                 JSON.stringify(releaseData.primaryArtists),
                 releaseData.coverArt, // Path string
                 releaseData.label,
-                releaseData.productionYear,
                 releaseData.pLine,
                 releaseData.cLine,
                 releaseData.genre,
