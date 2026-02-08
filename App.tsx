@@ -51,6 +51,7 @@ const App: React.FC = () => {
   const [savedSongwriters, setSavedSongwriters] = useState<SavedSongwriter[]>([]);
   const [allPublishing, setAllPublishing] = useState<PublishingRegistration[]>([]);
   const [allReleases, setAllReleases] = useState<ReleaseData[]>([]);
+  const [dataFetchError, setDataFetchError] = useState<string | null>(null);
   
   // IMPORTED REPORT DATA STATE
   const [reportData, setReportData] = useState<ReportData[]>([]);
@@ -63,6 +64,7 @@ const App: React.FC = () => {
         if (!token) return;
 
         try {
+            setDataFetchError(null);
             // 1. Fetch Releases
             const releases = await api.getReleases(token);
             setAllReleases(releases);
@@ -89,8 +91,9 @@ const App: React.FC = () => {
                 console.warn("Failed to fetch aggregators, using defaults", aggErr);
             }
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to fetch data from API:", err);
+            setDataFetchError(err.message || "Failed to load data");
             // Fallback removed as per request (use DB only)
             setAllReleases([]);
             setSavedSongwriters([]);
@@ -453,6 +456,7 @@ const App: React.FC = () => {
                         setEditingRelease(release);
                         navigate('/new-release'); 
                     }}
+                    error={dataFetchError}
                 />
             } />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />

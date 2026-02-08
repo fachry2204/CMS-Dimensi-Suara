@@ -5,9 +5,10 @@ import { ReleaseData } from '../types';
 
 interface Props {
   releases: ReleaseData[];
-  onViewRelease: (release: ReleaseData) => void;
-  onUpdateRelease: (release: ReleaseData) => void;
-  availableAggregators: string[];
+  onViewDetails: (release: ReleaseData) => void;
+  onEdit: (release: ReleaseData) => void;
+  availableAggregators?: string[];
+  error?: string | null;
 }
 
 type SortKey = 'title' | 'artist' | 'type' | 'date' | 'aggregator' | 'status';
@@ -18,7 +19,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availableAggregators }) => {
+export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, availableAggregators, error }) => {
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -152,6 +153,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
         </div>
 
         {/* STATUS TABS NAVIGATION */}
+        {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 flex items-center gap-3">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <p className="font-medium">Connection Error: {error}</p>
+                <p className="text-sm ml-auto text-red-400">Please check your network or server logs.</p>
+            </div>
+        )}
+
         <div className="flex overflow-x-auto pb-2 mb-6 gap-2 no-scrollbar">
             {tabs.map((tab) => {
                 const isActive = activeStatusTab === tab.id;
@@ -297,7 +306,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button 
-                                                onClick={() => onViewRelease(release)}
+                                                onClick={() => onViewDetails(release)}
                                                 className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
                                             >
@@ -317,11 +326,13 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewRelease, availabl
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Filter size={24} className="text-slate-300" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-700 mb-1">No releases found</h3>
+                    <h3 className="text-lg font-bold text-slate-700 mb-1">{error ? "Connection Failed" : "No releases found"}</h3>
                     <p className="text-slate-400 text-sm">
-                        {activeStatusTab === 'ALL' && searchQuery === ''
-                            ? "You haven't created any releases yet." 
-                            : `No results found for your current filter/search.`}
+                        {error 
+                            ? "We couldn't load your releases. Please check the error message above."
+                            : (activeStatusTab === 'ALL' && searchQuery === ''
+                                ? "You haven't created any releases yet." 
+                                : `No results found for your current filter/search.`)}
                     </p>
                 </div>
             )}
