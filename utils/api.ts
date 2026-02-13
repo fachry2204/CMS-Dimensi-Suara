@@ -1,5 +1,24 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+const parseResponse = async (res: Response) => {
+    if (res.status === 401 || res.status === 403) {
+        const err: any = new Error('AUTH');
+        err.status = res.status;
+        throw err;
+    }
+    if (!res.ok) {
+        // Try read json, else text
+        try {
+            const j = await res.json();
+            throw new Error(j.error || 'Request failed');
+        } catch {
+            const t = await res.text().catch(() => '');
+            throw new Error(t || 'Request failed');
+        }
+    }
+    return res.json();
+};
+
 export const api = {
     // Auth
     login: async (username, password) => {
@@ -30,8 +49,7 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/releases`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to fetch releases');
-        return res.json();
+        return parseResponse(res);
     },
 
     createRelease: async (token, data) => {
@@ -62,11 +80,7 @@ export const api = {
             body: formData
         });
         
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || 'Failed to create release');
-        }
-        return res.json();
+        return parseResponse(res);
     },
 
     // Reports
@@ -74,8 +88,7 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/reports`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to fetch reports');
-        return res.json();
+        return parseResponse(res);
     },
 
     importReports: async (token, data) => {
@@ -96,8 +109,7 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/notifications`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to fetch notifications');
-        return res.json();
+        return parseResponse(res);
     },
 
     markNotificationRead: async (token, id) => {
@@ -109,8 +121,7 @@ export const api = {
             },
             body: JSON.stringify({ id })
         });
-        if (!res.ok) throw new Error('Failed to mark notification');
-        return res.json();
+        return parseResponse(res);
     },
 
     // User Profile
@@ -118,8 +129,7 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/users/profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to fetch profile');
-        return res.json();
+        return parseResponse(res);
     },
 
     updateProfile: async (token, data) => {
@@ -139,11 +149,7 @@ export const api = {
             body: formData
         });
 
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || 'Failed to update profile');
-        }
-        return res.json();
+        return parseResponse(res);
     },
 
     // Songwriters
@@ -151,8 +157,7 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/songwriters`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to fetch songwriters');
-        const rows = await res.json();
+        const rows = await parseResponse(res);
         // Map snake_case DB to camelCase Frontend
         return rows.map(r => ({
             id: r.id,

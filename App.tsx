@@ -92,6 +92,20 @@ const App: React.FC = () => {
             }
 
         } catch (err: any) {
+            if (err?.message === 'AUTH') {
+                // Token invalid/expired → force logout
+                localStorage.removeItem('cms_auth');
+                localStorage.removeItem('cms_user');
+                localStorage.removeItem('cms_token');
+                localStorage.removeItem('cms_role');
+                setIsAuthenticated(false);
+                setCurrentUser('');
+                setToken('');
+                setUserRole('');
+                setDataFetchError('Session expired. Please login again.');
+                navigate('/');
+                return;
+            }
             console.error("Failed to fetch data from API:", err);
             setDataFetchError(err.message || "Failed to load data");
             // Fallback removed as per request (use DB only)
