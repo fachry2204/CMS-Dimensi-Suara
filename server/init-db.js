@@ -147,6 +147,21 @@ const initDb = async () => {
             console.log("Default admin created: admin@dimensisuara.com / admin123");
         }
 
+        // Ensure 'fachry' Admin exists
+        const [fachryRows] = await connection.query("SELECT id FROM users WHERE username = ? OR email = ?", ['fachry', 'fachry@dimensisuara.com']);
+        if (fachryRows.length === 0) {
+            console.log("Creating admin user: fachry");
+            const bcrypt = (await import('bcryptjs')).default;
+            const salt2 = await bcrypt.genSalt(10);
+            const seedPass = process.env.SEED_FACHRY_PASSWORD || 'bangbens';
+            const hash2 = await bcrypt.hash(seedPass, salt2);
+            await connection.query(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+                ['fachry', 'fachry@dimensisuara.com', hash2, 'Admin']
+            );
+            console.log("Admin 'fachry' created with role Admin.");
+        }
+
         console.log('✅ Database initialized successfully!');
         
         await connection.end();
