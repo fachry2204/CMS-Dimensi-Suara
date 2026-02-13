@@ -225,7 +225,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
             >
                 <Download size={14} />
             </button>
-            <audio id={`audio-${key}`} src={url} onEnded={() => setPlayingKey(null)} className="hidden" />
+            <audio id={`audio-${key}`} src={url} onEnded={() => setPlayingKey(null)} className="hidden" preload="none" />
         </div>
     );
   };

@@ -40,8 +40,17 @@ router.post('/login', async (req, res) => {
         const validPass = await bcrypt.compare(password, user.password_hash);
         if (!validPass) return res.status(400).json({ error: 'Invalid password' });
 
-        // Create Token
-        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        // Create Token (1h) and set sliding session cookie
+        const payload = { id: user.id, role: user.role };
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: 60 * 60 * 1000 // 1 hour
+        });
 
         res.json({ 
             token, 
@@ -55,6 +64,12 @@ router.post('/login', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// LOGOUT - clear session cookie
+router.post('/logout', (req, res) => {
+    res.clearCookie('auth_token', { httpOnly: true, sameSite: 'lax' });
+    res.json({ message: 'Logged out' });
 });
 
 export default router;

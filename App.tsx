@@ -207,10 +207,19 @@ const App: React.FC = () => {
   };
 
   const confirmLogout = () => {
+    // Clear server-side session cookie
+    api.logout().catch(() => {});
     localStorage.removeItem('cms_auth');
     localStorage.removeItem('cms_user');
     localStorage.removeItem('cms_token');
     localStorage.removeItem('cms_role');
+    // Clear any wizard/draft remnants just in case
+    try {
+      sessionStorage.removeItem('cms_wizard_step');
+      sessionStorage.removeItem('cms_wizard_type');
+      localStorage.removeItem('cms_wizard_data');
+      localStorage.removeItem('cms_wizard_current_step');
+    } catch {}
     setIsAuthenticated(false);
     setCurrentUser('');
     setToken('');

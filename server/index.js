@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -35,7 +36,11 @@ initDb().then(() => {
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    credentials: true,
+    origin: true
+}));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -18,26 +18,8 @@ export const NewReleaseFlow: React.FC<NewReleaseFlowProps> = ({
     onSaveRelease 
 }) => {
     const navigate = useNavigate();
-    const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>(() => {
-        const savedStep = sessionStorage.getItem('cms_wizard_step');
-        return (savedStep === 'WIZARD' || savedStep === 'SELECTION') ? savedStep : 'SELECTION';
-    });
-    const [releaseType, setReleaseType] = useState<ReleaseType | null>(() => {
-        return sessionStorage.getItem('cms_wizard_type') as ReleaseType | null;
-    });
-
-    // Persist state
-    useEffect(() => {
-        sessionStorage.setItem('cms_wizard_step', wizardStep);
-    }, [wizardStep]);
-
-    useEffect(() => {
-        if (releaseType) {
-            sessionStorage.setItem('cms_wizard_type', releaseType);
-        } else {
-            sessionStorage.removeItem('cms_wizard_type');
-        }
-    }, [releaseType]);
+    const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
+    const [releaseType, setReleaseType] = useState<ReleaseType | null>(null);
 
     // Initial state setup if editing
     useEffect(() => {
@@ -58,21 +40,12 @@ export const NewReleaseFlow: React.FC<NewReleaseFlowProps> = ({
             setReleaseType(null);
             setEditingRelease(null); // Clear editing state when going back
             
-            // Clear storage
-            sessionStorage.removeItem('cms_wizard_step');
-            sessionStorage.removeItem('cms_wizard_type');
-            localStorage.removeItem('cms_wizard_data'); // Clear wizard data too
-            localStorage.removeItem('cms_wizard_current_step');
+            // No local/session storage for wizard (by policy)
         }
     };
 
     const handleSave = (data: ReleaseData) => {
-        // Clear storage before saving
-        sessionStorage.removeItem('cms_wizard_step');
-        sessionStorage.removeItem('cms_wizard_type');
-        localStorage.removeItem('cms_wizard_data');
-        localStorage.removeItem('cms_wizard_current_step');
-        
+        // No persistence cleanup needed; nothing stored locally
         onSaveRelease(data);
     };
 

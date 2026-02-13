@@ -53,30 +53,58 @@ const upload = multer({
 // If `Step4Review` sends JSON, it cannot send File objects.
 // Let's check `api.createRelease`. 
 
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, upload.any(), async (req, res) => {
     try {
-        const releaseData = req.body;
+        // Parse JSON payload from 'data' field when using multipart/form-data
+        const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
         const userId = req.user.id;
 
+        // Prepare target directory: "<PrimaryArtist> - <ReleaseTitle>"
+        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const sanitize = (s) => String(s || '').replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
+        const folderName = `${sanitize(primaryArtist)} - ${sanitize(releaseData.title)}`.substring(0, 150);
+        const targetDir = path.join(RELEASES_DIR, folderName);
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        // Move uploaded files into targetDir and collect public paths
+        const files = Array.isArray(req.files) ? req.files : [];
+        const pathMap = {};
+        for (const f of files) {
+            const destName = f.filename;
+            const destPath = path.join(targetDir, destName);
+            if (f.path !== destPath) {
+                fs.renameSync(f.path, destPath);
+            }
+            const publicPath = `/uploads/releases/${folderName}/${destName}`;
+            pathMap[f.fieldname] = publicPath;
+        }
+
+        // Attach file paths back into releaseData
+        if (pathMap['coverArt']) {
+            releaseData.coverArt = pathMap['coverArt'];
+        }
+        if (releaseData.tracks && Array.isArray(releaseData.tracks)) {
+            releaseData.tracks = releaseData.tracks.map((t, idx) => {
+                const field = `track_${idx}_audio`;
+                return {
+                    ...t,
+                    audioFile: pathMap[field] || t.audioFile || null
+                };
+            });
+        }
+
         // --- DUPLICATE CHECK ---
-        // Prevent double submission of the same release
-        // Check if a pending release with same Title and Version exists for this user
         const [existing] = await db.query(
             'SELECT id FROM releases WHERE user_id = ? AND title = ? AND version = ? AND status != "Rejected"',
             [userId, releaseData.title, releaseData.version]
         );
-
         if (existing.length > 0) {
-            // Return the existing one instead of creating duplicate
-            // Or return error. Returning the existing ID is safer for idempotency.
-            console.log(`Duplicate submission detected for ${releaseData.title}. Returning existing ID.`);
             return res.status(200).json({ 
                 message: 'Release already exists', 
                 id: existing[0].id,
                 isDuplicate: true 
             });
         }
-        // -----------------------
 
         // 1. Insert Release
         const [releaseResult] = await db.query(
@@ -94,15 +122,15 @@ router.post('/', authenticateToken, async (req, res) => {
                 releaseData.version,
                 releaseData.type, // 'SINGLE' or 'ALBUM'
                 JSON.stringify(releaseData.primaryArtists),
-                releaseData.coverArt, // Path string
-                releaseData.label,
-                releaseData.pLine,
-                releaseData.cLine,
-                releaseData.genre,
-                releaseData.subGenre,
-                releaseData.language,
-                releaseData.upc,
-                releaseData.originalReleaseDate,
+                releaseData.coverArt || null,
+                releaseData.label || null,
+                releaseData.pLine || null,
+                releaseData.cLine || null,
+                releaseData.genre || null,
+                releaseData.subGenre || null,
+                releaseData.language || null,
+                releaseData.upc || null,
+                releaseData.originalReleaseDate || null,
                 releaseData.aggregator || null
             ]
         );
@@ -116,17 +144,17 @@ router.post('/', authenticateToken, async (req, res) => {
                 track.trackNumber,
                 track.title,
                 track.version,
-                JSON.stringify(track.primaryArtists),
-                JSON.stringify(track.featuredArtists),
-                track.audioFile, // Path string
-                track.isrc,
-                track.explicitLyrics,
-                track.composer,
-                track.lyricist,
-                track.producer,
-                track.genre,
-                track.subGenre,
-                track.previewStart
+                JSON.stringify(track.primaryArtists || []),
+                JSON.stringify(track.featuredArtists || []),
+                track.audioFile || null, // Path string
+                track.isrc || null,
+                track.explicitLyrics || null,
+                track.composer || null,
+                track.lyricist || null,
+                track.producer || null,
+                track.genre || null,
+                track.subGenre || null,
+                track.previewStart || 0
             ]);
 
             await db.query(

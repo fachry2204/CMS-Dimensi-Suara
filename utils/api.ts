@@ -25,7 +25,8 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'
         });
         if (!res.ok) {
             const err = await res.json();
@@ -33,12 +34,22 @@ export const api = {
         }
         return res.json();
     },
+    
+    logout: async () => {
+        const res = await fetch(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Logout failed');
+        return res.json();
+    },
 
     register: async (username, email, password) => {
         const res = await fetch(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
+            body: JSON.stringify({ username, email, password }),
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Registration failed');
         return res.json();
@@ -47,7 +58,8 @@ export const api = {
     // Releases
     getReleases: async (token) => {
         const res = await fetch(`${API_BASE_URL}/releases`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
         });
         return parseResponse(res);
     },
@@ -74,10 +86,11 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/releases`, {
             method: 'POST',
             headers: { 
-                'Authorization': `Bearer ${token}`
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 // Content-Type must be undefined for FormData
             },
-            body: formData
+            body: formData,
+            credentials: 'include'
         });
         
         return parseResponse(res);
@@ -86,7 +99,8 @@ export const api = {
     // Reports
     getReports: async (token) => {
         const res = await fetch(`${API_BASE_URL}/reports`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
         });
         return parseResponse(res);
     },
@@ -107,7 +121,8 @@ export const api = {
     // Notifications
     getNotifications: async (token) => {
         const res = await fetch(`${API_BASE_URL}/notifications`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
         });
         return parseResponse(res);
     },
@@ -117,9 +132,10 @@ export const api = {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
-            body: JSON.stringify({ id })
+            body: JSON.stringify({ id }),
+            credentials: 'include'
         });
         return parseResponse(res);
     },
@@ -127,7 +143,8 @@ export const api = {
     // User Profile
     getProfile: async (token) => {
         const res = await fetch(`${API_BASE_URL}/users/profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
         });
         return parseResponse(res);
     },
@@ -144,9 +161,10 @@ export const api = {
         const res = await fetch(`${API_BASE_URL}/users/profile`, {
             method: 'PUT',
             headers: { 
-                'Authorization': `Bearer ${token}`
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
-            body: formData
+            body: formData,
+            credentials: 'include'
         });
 
         return parseResponse(res);
@@ -155,7 +173,8 @@ export const api = {
     // Songwriters
     getSongwriters: async (token) => {
         const res = await fetch(`${API_BASE_URL}/songwriters`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
         });
         const rows = await parseResponse(res);
         // Map snake_case DB to camelCase Frontend

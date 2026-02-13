@@ -33,49 +33,13 @@ const INITIAL_DATA: ReleaseData = {
 };
 
 export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialData }) => {
-  const [currentStep, setCurrentStep] = useState<number>(() => {
-      const saved = localStorage.getItem('cms_wizard_current_step');
-      return saved ? parseInt(saved) : Step.INFO;
-  });
+  const [currentStep, setCurrentStep] = useState<number>(Step.INFO);
   
-  const [data, setData] = useState<ReleaseData>(() => {
-      if (initialData) return initialData;
-      
-      const saved = localStorage.getItem('cms_wizard_data');
-      if (saved) {
-          try {
-              const parsed = JSON.parse(saved);
-              // Sanitize File objects that became empty objects {}
-              if (parsed.coverArt && typeof parsed.coverArt === 'object' && Object.keys(parsed.coverArt).length === 0) {
-                  parsed.coverArt = null;
-              }
-              // Sanitize Tracks
-              if (parsed.tracks) {
-                  parsed.tracks = parsed.tracks.map((t: any) => ({
-                      ...t,
-                      audioFile: (t.audioFile && typeof t.audioFile === 'object' && Object.keys(t.audioFile).length === 0) ? null : t.audioFile,
-                      audioClip: (t.audioClip && typeof t.audioClip === 'object' && Object.keys(t.audioClip).length === 0) ? null : t.audioClip,
-                  }));
-              }
-              return { ...INITIAL_DATA, ...parsed };
-          } catch (e) {
-              console.error("Failed to parse saved wizard data", e);
-              return INITIAL_DATA;
-          }
-      }
-      return INITIAL_DATA;
-  });
+  const [data, setData] = useState<ReleaseData>(() => initialData ? initialData : INITIAL_DATA);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Persist State
-  useEffect(() => {
-      localStorage.setItem('cms_wizard_current_step', currentStep.toString());
-  }, [currentStep]);
-
-  useEffect(() => {
-      localStorage.setItem('cms_wizard_data', JSON.stringify(data));
-  }, [data]);
+  // No local/session storage persistence for wizard data
 
   // If viewing existing data, we might want to ensure tracks exist
   useEffect(() => {
