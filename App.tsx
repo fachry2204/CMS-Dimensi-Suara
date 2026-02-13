@@ -7,7 +7,7 @@ import { ReleaseWizard } from './screens/ReleaseWizard';
 import { AllReleases } from './screens/AllReleases';
 import { Dashboard } from './screens/Dashboard'; 
 import { Statistics } from './screens/Statistics'; 
-import { Publishing } from './screens/Publishing';
+// import { Publishing } from './screens/Publishing';
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
 import { ReportScreen } from './screens/ReportScreen';
@@ -16,7 +16,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
-import { ReleaseType, ReleaseData, SavedSongwriter, PublishingRegistration, ReportData, Notification } from './types';
+import { ReleaseType, ReleaseData, SavedSongwriter, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 import { api, API_BASE_URL } from './utils/api';
 import { getProfileImageUrl } from './utils/imageUtils';
@@ -49,7 +49,7 @@ const App: React.FC = () => {
 
   // Global App State with GENERATED DATA (50+)
   const [savedSongwriters, setSavedSongwriters] = useState<SavedSongwriter[]>([]);
-  const [allPublishing, setAllPublishing] = useState<PublishingRegistration[]>([]);
+  // const [allPublishing, setAllPublishing] = useState<PublishingRegistration[]>([]);
   const [allReleases, setAllReleases] = useState<ReleaseData[]>([]);
   const [dataFetchError, setDataFetchError] = useState<string | null>(null);
   
@@ -78,8 +78,8 @@ const App: React.FC = () => {
             setSavedSongwriters(writers);
 
             // 4. Fetch Publishing Registrations
-            const pubs = await api.getPublishing(token);
-            setAllPublishing(pubs);
+            // const pubs = await api.getPublishing(token);
+            // setAllPublishing(pubs);
 
             // 5. Fetch Aggregators
             try {
@@ -97,7 +97,7 @@ const App: React.FC = () => {
             // Fallback removed as per request (use DB only)
             setAllReleases([]);
             setSavedSongwriters([]);
-            setAllPublishing([]);
+            // setAllPublishing([]);
         }
     };
 
@@ -275,7 +275,7 @@ const App: React.FC = () => {
       if (path === '/import-reports') return "Import Laporan";
       if (path === '/revenue') return "Pendapatan";
       if (path === '/statistics') return "Analytics & Reports";
-      if (path.startsWith('/publishing')) return "Publishing";
+      // if (path.startsWith('/publishing')) return "Publishing";
       return "Dashboard";
   };
 
@@ -460,7 +460,7 @@ const App: React.FC = () => {
                 />
             } />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
-            <Route path="/publishing/*" element={
+            {/* <Route path="/publishing/*" element={
                  <Publishing 
                     activeTab={location.pathname.includes('writer') ? 'PUBLISHING_WRITER' : 
                                location.pathname.includes('add') ? 'PUBLISHING_ADD' : 
@@ -480,7 +480,7 @@ const App: React.FC = () => {
                          }
                     }}
                 />
-            } />
+            } /> */}
             <Route path="/settings" element={
                  <Settings 
                     aggregators={aggregators} 

@@ -85,48 +85,7 @@ export const generateSongwriters = (count: number): SavedSongwriter[] => {
 };
 
 export const generatePublishing = (count: number, writers: SavedSongwriter[]): PublishingRegistration[] => {
-    return Array.from({ length: count }, (_, i) => {
-        const statusPool: ('Pending' | 'Approved' | 'Rejected')[] = ['Pending', 'Approved', 'Rejected'];
-        const status = pick(statusPool);
-        
-        // Pick 1-3 writers
-        const numWriters = randomInt(1, 3);
-        const selectedWriters = pickMultiple(writers, numWriters);
-        
-        // Distribute share
-        const sharePerWriter = Math.floor(100 / numWriters);
-        const remainder = 100 - (sharePerWriter * numWriters);
-        
-        const registeredWriters = selectedWriters.map((sw, idx) => ({
-            id: sw.id,
-            name: sw.name,
-            role: pick(['Author', 'Composer', 'Author & Composer']) as any,
-            share: idx === 0 ? sharePerWriter + remainder : sharePerWriter
-        }));
-
-        return {
-            id: `pub_${i + 1}`,
-            status,
-            submissionDate: generateDate(new Date(2023, 0, 1), new Date()),
-            title: generateTitle(),
-            songCode: `S-${randomInt(1000, 9999)}`,
-            otherTitle: '',
-            sampleLink: 'https://drive.google.com/sample',
-            rightsGranted: {
-                synchronization: true, mechanical: true, performing: true, printing: true, other: true
-            },
-            performer: generateName(), // Artist Name
-            duration: `${randomInt(2, 5)}:${randomInt(10, 59)}`,
-            genre: pick(TRACK_GENRES),
-            language: 'Indonesia',
-            region: 'Worldwide',
-            iswc: status === 'Approved' ? `T-${randomInt(100000000, 999999999)}-${randomInt(1, 9)}` : '',
-            isrc: status === 'Approved' ? `ID-A01-${randomInt(23, 24)}-${randomInt(10000, 99999)}` : '',
-            lyrics: "Lirik lagu contoh...",
-            note: "",
-            songwriters: registeredWriters
-        };
-    });
+    return []; // Removed
 };
 
 export const generateReleases = (count: number): ReleaseData[] => {

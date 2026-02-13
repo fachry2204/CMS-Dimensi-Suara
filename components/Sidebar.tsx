@@ -120,7 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         </div>
 
         {/* Publishing Category - ONLY FOR 'fachry' */}
-        {currentUser === 'fachry' && (
+        {/* {currentUser === 'fachry' && (
           <div className="animate-fade-in">
             <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
               Publishing
@@ -168,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </li>
             </ul>
           </div>
-        )}
+        )} */}
 
         {/* System / Settings Section */}
         <div>

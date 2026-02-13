@@ -1,9 +1,9 @@
 -- 1. Users
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    username VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     role ENUM('Admin', 'Operator', 'User') DEFAULT 'User',
     status ENUM('Active', 'Inactive') DEFAULT 'Active',
     joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -95,21 +95,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE
 );
 
--- 5. Publishing Registrations
-CREATE TABLE IF NOT EXISTS publishing_registrations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    title VARCHAR(255) NOT NULL,
-    song_code VARCHAR(50),
-    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
-    submission_date DATE,
-    other_title VARCHAR(255),
-    sample_link TEXT,
-    rights_granted JSON, -- {synchronization: true, ...}
-    performer VARCHAR(255),
-    duration VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- 5. Publishing Registrations (Removed)
 
 -- 6. Reports (Revenue/Analytics)
 CREATE TABLE IF NOT EXISTS reports (

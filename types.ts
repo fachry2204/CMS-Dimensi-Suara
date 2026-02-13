@@ -151,31 +151,7 @@ export interface SavedSongwriter {
 }
 
 export interface PublishingRegistration {
-  id?: string; // Added for list view
-  status?: 'Pending' | 'Approved' | 'Rejected'; // Added for list view
-  submissionDate?: string; // Added for list view
-  
-  title: string;
-  songCode: string; // New Field
-  otherTitle: string;
-  sampleLink: string;
-  rightsGranted: {
-    synchronization: boolean;
-    mechanical: boolean;
-    performing: boolean;
-    printing: boolean;
-    other: boolean;
-  };
-  performer: string;
-  duration: string;
-  genre: string;
-  language: string;
-  region: string;
-  iswc: string;
-  isrc: string;
-  lyrics: string; // New Field
-  note: string;
-  songwriters: Songwriter[];
+  // Removed
 }
 
 // --- USER MANAGEMENT TYPES ---

@@ -218,64 +218,13 @@ export const api = {
         return res.json();
     },
 
-    // Publishing Registrations
+    // Publishing Registrations (Removed)
     getPublishing: async (token) => {
-        const res = await fetch(`${API_BASE_URL}/publishing`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Failed to fetch publishing registrations');
-        const rows = await res.json();
-        return rows.map(r => ({
-            id: r.id,
-            title: r.title,
-            songCode: r.song_code,
-            otherTitle: r.other_title,
-            sampleLink: r.sample_link,
-            rightsGranted: r.rights_granted,
-            performer: r.performer,
-            duration: r.duration,
-            genre: r.genre,
-            language: r.language,
-            region: r.region,
-            iswc: r.iswc,
-            isrc: r.isrc,
-            lyrics: r.lyrics,
-            note: r.note,
-            songwriters: r.songwriters,
-            status: r.status,
-            submissionDate: r.submission_date
-        }));
+        return []; // Removed
     },
 
     createPublishing: async (token, data) => {
-        const payload = {
-            title: data.title,
-            song_code: data.songCode,
-            other_title: data.otherTitle,
-            sample_link: data.sampleLink,
-            rights_granted: data.rightsGranted,
-            performer: data.performer,
-            duration: data.duration,
-            genre: data.genre,
-            language: data.language,
-            region: data.region,
-            iswc: data.iswc,
-            isrc: data.isrc,
-            lyrics: data.lyrics,
-            note: data.note,
-            songwriters: data.songwriters
-        };
-
-        const res = await fetch(`${API_BASE_URL}/publishing`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error('Failed to create publishing registration');
-        return res.json();
+        return {}; // Removed
     },
 
     // Settings
