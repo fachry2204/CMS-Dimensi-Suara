@@ -49,8 +49,8 @@ app.use((err, req, res, next) => {
 });
 
 // Static Files (Serve the React Frontend)
-// Assuming "dist" is in the project root (one level up from server/)
-const distPath = path.join(__dirname, '../dist');
+// Serve from "public" (Vite outDir) at the project root
+const distPath = path.join(__dirname, '../public');
 app.use(express.static(distPath));
 
 // Serve Uploads
@@ -119,4 +119,3 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION:', reason);
 });
-
