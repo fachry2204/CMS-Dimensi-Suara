@@ -10,10 +10,10 @@ const writeString = (view: DataView, offset: number, string: string) => {
   }
 };
 
-// Helper to encode AudioBuffer to WAV (24-bit, 44.1kHz)
+// Helper to encode AudioBuffer to WAV (24-bit, 48kHz)
 const bufferToWav24 = (buffer: AudioBuffer): Blob => {
   const numChannels = buffer.numberOfChannels; 
-  const sampleRate = 44100; // Force 44.1kHz
+  const sampleRate = 48000; // Force 48kHz
   const format = 1; // PCM
   const bitDepth = 24;
   
@@ -87,20 +87,31 @@ export const processFullAudio = async (file: File, targetFileName: string): Prom
   try {
     const arrayBuffer = await file.arrayBuffer();
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-      sampleRate: 44100
+      sampleRate: 48000
     });
     
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     
-    // Process to offline context to resample/render to 44.1kHz
+    // Process to offline context to resample/render to 48kHz and ensure stereo
     const offlineCtx = new OfflineAudioContext(
-        audioBuffer.numberOfChannels,
-        audioBuffer.length, 
-        44100
+        2,
+        Math.ceil(audioBuffer.duration * 48000),
+        48000
     );
     
+    // Ensure stereo: if mono, duplicate channel
+    let bufferToUse = audioBuffer;
+    if (audioBuffer.numberOfChannels === 1) {
+      const stereoBuffer = offlineCtx.createBuffer(2, Math.ceil(audioBuffer.duration * 48000), 48000);
+      const monoData = audioBuffer.getChannelData(0);
+      for (let ch = 0; ch < 2; ch++) {
+        stereoBuffer.getChannelData(ch).set(monoData);
+      }
+      bufferToUse = stereoBuffer;
+    }
+
     const source = offlineCtx.createBufferSource();
-    source.buffer = audioBuffer;
+    source.buffer = bufferToUse;
     source.connect(offlineCtx.destination);
     source.start();
     
@@ -128,26 +139,37 @@ export const cropAndConvertAudio = async (
   try {
     const arrayBuffer = await file.arrayBuffer();
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-        sampleRate: 44100
+        sampleRate: 48000
     });
     
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     
     // Calculate start and length in samples
-    const startSample = Math.floor(startTime * 44100);
-    const lengthSamples = Math.floor(duration * 44100);
+    const startSample = Math.floor(startTime * 48000);
+    const lengthSamples = Math.floor(duration * 48000);
     
     // Ensure we don't go out of bounds
     const finalLength = Math.min(lengthSamples, audioBuffer.length - startSample);
 
     const offlineCtx = new OfflineAudioContext(
-        audioBuffer.numberOfChannels,
+        2,
         finalLength,
-        44100
+        48000
     );
     
+    // Prepare buffer segment and ensure stereo
+    let segmentBuffer = audioBuffer;
+    if (audioBuffer.numberOfChannels === 1) {
+      const stereoBuffer = offlineCtx.createBuffer(2, audioBuffer.length, 48000);
+      const monoData = audioBuffer.getChannelData(0);
+      for (let ch = 0; ch < 2; ch++) {
+        stereoBuffer.getChannelData(ch).set(monoData);
+      }
+      segmentBuffer = stereoBuffer;
+    }
+
     const source = offlineCtx.createBufferSource();
-    source.buffer = audioBuffer;
+    source.buffer = segmentBuffer;
     source.connect(offlineCtx.destination);
     
     // Start playback at 'startTime' relative to the original buffer, 

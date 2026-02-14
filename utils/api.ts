@@ -97,6 +97,9 @@ export const api = {
                 if (track.audioClip instanceof File) {
                     formData.append(`track_${index}_clip`, track.audioClip);
                 }
+                if (track.iplFile instanceof File) {
+                    formData.append(`track_${index}_ipl`, track.iplFile);
+                }
             });
         }
 

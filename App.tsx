@@ -8,6 +8,7 @@ import { AllReleases } from './screens/AllReleases';
 import { Dashboard } from './screens/Dashboard'; 
 import { Statistics } from './screens/Statistics'; 
 import { ReleaseDetailsPage } from './screens/ReleaseDetailsPage';
+import { SingleReleasePage } from './screens/SingleReleasePage';
 // import { Publishing } from './screens/Publishing';
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
@@ -530,9 +531,71 @@ const App: React.FC = () => {
                  <AllReleases 
                     releases={allReleases} 
                     onViewDetails={(r) => navigate(`/releases/${r.id}/view`)}
-                    onEdit={(release) => {
-                        setEditingRelease(release);
-                        navigate('/new-release'); 
+                    onEdit={async (release) => {
+                        if (!release.id || !token) {
+                            setEditingRelease(release);
+                            navigate('/new-release');
+                            return;
+                        }
+                        try {
+                            const raw: any = await api.getRelease(token, release.id);
+                            const mapArr = (v: any) => Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
+                            const primaryArtists = mapArr(raw.primaryArtists);
+                            const toArtistObjs = (arr: any[], role: string) => (Array.isArray(arr) ? arr : []).map((name: string) => ({ name, role }));
+                            const tracks = (raw.tracks || []).map((t: any, idx: number) => ({
+                                id: String(t.id ?? `${raw.id}_${idx+1}`),
+                                audioFile: t.audio_file || null,
+                                audioClip: t.audio_clip || null,
+                                videoFile: null,
+                                iplFile: t.ipl_file || null,
+                                trackNumber: String(t.track_number ?? (idx+1)),
+                                releaseDate: '',
+                                isrc: t.isrc || '',
+                                title: t.title || '',
+                                duration: t.duration || '',
+                                artists: [
+                                  ...toArtistObjs(mapArr(t.primary_artists), 'MainArtist'),
+                                  ...toArtistObjs(mapArr(t.featured_artists), 'FeaturedArtist'),
+                                ],
+                                genre: t.genre || '',
+                                subGenre: t.sub_genre || '',
+                                isInstrumental: t.is_instrumental ? 'Yes' : 'No',
+                                explicitLyrics: t.explicit_lyrics || 'No',
+                                composer: t.composer || '',
+                                lyricist: t.lyricist || '',
+                                lyrics: t.lyrics || '',
+                                contributors: []
+                            }));
+                            const mapped: ReleaseData = {
+                                id: String(raw.id),
+                                status: raw.status || release.status,
+                                submissionDate: raw.submission_date || release.submissionDate,
+                                aggregator: raw.aggregator || release.aggregator,
+                                distributionTargets: raw.distributionTargets || release.distributionTargets,
+                                coverArt: raw.cover_art || release.coverArt || null,
+                                type: (raw.release_type || release.type) as any,
+                                upc: raw.upc || release.upc || '',
+                                title: raw.title || release.title || '',
+                                language: raw.language || release.language || '',
+                                primaryArtists,
+                                label: raw.label || release.label || '',
+                                genre: raw.genre || release.genre || '',
+                                subGenre: raw.sub_genre || release.subGenre || '',
+                                pLine: raw.p_line || release.pLine || '',
+                                cLine: raw.c_line || release.cLine || '',
+                                version: raw.version || release.version || '',
+                                tracks,
+                                isNewRelease: raw.original_release_date ? false : true,
+                                originalReleaseDate: raw.original_release_date || '',
+                                plannedReleaseDate: raw.planned_release_date || ''
+                            };
+                            setEditingRelease(mapped);
+                            navigate('/new-release');
+                        } catch (e) {
+                            console.error('Failed to load full release for edit', e);
+                            setEditingRelease(release);
+                            navigate('/new-release');
+                        }
                     }}
                     onDelete={async (release) => {
                         if (!token) return;
@@ -549,6 +612,7 @@ const App: React.FC = () => {
             } />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
             <Route path="/releases/:id/view" element={<ReleaseDetailsPage token={token} aggregators={aggregators} />} />
+            <Route path="/releases/:id/single" element={<SingleReleasePage />} />
             {/* <Route path="/publishing/*" element={
                  <Publishing 
                     activeTab={location.pathname.includes('writer') ? 'PUBLISHING_WRITER' : 

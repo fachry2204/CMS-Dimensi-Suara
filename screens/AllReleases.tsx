@@ -249,10 +249,9 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
                                                     <img 
-                                                        src={
-                                                            typeof release.coverArt === 'string'
-                                                                ? assetUrl(release.coverArt)
-                                                                : URL.createObjectURL(release.coverArt)
+                                                        src={(typeof release.coverArt === 'string')
+                                                            ? assetUrl(release.coverArt)
+                                                            : (release.coverArt instanceof Blob ? URL.createObjectURL(release.coverArt) : '')
                                                         } 
                                                         alt="Art" 
                                                         className="w-full h-full object-cover" 
@@ -323,7 +322,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button 
-                                                onClick={() => navigate(`/releases/${release.id}/view`)}
+                                                onClick={() => {
+                                                    const isSingle = (release.tracks || []).length <= 1 || release.type === 'SINGLE';
+                                                    if (isSingle) {
+                                                        navigate(`/releases/${release.id}/single`);
+                                                    } else {
+                                                        navigate(`/releases/${release.id}/view`);
+                                                    }
+                                                }}
                                                 className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
                                             >

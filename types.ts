@@ -41,6 +41,7 @@ export interface Track {
   audioFile?: File | null;
   audioClip?: File | null;
   videoFile?: File | null;
+  iplFile?: File | string | null;
   
   // Metadata
   trackNumber: string;
@@ -73,6 +74,7 @@ export interface ReleaseData {
   status?: 'Pending' | 'Processing' | 'Live' | 'Rejected' | 'Draft';
   submissionDate?: string;
   aggregator?: string; // New Field
+  distributionTargets?: { id: string; label: string; logo: string }[];
   
   // Rejection Data
   rejectionReason?: string;

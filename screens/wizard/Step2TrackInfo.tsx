@@ -28,8 +28,8 @@ const AudioPreview: React.FC<{ file: File | string }> = ({ file }) => {
             setUrl(objectUrl);
             return () => URL.revokeObjectURL(objectUrl);
         }
-        // Unknown type fallback: do nothing
-        setUrl(objectUrl);
+        // Unknown type fallback
+        setUrl(null);
     }, [file]);
 
     if (!url) return null;
@@ -251,7 +251,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   };
 
   // --- File Handlers ---
-  const handleFileChange = async (trackId: string, field: 'audioFile' | 'videoFile' | 'audioClip', file: File | null) => {
+  const handleFileChange = async (trackId: string, field: 'audioFile' | 'videoFile' | 'audioClip' | 'iplFile', file: File | null) => {
     if (!file) {
         updateTrack(trackId, { [field]: null });
         return;
@@ -263,6 +263,10 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     const trackNameBase = track?.title && track.title.trim() !== "" ? track.title : `Track-${track?.trackNumber}`;
 
     if (field === 'videoFile') {
+        updateTrack(trackId, { [field]: file });
+        return;
+    }
+    if (field === 'iplFile') {
         updateTrack(trackId, { [field]: file });
         return;
     }
@@ -458,7 +462,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                     <AudioPreview file={track.audioFile} />
                                                 </div>
                                             ) : (
-                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">Auto-converts to WAV 24-bit 44.1kHz & Renames</p>
+                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">Auto-converts to WAV 24-bit 48kHz & Renames</p>
                                             )}
                                         </div>
                                     </div>
@@ -576,6 +580,26 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             </div>
                                         )}
                                     </div>
+                                    
+                                    {/* IPL Document (if required by version) */}
+                                    {['Cover','Remix','Remastered'].includes(data.version) && (
+                                      <div className="space-y-2 md:col-span-2">
+                                        <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
+                                            <span>IPL Document (Izin Penggunaan Lagu)</span>
+                                            <Info size={14} className="text-slate-400" />
+                                        </label>
+                                        <input 
+                                            type="file"
+                                            onChange={(e) => handleFileChange(track.id, 'iplFile', e.target.files?.[0] || null)}
+                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold cursor-pointer border border-gray-200 rounded-lg bg-white file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200"
+                                        />
+                                        {track.iplFile && (
+                                          <p className="text-[10px] text-amber-600 font-bold mt-1 truncate">
+                                            📄 Attached: {typeof track.iplFile === 'string' ? 'Existing Document' : track.iplFile.name}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
                                 </div>
                             </div>
 

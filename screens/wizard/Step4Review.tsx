@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ReleaseData } from '../../types';
 import { api } from '../../utils/api';
+import { assetUrl } from '../../utils/url';
 import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle, ChevronLeft, X } from 'lucide-react';
 
 interface Props {
@@ -145,10 +146,17 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             <div className="w-full md:w-56 flex-shrink-0">
                 <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-md">
                     {data.coverArt ? (
-                        <img 
-                            src={URL.createObjectURL(data.coverArt)} 
-                            alt="Cover" 
-                            className="w-full h-full object-cover" 
+                        <img
+                            src={
+                              typeof data.coverArt === 'string'
+                                ? assetUrl(data.coverArt)
+                                : (data.coverArt instanceof Blob ? URL.createObjectURL(data.coverArt) : '')
+                            }
+                            alt="Cover"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/3000?text=No+Cover';
+                            }}
                         />
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">

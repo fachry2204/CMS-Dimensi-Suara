@@ -87,6 +87,7 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             releaseData.tracks = releaseData.tracks.map((t, idx) => {
                 const audioField = `track_${idx}_audio`;
                 const clipField = `track_${idx}_clip`;
+                const iplField = `track_${idx}_ipl`;
 
                 // Derive artists arrays from generic "artists" if specific arrays absent
                 let primaryArtists = t.primaryArtists;
@@ -102,7 +103,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     primaryArtists,
                     featuredArtists,
                     audioFile: pathMap[audioField] || t.audioFile || null,
-                    audioClip: pathMap[clipField] || t.audioClip || null
+                    audioClip: pathMap[clipField] || t.audioClip || null,
+                    iplFile: pathMap[iplField] || t.iplFile || null
                 };
             });
         }
@@ -144,6 +146,10 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             releaseData.language || null,
             releaseData.upc || null
         ];
+        if (releaseColNames.includes('distribution_targets')) {
+            cols.push('distribution_targets');
+            vals.push(JSON.stringify(releaseData.distributionTargets || []));
+        }
         if (releaseColNames.includes('original_release_date')) {
             cols.push('original_release_date');
             vals.push(releaseData.originalReleaseDate || null);
@@ -179,6 +185,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             const optCols = [];
             if (trackColNames.includes('audio_clip')) optCols.push('audio_clip');
             if (trackColNames.includes('lyrics')) optCols.push('lyrics');
+            if (trackColNames.includes('ipl_file')) optCols.push('ipl_file');
+            if (trackColNames.includes('is_instrumental')) optCols.push('is_instrumental');
 
             const allCols = baseCols.concat(optCols);
             const trackValues = releaseData.tracks.map(track => {
@@ -201,6 +209,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                 ];
                 if (optCols.includes('audio_clip')) values.push(track.audioClip || null);
                 if (optCols.includes('lyrics')) values.push(track.lyrics || null);
+                if (optCols.includes('ipl_file')) values.push(track.iplFile || null);
+                if (optCols.includes('is_instrumental')) values.push(track.isInstrumental === 'Yes' ? 1 : 0);
                 return values;
             });
 
@@ -208,6 +218,42 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             const sql = `INSERT INTO tracks (${allCols.join(', ')}) VALUES ${trackValues.map(() => placeholders).join(', ')}`;
             const flatParams = trackValues.flat();
             await db.query(sql, flatParams);
+
+            // Save Contributors if table exists
+            let contribCols = null;
+            try {
+                const [cc] = await db.query('SHOW COLUMNS FROM track_contributors');
+                contribCols = cc.map(c => c.Field);
+            } catch (e) {
+                contribCols = null;
+            }
+            if (contribCols && contribCols.includes('track_id')) {
+                const [savedTracks] = await db.query('SELECT id, track_number FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [releaseId]);
+                const mapByTrackNumber = new Map(savedTracks.map(t => [String(t.track_number), t.id]));
+                const colsContrib = ['track_id','name','type','role'].filter(c => contribCols.includes(c));
+                if (colsContrib.length >= 2) {
+                    const contribValues = [];
+                    releaseData.tracks.forEach(tr => {
+                        const tid = mapByTrackNumber.get(String(tr.trackNumber || ''));
+                        if (!tid) return;
+                        (tr.contributors || []).forEach(c => {
+                            const row = [];
+                            colsContrib.forEach(col => {
+                                if (col === 'track_id') row.push(tid);
+                                else if (col === 'name') row.push(c.name || '');
+                                else if (col === 'type') row.push(c.type || '');
+                                else if (col === 'role') row.push(c.role || '');
+                            });
+                            contribValues.push(row);
+                        });
+                    });
+                    if (contribValues.length > 0) {
+                        const placeholdersC = `(${colsContrib.map(() => '?').join(', ')})`;
+                        const sqlC = `INSERT INTO track_contributors (${colsContrib.join(',')}) VALUES ${contribValues.map(() => placeholdersC).join(', ')}`;
+                        await db.query(sqlC, contribValues.flat());
+                    }
+                }
+            }
         }
 
         res.status(201).json({ message: 'Release submitted successfully', id: releaseId });
@@ -324,15 +370,43 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
         // Get Tracks
         const [tracks] = await db.query('SELECT * FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [release.id]);
+        // Optional: load contributors if table exists
+        let contribByTrack = new Map();
+        try {
+            const [cc] = await db.query('SHOW COLUMNS FROM track_contributors');
+            if (cc && cc.length > 0) {
+                const trackIds = tracks.map(t => t.id);
+                if (trackIds.length > 0) {
+                    const [rows] = await db.query(`SELECT * FROM track_contributors WHERE track_id IN (${trackIds.map(()=>' ?').join(',')})`, trackIds);
+                    rows.forEach(r => {
+                        if (!contribByTrack.has(r.track_id)) contribByTrack.set(r.track_id, []);
+                        contribByTrack.get(r.track_id).push({
+                            name: r.name || '',
+                            type: r.type || '',
+                            role: r.role || ''
+                        });
+                    });
+                }
+            }
+        } catch (e) {
+            // ignore if table not found
+        }
 
         // Parse JSON fields
         release.primaryArtists = typeof release.primary_artists === 'string' ? JSON.parse(release.primary_artists) : release.primary_artists;
+        if (release.distribution_targets) {
+            try {
+                release.distributionTargets = typeof release.distribution_targets === 'string' ? JSON.parse(release.distribution_targets) : release.distribution_targets;
+            } catch {
+                release.distributionTargets = [];
+            }
+        }
         
         const processedTracks = tracks.map(t => ({
             ...t,
             primaryArtists: typeof t.primary_artists === 'string' ? JSON.parse(t.primary_artists) : t.primary_artists,
             featuredArtists: typeof t.featured_artists === 'string' ? JSON.parse(t.featured_artists) : t.featured_artists,
-            contributors: [] // If you have a separate contributors table
+            contributors: contribByTrack.get(t.id) || []
         }));
 
         res.json({

@@ -53,6 +53,46 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData }) => {
         </div>
       </div>
 
+      <div className="bg-white rounded-2xl p-8 mb-8 border border-gray-100 shadow-sm">
+        <label className="block text-base font-bold text-slate-700 mb-6">Pilih Release Anda</label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { id: 'SOCIAL', label: 'Social Media', logo: '/assets/platforms/social.svg' },
+            { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: '/assets/platforms/youtube-music.svg' },
+            { id: 'ALL_DSP', label: 'All DSP', logo: '/assets/platforms/alldsp.svg' },
+          ].map(opt => {
+            const selected = Array.isArray(data.distributionTargets) && data.distributionTargets.some(t => t.id === opt.id);
+            return (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  const current = Array.isArray(data.distributionTargets) ? [...data.distributionTargets] : [];
+                  const idx = current.findIndex(t => t.id === opt.id);
+                  if (idx >= 0) {
+                    current.splice(idx, 1);
+                  } else {
+                    current.push({ id: opt.id, label: opt.label, logo: opt.logo });
+                  }
+                  updateData({ distributionTargets: current });
+                }}
+                className={`flex items-center gap-3 p-4 rounded-2xl border ${selected ? 'bg-blue-50 border-blue-200' : 'border-gray-200'} hover:border-blue-200 transition-colors text-left`}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-gray-200 overflow-hidden">
+                  <img src={opt.logo} alt={opt.label} className="w-8 h-8 object-contain" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-slate-800">{opt.label}</div>
+                  <div className="text-[11px] text-slate-400">{selected ? 'Dipilih' : 'Klik untuk pilih'}</div>
+                </div>
+                <div className={`w-5 h-5 rounded border ${selected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'} flex items-center justify-center`}>
+                  {selected && <div className="w-2.5 h-2.5 bg-white rounded-sm"></div>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {!data.isNewRelease && (
         <div className="mb-6 animate-fade-in-down">
              <label className="block text-sm font-bold text-slate-700 mb-2">Original Release Date</label>
