@@ -54,6 +54,8 @@ export interface Track {
 
   // Details
   genre: string;
+  subGenre?: string;
+  isInstrumental?: 'Yes' | 'No';
   explicitLyrics: string; // 'Yes', 'No', 'Clean'
   composer: string;
   lyricist: string;
@@ -85,6 +87,7 @@ export interface ReleaseData {
   primaryArtists: string[];
   label: string;
   genre?: string;
+  subGenre?: string;
   pLine?: string;
   cLine?: string;
   version: string;
@@ -107,52 +110,7 @@ export enum Step {
 
 export type ReleaseType = 'SINGLE' | 'ALBUM';
 
-// --- PUBLISHING TYPES ---
-
-export interface Songwriter {
-  id: string;
-  name: string;
-  role: 'Author' | 'Composer' | 'Author & Composer' | 'Arranger';
-  share: number; // Percentage 0-100
-}
-
-export interface SavedSongwriter {
-  id: string;
-  // Display Name (Computed)
-  name: string; 
-  
-  // Personal Details
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  nik: string; // KTP
-  npwp: string; // Tax ID
-  
-  // Address
-  country: string;
-  province: string;
-  city: string;
-  district: string;
-  village: string;
-  postalCode: string;
-  address1: string;
-  address2: string;
-
-  // Bank Details
-  bankName: string;
-  bankBranch: string;
-  accountName: string;
-  accountNumber: string;
-
-  // Legacy/Optional
-  publisher?: string;
-  ipi?: string;
-}
-
-export interface PublishingRegistration {
-  // Removed
-}
+// Publishing types removed
 
 // --- USER MANAGEMENT TYPES ---
 
@@ -203,4 +161,3 @@ export interface AggregatedStats {
   topCountries: { code: string; revenue: number }[];
   monthlyRevenue: { month: string; revenue: number }[];
 }
-

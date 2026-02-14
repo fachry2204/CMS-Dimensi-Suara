@@ -1,15 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { ReleaseData } from '../../types';
+import { ReleaseData, ReleaseType } from '../../types';
 import { TextInput, SelectInput } from '../../components/Input';
-import { LANGUAGES, VERSIONS } from '../../constants';
+import { LANGUAGES, VERSIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { ImagePlus, UserPlus, Trash2, Loader2 } from 'lucide-react';
 
 interface Props {
   data: ReleaseData;
   updateData: (updates: Partial<ReleaseData>) => void;
+  releaseType: ReleaseType;
 }
 
-export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
+export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseType }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessingImg, setIsProcessingImg] = useState(false);
 
@@ -125,7 +126,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
                 
                 {data.coverArt && !isProcessingImg && (
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button onClick={(e) => { e.stopPropagation(); removeCover(); }} className="px-4 py-2 bg-white text-red-500 rounded-full font-bold text-sm shadow-lg hover:bg-red-50">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); removeCover(); }} className="px-4 py-2 bg-white text-red-500 rounded-full font-bold text-sm shadow-lg hover:bg-red-50">
                             Change Image
                         </button>
                     </div>
@@ -144,7 +145,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
           <div className="w-full md:w-2/3">
               {/* UPC Field (Moved to Top) */}
               <TextInput 
-                label="UPC Album (Optional)" 
+                label="Kode UPC (Jika pernah rilis sebelumnya)" 
                 value={data.upc} 
                 onChange={(e) => updateData({ upc: e.target.value })} 
                 placeholder="Leave blank to auto-generate"
@@ -171,6 +172,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
                       />
                       {data.primaryArtists.length > 1 && (
                         <button 
+                          type="button"
                           onClick={() => removeArtist(index)}
                           className="p-3 text-red-500 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
                         >
@@ -181,6 +183,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
                   ))}
                 </div>
                 <button 
+                  type="button"
                   onClick={addArtist}
                   className="mt-3 flex items-center text-blue-600 font-bold text-sm hover:underline"
                 >
@@ -201,37 +204,46 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData }) => {
                     label="P-Line (Copyright)" 
                     value={data.pLine} 
                     onChange={(e) => updateData({ pLine: e.target.value })} 
-                    placeholder="2024 Your Name/Label"
+                    placeholder=""
                   />
                   <TextInput 
                     label="C-Line (Publishing)" 
                     value={data.cLine} 
                     onChange={(e) => updateData({ cLine: e.target.value })} 
-                    placeholder="2024 Your Name/Label"
+                    placeholder=""
                   />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <SelectInput 
-                    label="Genre"
-                    options={["Pop", "Rock", "Hip Hop", "Jazz", "Electronic", "Classical", "Folk", "R&B", "Country", "Latin", "Metal", "Blues", "Reggae", "Funk", "Soul", "Punk", "Indie", "Alternative", "Dance", "World"]}
-                    value={data.genre}
-                    onChange={(e) => updateData({ genre: e.target.value })}
-                  />
+                  {releaseType === 'ALBUM' && (
+                    <>
+                        <SelectInput 
+                          label="Genre"
+                          options={TRACK_GENRES}
+                          value={data.genre || ""}
+                          onChange={(e) => updateData({ genre: e.target.value, subGenre: "" })}
+                        />
+                        <SelectInput
+                          label="Sub Genre"
+                          options={SUB_GENRES_MAP[data.genre || ""] || []}
+                          value={data.subGenre || ""}
+                          onChange={(e) => updateData({ subGenre: e.target.value })}
+                        />
+                    </>
+                  )}
                   <SelectInput 
                     label="Language / Territory"
                     options={LANGUAGES}
                     value={data.language}
                     onChange={(e) => updateData({ language: e.target.value })}
                   />
-                   <SelectInput 
+                  <SelectInput 
                     label="Release Version"
                     options={VERSIONS}
                     value={data.version}
                     onChange={(e) => updateData({ version: e.target.value })}
                   />
               </div>
-              {/* Genre and Subgenre removed */}
           </div>
       </div>
     </div>

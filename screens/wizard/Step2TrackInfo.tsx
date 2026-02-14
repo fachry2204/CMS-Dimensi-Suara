@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ReleaseData, Track, TrackArtist, TrackContributor, ReleaseType } from '../../types';
 import { Music, Trash2, PlusCircle, Info, ChevronDown, ChevronUp, FileAudio, Video, Mic2, User, UserPlus, Loader2, Scissors, Play, Pause, X, Check } from 'lucide-react';
-import { ARTIST_ROLES, CONTRIBUTOR_TYPES, EXPLICIT_OPTIONS, TRACK_GENRES } from '../../constants';
+import { ARTIST_ROLES, CONTRIBUTOR_TYPES, EXPLICIT_OPTIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { processFullAudio, cropAndConvertAudio, getAudioDuration } from '../../utils/audioProcessing';
 
 interface Props {
@@ -15,13 +15,21 @@ const AudioPreview: React.FC<{ file: File | string }> = ({ file }) => {
     const [url, setUrl] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!file) {
+            setUrl(null);
+            return;
+        }
         if (typeof file === 'string') {
             setUrl(file);
             return;
         }
-        const objectUrl = URL.createObjectURL(file);
+        if (file instanceof Blob) {
+            const objectUrl = URL.createObjectURL(file);
+            setUrl(objectUrl);
+            return () => URL.revokeObjectURL(objectUrl);
+        }
+        // Unknown type fallback: do nothing
         setUrl(objectUrl);
-        return () => URL.revokeObjectURL(objectUrl);
     }, [file]);
 
     if (!url) return null;
@@ -77,6 +85,41 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
        addTrack();
     }
   }, []);
+
+  // Sync Track Data for Single Release
+  useEffect(() => {
+    if (releaseType === 'SINGLE' && data.tracks.length > 0) {
+      const track = data.tracks[0];
+      let updates: Partial<Track> = {};
+      let hasUpdates = false;
+
+      // 1. Sync Title
+      if (track.title !== data.title) {
+          updates.title = data.title;
+          hasUpdates = true;
+      }
+
+      // 2. Sync Artists (Primary Artists -> MainArtist)
+      const expectedArtists = data.primaryArtists
+          .filter(name => name.trim() !== "")
+          .map(name => ({ name, role: "MainArtist" }));
+      
+      const artistsToUse = expectedArtists.length > 0 ? expectedArtists : [{ name: "", role: "MainArtist" }];
+
+      // Compare current vs expected
+      const currentNames = track.artists.map(a => a.name).join('|');
+      const expectedNames = artistsToUse.map(a => a.name).join('|');
+
+      if (currentNames !== expectedNames) {
+          updates.artists = artistsToUse;
+          hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+          updateTrack(track.id, updates);
+      }
+    }
+  }, [data.title, data.primaryArtists, releaseType]); // Only sync when Step 1 data changes
 
   // --- Trimmer Helpers ---
   const handleTrimmerPlayToggle = () => {
@@ -180,6 +223,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       releaseDate: data.plannedReleaseDate || "",
       isrc: "",
       genre: "",
+      isInstrumental: "No",
       explicitLyrics: "No",
       composer: "",
       lyricist: "",
@@ -539,18 +583,20 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
 
                             {/* 2. Basic Metadata */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Track Number <span className="text-red-500">*</span></label>
-                                    <input 
-                                        value={track.trackNumber}
-                                        onChange={(e) => updateTrack(track.id, { trackNumber: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                        placeholder="1"
-                                    />
-                                </div>
+                                {releaseType === 'ALBUM' && (
+                                  <div>
+                                      <label className="block text-sm font-semibold text-slate-700 mb-2">Track Number <span className="text-red-500">*</span></label>
+                                      <input 
+                                          value={track.trackNumber}
+                                          onChange={(e) => updateTrack(track.id, { trackNumber: e.target.value })}
+                                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                                          placeholder="1"
+                                      />
+                                  </div>
+                                )}
                                 {/* Release Date Field Removed as per request */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">ISRC Code</label>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">ISRC Code (Jika sudah rilis sebelumnya)</label>
                                     <input 
                                         value={track.isrc}
                                         onChange={(e) => updateTrack(track.id, { isrc: e.target.value })}
@@ -621,11 +667,55 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                             {/* 4. Details */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
                                 <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Instrumental <span className="text-red-500">*</span></label>
+                                    <div className="relative">
+                                        <select 
+                                            value={track.isInstrumental || 'No'}
+                                            onChange={(e) => {
+                                                const val = e.target.value as 'Yes' | 'No';
+                                                updateTrack(track.id, { 
+                                                    isInstrumental: val,
+                                                    explicitLyrics: val === 'Yes' ? 'No' : track.explicitLyrics,
+                                                    lyricist: val === 'Yes' ? '' : track.lyricist,
+                                                    lyrics: val === 'Yes' ? '' : track.lyrics
+                                                });
+                                            }}
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                        >
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
+                                            <ChevronDown size={14} />
+                                        </div>
+                                    </div>
+                                </div>
+                                {track.isInstrumental !== 'Yes' && (
+                                    <div className="transition-all duration-300 opacity-100">
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Explicit Lyrics <span className="text-red-500">*</span></label>
+                                        <div className="relative">
+                                            <select 
+                                                value={track.explicitLyrics}
+                                                onChange={(e) => updateTrack(track.id, { explicitLyrics: e.target.value })}
+                                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                            >
+                                                {EXPLICIT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                            </select>
+                                            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
+                                                <ChevronDown size={14} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+                                <div>
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">Genre <span className="text-red-500">*</span></label>
                                     <div className="relative">
                                         <select 
                                             value={track.genre}
-                                            onChange={(e) => updateTrack(track.id, { genre: e.target.value })}
+                                            onChange={(e) => updateTrack(track.id, { genre: e.target.value, subGenre: "" })}
                                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
                                         >
                                             <option value="">Select Genre</option>
@@ -637,20 +727,28 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Explicit Lyrics <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Sub Genre</label>
                                     <div className="relative">
                                         <select 
-                                            value={track.explicitLyrics}
-                                            onChange={(e) => updateTrack(track.id, { explicitLyrics: e.target.value })}
+                                            value={track.subGenre || ""}
+                                            onChange={(e) => updateTrack(track.id, { subGenre: e.target.value })}
                                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
                                         >
-                                            {EXPLICIT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                            <option value="">Select Sub Genre</option>
+                                            {(SUB_GENRES_MAP[track.genre] || []).map(sg => (
+                                                <option key={sg} value={sg}>{sg}</option>
+                                            ))}
                                         </select>
                                         <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
                                             <ChevronDown size={14} />
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
                                 <div>
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">Composer <span className="text-red-500">*</span></label>
                                     <input 
@@ -660,6 +758,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                         placeholder="Full Name"
                                     />
                                 </div>
+                                {track.isInstrumental !== 'Yes' && (
                                 <div>
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">Lyricist <span className="text-red-500">*</span></label>
                                     <input 
@@ -669,25 +768,29 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                         placeholder="Full Name"
                                     />
                                 </div>
-                            </div>
-
-                            <div className="mb-8">
-                                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                                    <Mic2 size={16} /> Lyrics
-                                </label>
-                                <textarea 
-                                    value={track.lyrics}
-                                    onChange={(e) => updateTrack(track.id, { lyrics: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none h-32 resize-y"
-                                    placeholder="Enter song lyrics here..."
-                                />
+                                )}
                             </div>
 
                             {/* 5. Additional Contributors */}
+                            {track.isInstrumental !== 'Yes' && (
+                              <div className="mb-8">
+                                  <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                      <Mic2 size={16} /> Lyrics
+                                  </label>
+                                  <textarea 
+                                      value={track.lyrics}
+                                      onChange={(e) => updateTrack(track.id, { lyrics: e.target.value })}
+                                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none h-32 resize-y"
+                                      placeholder="Enter song lyrics here..."
+                                  />
+                              </div>
+                            )}
+
                             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                                 <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
                                     Additional Contributors
                                 </label>
+                                
                                 <div className="space-y-3">
                                     {track.contributors.map((contrib, idx) => (
                                         <div key={idx} className="flex flex-col md:flex-row gap-3">

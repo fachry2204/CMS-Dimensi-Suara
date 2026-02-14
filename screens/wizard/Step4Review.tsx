@@ -2,18 +2,67 @@
 import React, { useState } from 'react';
 import { ReleaseData } from '../../types';
 import { api } from '../../utils/api';
-import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle } from 'lucide-react';
+import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle, ChevronLeft, X } from 'lucide-react';
 
 interface Props {
   data: ReleaseData;
   onSave: (data: ReleaseData) => void;
+  onBack: () => void;
 }
 
-export const Step4Review: React.FC<Props> = ({ data, onSave }) => {
+export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showValidationModal, setShowValidationModal] = useState(false);
 
   const handleSubmit = async () => {
+    // --- VALIDATION START ---
+    const errors: string[] = [];
+
+    // 1. Validate Release Level
+    if (!data.coverArt) {
+        errors.push("Cover Art is required.");
+    }
+    if (!data.title) errors.push("Release Title is required.");
+    if (!data.primaryArtists || data.primaryArtists.length === 0 || !data.primaryArtists[0]) {
+        errors.push("Primary Artist is required.");
+    }
+    // Genre is only required for ALBUM/EP, not Single
+    if (data.type !== 'SINGLE') {
+        if (!data.genre) errors.push("Release Genre is required.");
+    }
+    if (!data.language) errors.push("Language / Territory is required.");
+    if (!data.version) errors.push("Release Version is required.");
+    if (!data.label) errors.push("Record Label is required.");
+    if (!data.plannedReleaseDate) errors.push("Release Date is required.");
+
+    // 2. Validate Track Level
+    if (!data.tracks || data.tracks.length === 0) {
+        errors.push("At least one track is required.");
+    } else {
+        data.tracks.forEach((track, idx) => {
+            const trackNum = idx + 1;
+            if (!track.title) errors.push(`Track ${trackNum}: Title is required.`);
+            if (!track.audioFile) errors.push(`Track ${trackNum}: Audio file is missing.`);
+            if (!track.genre) errors.push(`Track ${trackNum}: Genre is required.`);
+            if (!track.composer) errors.push(`Track ${trackNum}: Composer is required.`);
+            
+            // Conditional Validation based on Instrumental
+            if (track.isInstrumental !== 'Yes') {
+                if (!track.lyricist) errors.push(`Track ${trackNum}: Lyricist is required (since it's not Instrumental).`);
+                if (!track.explicitLyrics) errors.push(`Track ${trackNum}: Explicit Lyrics status is required.`);
+            }
+        });
+    }
+
+    if (errors.length > 0) {
+        setValidationErrors(errors);
+        setShowValidationModal(true);
+        return;
+    }
+    // --- VALIDATION END ---
+
     setIsSubmitting(true);
     try {
         const token = localStorage.getItem('cms_token');
@@ -220,31 +269,83 @@ export const Step4Review: React.FC<Props> = ({ data, onSave }) => {
       </div>
 
       <div className="mt-12 flex flex-col items-end border-t border-gray-100 pt-8 pb-12">
-        
-        <button 
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className={`
-                w-full md:w-auto px-10 py-4 font-bold rounded-xl flex items-center justify-center gap-3 transition-all
-                ${isSubmitting 
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-1'}
-            `}
-        >
-            {isSubmitting ? (
-                <>
-                    <Loader2 className="animate-spin" size={20} />
-                    Processing Release...
-                </>
-            ) : (
-                <>
-                    Submit Release
-                    <CheckCircle size={20} />
-                </>
-            )}
-        </button>
+        <div className="flex gap-4 w-full md:w-auto">
+            <button 
+                onClick={onBack}
+                className="w-full md:w-auto px-6 py-4 rounded-xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            >
+                <ChevronLeft size={20} />
+                Back
+            </button>
+            
+            <button 
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className={`
+                    w-full md:w-auto px-10 py-4 font-bold rounded-xl flex items-center justify-center gap-3 transition-all
+                    ${isSubmitting 
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-1'}
+                `}
+            >
+                {isSubmitting ? (
+                    <>
+                        <Loader2 className="animate-spin" size={20} />
+                        Processing Release...
+                    </>
+                ) : (
+                    <>
+                        Submit Release
+                        <CheckCircle size={20} />
+                    </>
+                )}
+            </button>
+        </div>
       </div>
+
+      {/* VALIDATION MODAL */}
+      {showValidationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-red-50 p-6 border-b border-red-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertCircle className="text-red-500" size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-bold text-red-700">Incomplete Data</h3>
+                        <p className="text-sm text-red-600">Please fix the following issues before submitting:</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowValidationModal(false)}
+                        className="text-red-400 hover:text-red-600 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+                
+                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                    <ul className="space-y-3">
+                        {validationErrors.map((err, idx) => (
+                            <li key={idx} className="flex items-start gap-3 text-slate-700 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></span>
+                                <span className="text-sm font-medium leading-relaxed">{err}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
+                    <button 
+                        onClick={() => setShowValidationModal(false)}
+                        className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200"
+                    >
+                        Understood
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

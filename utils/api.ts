@@ -64,6 +64,23 @@ export const api = {
         return parseResponse(res);
     },
 
+    getRelease: async (token, id) => {
+        const res = await fetch(`${API_BASE_URL}/releases/${id}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
+    deleteRelease: async (token, id) => {
+        const res = await fetch(`${API_BASE_URL}/releases/${id}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
     createRelease: async (token, data) => {
         const formData = new FormData();
         
@@ -76,6 +93,9 @@ export const api = {
             data.tracks.forEach((track, index) => {
                 if (track.audioFile instanceof File) {
                     formData.append(`track_${index}_audio`, track.audioFile);
+                }
+                if (track.audioClip instanceof File) {
+                    formData.append(`track_${index}_clip`, track.audioClip);
                 }
             });
         }
@@ -170,77 +190,7 @@ export const api = {
         return parseResponse(res);
     },
 
-    // Songwriters
-    getSongwriters: async (token) => {
-        const res = await fetch(`${API_BASE_URL}/songwriters`, {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            credentials: 'include'
-        });
-        const rows = await parseResponse(res);
-        // Map snake_case DB to camelCase Frontend
-        return rows.map(r => ({
-            id: r.id,
-            name: r.name,
-            firstName: r.first_name,
-            lastName: r.last_name,
-            email: r.email,
-            phone: r.phone,
-            nik: r.nik,
-            npwp: r.npwp,
-            country: r.country,
-            province: r.province,
-            city: r.city,
-            district: r.district,
-            village: r.village,
-            postalCode: r.postal_code,
-            address1: r.address1,
-            address2: r.address2,
-            bankName: r.bank_name,
-            bankBranch: r.bank_branch,
-            accountName: r.account_name,
-            accountNumber: r.account_number,
-            publisher: r.publisher,
-            ipi: r.ipi
-        }));
-    },
-
-    createSongwriter: async (token, data) => {
-        // Map camelCase Frontend to snake_case DB
-        const payload = {
-            name: data.name,
-            first_name: data.firstName,
-            last_name: data.lastName,
-            email: data.email,
-            phone: data.phone,
-            nik: data.nik,
-            npwp: data.npwp,
-            country: data.country,
-            province: data.province,
-            city: data.city,
-            district: data.district,
-            village: data.village,
-            postal_code: data.postalCode,
-            address1: data.address1,
-            address2: data.address2,
-            bank_name: data.bankName,
-            bank_branch: data.bankBranch,
-            account_name: data.accountName,
-            account_number: data.accountNumber,
-            publisher: data.publisher,
-            ipi: data.ipi
-        };
-
-        const res = await fetch(`${API_BASE_URL}/songwriters`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error('Failed to create songwriter');
-        return res.json();
-    },
+    // Songwriters removed
 
     // Publishing Registrations (Removed)
     getPublishing: async (token) => {
@@ -254,7 +204,8 @@ export const api = {
     // Settings
     getAggregators: async (token) => {
         const res = await fetch(`${API_BASE_URL}/settings/aggregators`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+            credentials: 'include'
         });
         if (!res.ok) throw new Error('Failed to fetch aggregators');
         return res.json();

@@ -132,6 +132,14 @@ const initDb = async () => {
             }
         }
         
+        // Remove publishing/songwriter related table if present
+        try {
+            await connection.query('DROP TABLE IF EXISTS songwriters');
+            console.log('🧹 Dropped legacy table: songwriters');
+        } catch (err) {
+            console.warn('Warning dropping songwriters table:', err.message);
+        }
+        
         // Seed Default Admin
         const [users] = await connection.query("SELECT * FROM users WHERE role = 'Admin'");
         if (users.length === 0) {

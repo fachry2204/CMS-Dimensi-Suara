@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Download, Calendar, Clock, FileText, ChevronLeft, Search, User, XCircle, CheckCircle2 } from 'lucide-react';
 import { ReportData, ReleaseData } from '../types';
+import { formatDMY, formatHM } from '../utils/date';
 
 interface ReportScreenProps {
   onImport: (data: ReportData[]) => void;
@@ -367,13 +368,13 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
                                             <td className="px-6 py-4 text-slate-600">
                                                 <div className="flex items-center gap-2">
                                                     <Calendar size={16} className="text-slate-400" />
-                                                    {file.timestamp ? new Date(file.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                                                    {file.timestamp ? formatDMY(file.timestamp) : '-'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-slate-600">
                                                 <div className="flex items-center gap-2">
                                                     <Clock size={16} className="text-slate-400" />
-                                                    {file.timestamp ? new Date(file.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                                    {file.timestamp ? formatHM(file.timestamp) : '-'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">

@@ -1,5 +1,5 @@
 
-import { ReleaseData, PublishingRegistration, SavedSongwriter, Track, TrackArtist, TrackContributor, ReleaseType } from '../types';
+import { ReleaseData, Track, TrackArtist, TrackContributor, ReleaseType } from '../types';
 import { ARTIST_ROLES, TRACK_GENRES, CONTRIBUTOR_TYPES, LANGUAGES } from '../constants';
 
 // --- DICTIONARIES ---
@@ -50,43 +50,6 @@ const generateName = () => `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
 const generateTitle = () => `${pick(SONG_ADJECTIVES)} ${pick(SONG_NOUNS)}`;
 
 // --- GENERATORS ---
-
-export const generateSongwriters = (count: number): SavedSongwriter[] => {
-    return Array.from({ length: count }, (_, i) => {
-        const firstName = pick(FIRST_NAMES);
-        const lastName = pick(LAST_NAMES);
-        const fullName = `${firstName} ${lastName}`;
-        
-        return {
-            id: `sw_${i + 1}`,
-            name: fullName,
-            firstName,
-            lastName,
-            email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-            phone: `081${randomInt(10000000, 99999999)}`,
-            nik: `317${randomInt(1000000000000, 9999999999999)}`,
-            npwp: `${randomInt(10, 99)}.${randomInt(100, 999)}.${randomInt(100, 999)}.1-${randomInt(100, 999)}.000`,
-            country: 'Indonesia',
-            province: 'DKI Jakarta', // Simplified
-            city: pick(CITIES),
-            district: 'Tebet', // Simplified
-            village: 'Tebet Timur', // Simplified
-            postalCode: randomInt(10000, 99999).toString(),
-            address1: `Jl. ${pick(SONG_NOUNS)} No. ${randomInt(1, 100)}`,
-            address2: '',
-            bankName: pick(BANKS),
-            bankBranch: 'KCP Utama',
-            accountName: fullName,
-            accountNumber: randomInt(1000000000, 9999999999).toString(),
-            publisher: Math.random() > 0.7 ? 'Dimensi Publishing' : '',
-            ipi: Math.random() > 0.5 ? randomInt(10000000000, 99999999999).toString() : ''
-        };
-    });
-};
-
-export const generatePublishing = (count: number, writers: SavedSongwriter[]): PublishingRegistration[] => {
-    return []; // Removed
-};
 
 export const generateReleases = (count: number): ReleaseData[] => {
     return Array.from({ length: count }, (_, i) => {

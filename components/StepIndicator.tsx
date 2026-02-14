@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 
 interface Props {
   currentStep: number;
+  onStepClick?: (step: Step) => void;
 }
 
 const steps = [
@@ -13,7 +14,7 @@ const steps = [
   { id: Step.REVIEW, label: "Review", desc: "Finalize" },
 ];
 
-export const StepIndicator: React.FC<Props> = ({ currentStep }) => {
+export const StepIndicator: React.FC<Props> = ({ currentStep, onStepClick }) => {
   return (
     <div className="w-full mb-12 px-2">
       <div className="flex items-center justify-between relative">
@@ -29,9 +30,14 @@ export const StepIndicator: React.FC<Props> = ({ currentStep }) => {
         {steps.map((step, index) => {
           const isActive = step.id === currentStep;
           const isCompleted = step.id < currentStep;
+          const canClick = !!onStepClick && step.id <= currentStep;
 
           return (
-            <div key={step.id} className="flex flex-col items-center group cursor-default">
+            <div 
+              key={step.id} 
+              className={`flex flex-col items-center group ${canClick ? 'cursor-pointer' : 'cursor-default'}`}
+              onClick={() => { if (canClick) onStepClick!(step.id); }}
+            >
                <div 
                   className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-300 border-4 
                     ${isActive 

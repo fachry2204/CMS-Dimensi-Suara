@@ -48,16 +48,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/new-release" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <PlusCircle size={20} className={getIconClass(isActive)} />
-                    New Release
-                  </>
-                )}
-              </NavLink>
-            </li>
-            <li>
               <NavLink to="/releases" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
                   <>

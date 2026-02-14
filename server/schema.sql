@@ -10,35 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     profile_picture VARCHAR(255)
 );
 
--- 2. Songwriters
-CREATE TABLE IF NOT EXISTS songwriters (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT, -- Owner of this songwriter profile
-    name VARCHAR(255) NOT NULL,
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
-    email VARCHAR(255),
-    phone VARCHAR(50),
-    nik VARCHAR(50),
-    npwp VARCHAR(50),
-    country VARCHAR(100),
-    province VARCHAR(100),
-    city VARCHAR(100),
-    district VARCHAR(100),
-    village VARCHAR(100),
-    postal_code VARCHAR(20),
-    address1 TEXT,
-    address2 TEXT,
-    bank_name VARCHAR(100),
-    bank_branch VARCHAR(100),
-    account_name VARCHAR(100),
-    account_number VARCHAR(50),
-    publisher VARCHAR(100),
-    ipi VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 3. Releases
+-- 2. Releases
 CREATE TABLE IF NOT EXISTS releases (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT, -- Who submitted it

@@ -1,7 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Disc, Music, Calendar, Eye, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Globe, ChevronLeft, ChevronRight, List } from 'lucide-react';
+import { Disc, Music, Calendar, Eye, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Globe, ChevronLeft, ChevronRight, List, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ReleaseData } from '../types';
+import { formatDMY } from '../utils/date';
+import { assetUrl } from '../utils/url';
 
 interface Props {
   releases: ReleaseData[];
@@ -9,6 +12,7 @@ interface Props {
   onEdit: (release: ReleaseData) => void;
   availableAggregators?: string[];
   error?: string | null;
+  onDelete?: (release: ReleaseData) => void;
 }
 
 type SortKey = 'title' | 'artist' | 'type' | 'date' | 'aggregator' | 'status';
@@ -19,7 +23,8 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, availableAggregators, error }) => {
+export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, availableAggregators, error, onDelete }) => {
+  const navigate = useNavigate();
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -135,20 +140,30 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
 
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
-       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-slate-800 tracking-tight">All Releases</h1>
                 <p className="text-slate-500 mt-1">Manage and track your music catalog status.</p>
             </div>
-            <div className="relative w-full md:w-auto">
-                <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search Title, Artist, UPC, Aggregator..." 
-                    className="w-full md:w-80 pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all"
-                />
-                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+            <div className="w-full md:w-auto flex items-center gap-3">
+                <div className="relative w-full md:w-80">
+                    <input 
+                        type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search Title, Artist, UPC, Aggregator..." 
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all"
+                    />
+                    <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+                </div>
+                <button
+                    onClick={() => navigate('/new-release')}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold shadow-sm"
+                    title="Create New Release"
+                >
+                    <Plus size={18} />
+                    New Release
+                </button>
             </div>
         </div>
 
@@ -206,7 +221,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                             const type = (release.tracks || []).length > 1 ? "Album/EP" : "Single";
                             
                             // Date priority: Planned > Original > Submission
-                            const displayDate = release.plannedReleaseDate || release.originalReleaseDate || release.submissionDate || "N/A";
+                            const displayDateRaw = release.plannedReleaseDate || release.originalReleaseDate || release.submissionDate || "N/A";
                             const status = release.status || "Pending";
 
                             // Determine color based on status
@@ -234,9 +249,11 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
                                                     <img 
-                                                        src={typeof release.coverArt === 'string' 
-                                                            ? (release.coverArt.startsWith('/') ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}${release.coverArt}` : release.coverArt)
-                                                            : URL.createObjectURL(release.coverArt)} 
+                                                        src={
+                                                            typeof release.coverArt === 'string'
+                                                                ? assetUrl(release.coverArt)
+                                                                : URL.createObjectURL(release.coverArt)
+                                                        } 
                                                         alt="Art" 
                                                         className="w-full h-full object-cover" 
                                                         onError={(e) => {
@@ -263,7 +280,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                     <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <Calendar size={14} className="text-slate-400" />
-                                            {displayDate}
+                                            {formatDMY(displayDateRaw)}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -306,11 +323,25 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button 
-                                                onClick={() => onViewDetails(release)}
+                                                onClick={() => navigate(`/releases/${release.id}/view`)}
                                                 className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
                                             >
                                                 <Eye size={14} /> View
+                                            </button>
+                                            <button 
+                                                onClick={() => onEdit(release)}
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-purple-600 hover:border-purple-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
+                                                title="Edit"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button 
+                                                onClick={() => onDelete && onDelete(release)}
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-red-600 hover:border-red-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
+                                                title="Delete"
+                                            >
+                                                Delete
                                             </button>
                                         </div>
                                     </td>

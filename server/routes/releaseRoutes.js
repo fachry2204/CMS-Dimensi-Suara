@@ -85,10 +85,24 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         }
         if (releaseData.tracks && Array.isArray(releaseData.tracks)) {
             releaseData.tracks = releaseData.tracks.map((t, idx) => {
-                const field = `track_${idx}_audio`;
+                const audioField = `track_${idx}_audio`;
+                const clipField = `track_${idx}_clip`;
+
+                // Derive artists arrays from generic "artists" if specific arrays absent
+                let primaryArtists = t.primaryArtists;
+                let featuredArtists = t.featuredArtists;
+                if ((!primaryArtists || !Array.isArray(primaryArtists)) || (!featuredArtists || !Array.isArray(featuredArtists))) {
+                    const arts = Array.isArray(t.artists) ? t.artists : [];
+                    primaryArtists = primaryArtists && Array.isArray(primaryArtists) ? primaryArtists : arts.filter(a => /main/i.test(a.role)).map(a => a.name);
+                    featuredArtists = featuredArtists && Array.isArray(featuredArtists) ? featuredArtists : arts.filter(a => /feat/i.test(a.role)).map(a => a.name);
+                }
+
                 return {
                     ...t,
-                    audioFile: pathMap[field] || t.audioFile || null
+                    primaryArtists,
+                    featuredArtists,
+                    audioFile: pathMap[audioField] || t.audioFile || null,
+                    audioClip: pathMap[clipField] || t.audioClip || null
                 };
             });
         }
@@ -106,73 +120,140 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             });
         }
 
-        // 1. Insert Release
+        // 1. Insert Release (dynamic columns for optional fields)
+        const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
+        const releaseColNames = releaseCols.map(c => c.Field);
+        const cols = [
+            'user_id','title','version','release_type',
+            'primary_artists','cover_art','label',
+            'p_line','c_line','genre','sub_genre','language',
+            'upc'
+        ];
+        const vals = [
+            userId,
+            releaseData.title,
+            releaseData.version || '',
+            releaseData.type,
+            JSON.stringify(releaseData.primaryArtists || []),
+            releaseData.coverArt || null,
+            releaseData.label || null,
+            releaseData.pLine || null,
+            releaseData.cLine || null,
+            releaseData.genre || null,
+            releaseData.subGenre || null,
+            releaseData.language || null,
+            releaseData.upc || null
+        ];
+        if (releaseColNames.includes('original_release_date')) {
+            cols.push('original_release_date');
+            vals.push(releaseData.originalReleaseDate || null);
+        }
+        if (releaseColNames.includes('planned_release_date')) {
+            cols.push('planned_release_date');
+            vals.push(releaseData.plannedReleaseDate || null);
+        }
+        cols.push('submission_date'); vals.push(new Date());
+        cols.push('status'); vals.push('Pending');
+        if (releaseColNames.includes('aggregator')) {
+            cols.push('aggregator'); vals.push(releaseData.aggregator || null);
+        }
+
+        const placeholders = `(${cols.map(() => '?').join(', ')})`;
         const [releaseResult] = await db.query(
-            `INSERT INTO releases (
-                user_id, title, version, release_type, 
-                primary_artists, cover_art, label, 
-                p_line, c_line, 
-                genre, sub_genre, language, 
-                upc, original_release_date, submission_date, 
-                status, aggregator
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Pending', ?)`,
-            [
-                userId,
-                releaseData.title,
-                releaseData.version,
-                releaseData.type, // 'SINGLE' or 'ALBUM'
-                JSON.stringify(releaseData.primaryArtists),
-                releaseData.coverArt || null,
-                releaseData.label || null,
-                releaseData.pLine || null,
-                releaseData.cLine || null,
-                releaseData.genre || null,
-                releaseData.subGenre || null,
-                releaseData.language || null,
-                releaseData.upc || null,
-                releaseData.originalReleaseDate || null,
-                releaseData.aggregator || null
-            ]
+            `INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`,
+            vals
         );
 
         const releaseId = releaseResult.insertId;
 
-        // 2. Insert Tracks
+        // 2. Insert Tracks (dynamic columns for optional fields like audio_clip, lyrics)
         if (releaseData.tracks && releaseData.tracks.length > 0) {
-            const trackValues = releaseData.tracks.map(track => [
-                releaseId,
-                track.trackNumber,
-                track.title,
-                track.version,
-                JSON.stringify(track.primaryArtists || []),
-                JSON.stringify(track.featuredArtists || []),
-                track.audioFile || null, // Path string
-                track.isrc || null,
-                track.explicitLyrics || null,
-                track.composer || null,
-                track.lyricist || null,
-                track.producer || null,
-                track.genre || null,
-                track.subGenre || null,
-                track.previewStart || 0
-            ]);
+            const [trackCols] = await db.query('SHOW COLUMNS FROM tracks');
+            const trackColNames = trackCols.map(c => c.Field);
 
-            await db.query(
-                `INSERT INTO tracks (
-                    release_id, track_number, title, version, 
-                    primary_artists, featured_artists, audio_file, 
-                    isrc, explicit_lyrics, composer, 
-                    lyricist, producer, genre, sub_genre, 
-                    preview_start
-                ) VALUES ?`,
-                [trackValues]
-            );
+            const baseCols = [
+                'release_id','track_number','title','version',
+                'primary_artists','featured_artists','audio_file',
+                'isrc','explicit_lyrics','composer','lyricist','producer','genre','sub_genre','preview_start'
+            ];
+            const optCols = [];
+            if (trackColNames.includes('audio_clip')) optCols.push('audio_clip');
+            if (trackColNames.includes('lyrics')) optCols.push('lyrics');
+
+            const allCols = baseCols.concat(optCols);
+            const trackValues = releaseData.tracks.map(track => {
+                const values = [
+                    releaseId,
+                    track.trackNumber || '',
+                    track.title || '',
+                    track.version || '',
+                    JSON.stringify(track.primaryArtists || []),
+                    JSON.stringify(track.featuredArtists || []),
+                    track.audioFile || null,
+                    track.isrc || null,
+                    track.explicitLyrics || null,
+                    track.composer || null,
+                    track.lyricist || null,
+                    track.producer || null,
+                    track.genre || null,
+                    track.subGenre || null,
+                    track.previewStart || 0
+                ];
+                if (optCols.includes('audio_clip')) values.push(track.audioClip || null);
+                if (optCols.includes('lyrics')) values.push(track.lyrics || null);
+                return values;
+            });
+
+            const placeholders = `(${allCols.map(() => '?').join(', ')})`;
+            const sql = `INSERT INTO tracks (${allCols.join(', ')}) VALUES ${trackValues.map(() => placeholders).join(', ')}`;
+            const flatParams = trackValues.flat();
+            await db.query(sql, flatParams);
         }
 
         res.status(201).json({ message: 'Release submitted successfully', id: releaseId });
 
     } catch (err) {
         console.error("Create Release Error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE RELEASE
+router.delete('/:id', authenticateToken, async (req, res) => {
+    const releaseId = req.params.id;
+    try {
+        // Fetch release to derive folder from cover_art path if any
+        const [rows] = await db.query('SELECT cover_art, title, primary_artists FROM releases WHERE id = ? AND user_id = ?', [releaseId, req.user.id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Release not found' });
+        }
+        const rel = rows[0];
+        // Attempt to remove folder if exists
+        if (rel.cover_art && typeof rel.cover_art === 'string') {
+            const normalized = String(rel.cover_art).replace(/^[\\/]+/, '');
+            const coverPath = normalized.startsWith('uploads/') || normalized.startsWith('/uploads/')
+                ? (normalized.startsWith('/') ? normalized : `/${normalized}`)
+                : `/uploads/${normalized}`;
+            const absCover = path.join(__dirname, '../../', coverPath.replace(/^\//, ''));
+            const releasesBase = path.join(__dirname, '../../uploads/releases');
+            let dirToRemove = releasesBase;
+            if (absCover.startsWith(releasesBase)) {
+                // remove the parent folder
+                dirToRemove = path.dirname(absCover);
+            }
+            try {
+                if (fs.existsSync(dirToRemove)) {
+                    fs.rmSync(dirToRemove, { recursive: true, force: true });
+                }
+            } catch (e) {
+                console.warn('Failed to remove release folder:', e.message);
+            }
+        }
+        // Delete release (tracks cascade)
+        await db.query('DELETE FROM releases WHERE id = ? AND user_id = ?', [releaseId, req.user.id]);
+        res.json({ message: 'Release deleted' });
+    } catch (err) {
+        console.error('Delete Release Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

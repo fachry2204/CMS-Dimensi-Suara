@@ -6,7 +6,7 @@ import { Step1ReleaseInfo } from './wizard/Step1ReleaseInfo';
 import { Step2TrackInfo } from './wizard/Step2TrackInfo';
 import { Step3ReleaseDetail } from './wizard/Step3ReleaseDetail';
 import { Step4Review } from './wizard/Step4Review';
-import { Maximize, Minimize, ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle, X } from 'lucide-react';
 
 interface Props {
   type: ReleaseType;
@@ -19,13 +19,13 @@ const INITIAL_DATA: ReleaseData = {
   coverArt: null,
   upc: "",
   title: "",
-  language: "Indonesia",
+  language: "",
   primaryArtists: [""], 
   label: "",
-  genre: "Pop",
-  pLine: new Date().getFullYear().toString(),
-  cLine: new Date().getFullYear().toString(),
-  version: "Original",
+  genre: "",
+  pLine: "",
+  cLine: "",
+  version: "",
   tracks: [],
   isNewRelease: true,
   originalReleaseDate: "",
@@ -34,12 +34,9 @@ const INITIAL_DATA: ReleaseData = {
 
 export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialData }) => {
   const [currentStep, setCurrentStep] = useState<number>(Step.INFO);
+  const [showExitModal, setShowExitModal] = useState(false);
   
   const [data, setData] = useState<ReleaseData>(() => initialData ? initialData : INITIAL_DATA);
-
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  // No local/session storage persistence for wizard data
 
   // If viewing existing data, we might want to ensure tracks exist
   useEffect(() => {
@@ -47,29 +44,6 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         setData(initialData);
     }
   }, [initialData]);
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch((err) => {
-        console.error(`Error attempting to enable fullscreen: ${err.message} (${err.name})`);
-      });
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
-  };
 
   const updateData = (updates: Partial<ReleaseData>) => {
     setData(prev => ({ ...prev, ...updates }));
@@ -85,16 +59,21 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
     if (currentStep > Step.INFO) {
         setCurrentStep(prev => prev - 1);
     } else {
-        onBack();
+        setShowExitModal(true);
     }
+  };
+
+  const handleConfirmExit = () => {
+      setShowExitModal(false);
+      onBack();
   };
 
   const renderStep = () => {
     switch (currentStep) {
-        case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} />;
+        case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} releaseType={type} />;
         case Step.TRACKS: return <Step2TrackInfo data={data} updateData={updateData} releaseType={type} />;
         case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} />;
-        case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} />;
+        case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} onBack={handlePrev} />;
         default: return null;
     }
   };
@@ -114,23 +93,11 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                 </div>
                 <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{title}</h1>
             </div>
-            <div className="flex items-center gap-3">
-                <button 
-                  onClick={toggleFullscreen}
-                  className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
-                  title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                >
-                  {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-                </button>
-                <button className="flex items-center gap-2 px-5 py-2.5 border border-blue-200 text-blue-600 bg-white rounded-xl font-semibold text-sm hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm">
-                    <Save size={16} />
-                    <span>Save Draft</span>
-                </button>
-            </div>
+            
         </div>
 
         {/* Stepper */}
-        <StepIndicator currentStep={currentStep} />
+        <StepIndicator currentStep={currentStep} onStepClick={(s) => { if (s <= currentStep) setCurrentStep(s); }} />
 
         {/* Main Card */}
         <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-blue-900/5 border border-white p-8 mb-8 relative">
@@ -138,26 +105,73 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         </div>
 
         {/* Bottom Navigation */}
+        {currentStep < Step.REVIEW && (
         <div className="flex justify-between items-center px-2">
             <button 
                 onClick={handlePrev}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-slate-500 hover:text-slate-800 hover:bg-white transition-all"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all"
             >
                 <ChevronLeft size={20} />
                 Back
             </button>
             
-            {currentStep < Step.REVIEW && (
-                <button 
-                    onClick={handleNext}
-                    className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all duration-200"
-                >
-                    Next Step
-                    <ChevronRight size={20} />
-                </button>
-            )}
+            <button 
+                onClick={handleNext}
+                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all duration-200"
+            >
+                Next Step
+                <ChevronRight size={20} />
+            </button>
         </div>
+        )}
       </div>
+
+      {/* Exit Confirmation Modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-yellow-50 p-6 border-b border-yellow-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="text-yellow-600" size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-bold text-yellow-800">Warning</h3>
+                        <p className="text-sm text-yellow-700">Confirmation Required</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowExitModal(false)}
+                        className="text-yellow-400 hover:text-yellow-600 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+                
+                <div className="p-6">
+                    <p className="text-slate-600 mb-6 font-medium">
+                        Apakah kamu akan kembali ke Pemilihan Single atau EP/Album?
+                    </p>
+                    <p className="text-sm text-slate-500 mb-6 bg-slate-50 p-3 rounded-lg">
+                        Jika Ya, data draft yang sudah di isi akan dihapus.
+                    </p>
+                    
+                    <div className="flex gap-3 justify-end">
+                        <button
+                            onClick={() => setShowExitModal(false)}
+                            className="px-4 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                        >
+                            Tidak
+                        </button>
+                        <button
+                            onClick={handleConfirmExit}
+                            className="px-4 py-2 rounded-xl font-bold bg-yellow-500 text-white hover:bg-yellow-600 shadow-lg shadow-yellow-500/30 transition-all"
+                        >
+                            Ya
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

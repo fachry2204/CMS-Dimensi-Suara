@@ -2,19 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReleaseTypeSelection } from './ReleaseTypeSelection';
 import { ReleaseWizard } from './ReleaseWizard';
-import { ReleaseType, ReleaseData, SavedSongwriter } from '../types';
+import { ReleaseType, ReleaseData } from '../types';
 
 interface NewReleaseFlowProps {
     editingRelease: ReleaseData | null;
     setEditingRelease: (release: ReleaseData | null) => void;
-    savedSongwriters: SavedSongwriter[];
     onSaveRelease: (data: ReleaseData) => void;
 }
 
 export const NewReleaseFlow: React.FC<NewReleaseFlowProps> = ({ 
     editingRelease, 
     setEditingRelease, 
-    savedSongwriters, 
     onSaveRelease 
 }) => {
     const navigate = useNavigate();
@@ -35,13 +33,12 @@ export const NewReleaseFlow: React.FC<NewReleaseFlowProps> = ({
     };
 
     const handleBack = () => {
-        if (confirm("Are you sure you want to go back? Your progress will be lost.")) {
-            setWizardStep('SELECTION');
-            setReleaseType(null);
-            setEditingRelease(null); // Clear editing state when going back
-            
-            // No local/session storage for wizard (by policy)
-        }
+        // Confirmation is now handled within ReleaseWizard component
+        setWizardStep('SELECTION');
+        setReleaseType(null);
+        setEditingRelease(null); // Clear editing state when going back
+        
+        // No local/session storage for wizard (by policy)
     };
 
     const handleSave = (data: ReleaseData) => {
@@ -56,8 +53,6 @@ export const NewReleaseFlow: React.FC<NewReleaseFlowProps> = ({
                 onBack={handleBack}
                 onSave={handleSave}
                 initialData={editingRelease || undefined}
-                savedSongwriters={savedSongwriters}
-                onAddSongwriter={() => navigate('/publishing/writer')} 
             />
         );
     }

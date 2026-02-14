@@ -75,7 +75,9 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData }) => {
                     onChange={(e) => updateData({ plannedReleaseDate: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all"
                 />
-                <Calendar className="absolute right-4 top-3.5 text-blue-500 pointer-events-none group-hover:scale-110 transition-transform" size={18} />
+                <div className="absolute right-2 top-2 bottom-2 aspect-square bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 pointer-events-none group-hover:bg-blue-200 transition-colors shadow-sm border border-blue-200">
+                    <Calendar size={18} />
+                </div>
             </div>
             <p className="text-xs text-blue-400 mt-2 font-medium">Recommended: 14 days from today</p>
         </div>

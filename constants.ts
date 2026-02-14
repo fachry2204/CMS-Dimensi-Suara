@@ -74,6 +74,24 @@ export const TRACK_GENRES = [
   "Soul"
 ];
 
+export const SUB_GENRES_MAP: Record<string, string[]> = {
+  "Pop": ["Dance Pop", "Synthpop", "Indie Pop", "Electropop", "K-Pop", "J-Pop", "Teen Pop", "City Pop"],
+  "Rock": ["Alternative Rock", "Hard Rock", "Indie Rock", "Punk Rock", "Progressive Rock", "Grunge"],
+  "Hip Hop": ["Trap", "Boom Bap", "Cloud Rap", "Drill", "Lo-Fi Hip Hop", "Conscious Hip Hop"],
+  "R&B": ["Contemporary R&B", "Neo Soul", "Quiet Storm", "Alternative R&B"],
+  "Jazz": ["Smooth Jazz", "Bebop", "Fusion", "Vocal Jazz", "Contemporary Jazz"],
+  "Classical": ["Baroque", "Romantic", "Contemporary", "Classical Crossover"],
+  "Electronic": ["House", "Techno", "Trance", "EDM", "Drum & Bass", "Dubstep"],
+  "Dangdut": ["Dangdut Koplo", "Dangdut Melayu", "Dangdut Pop", "Dangdut Kontemporer"],
+  "Indie": ["Indie Pop", "Indie Rock", "Indie Folk", "Bedroom Pop"],
+  "Metal": ["Metalcore", "Heavy Metal", "Death Metal", "Black Metal", "Nu Metal"],
+  "Folk": ["Acoustic", "Indie Folk", "Contemporary Folk"],
+  "Reggae": ["Dancehall", "Roots Reggae", "Dub"],
+  "Blues": ["Electric Blues", "Delta Blues", "Contemporary Blues"],
+  "Country": ["Country Pop", "Bluegrass", "Alternative Country"],
+  "Soul": ["Neo Soul", "Contemporary Soul", "Funk Soul"]
+};
+
 // Placeholder for Google API Config (Removed)
 export const GOOGLE_CONFIG = {
   // Removed as per user request

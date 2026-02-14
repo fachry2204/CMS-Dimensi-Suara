@@ -8,7 +8,6 @@ import db from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import releaseRoutes from './routes/releaseRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
-import songwriterRoutes from './routes/songwriterRoutes.js';
 // import publishingRoutes from './routes/publishingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
@@ -71,7 +70,6 @@ app.use('/uploads', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/releases', releaseRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/songwriters', songwriterRoutes);
 // app.use('/api/publishing', publishingRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/users', userRoutes);

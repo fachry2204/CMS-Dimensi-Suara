@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { ReleaseData, Track } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { formatDMY } from '../utils/date';
+import { assetUrl } from '../utils/url';
 
 interface Props {
   release: ReleaseData;
@@ -53,29 +55,44 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
     }
   }, [isOpen, release]);
 
-  // Generate Object URLs for preview (Cover, Full Audio, Clip Audio)
+  // Generate Object/Asset URLs for preview (Cover, Full Audio, Clip Audio)
   useEffect(() => {
     if (!isOpen) return;
     const newUrls: { [key: string]: string } = {};
     
     // Cover Art
     if (release.coverArt) {
-        newUrls['cover_art'] = URL.createObjectURL(release.coverArt);
+        if (typeof release.coverArt === 'string') {
+            newUrls['cover_art'] = assetUrl(release.coverArt);
+        } else if (release.coverArt instanceof Blob) {
+            newUrls['cover_art'] = URL.createObjectURL(release.coverArt);
+        } else {
+            // Unsupported type, skip
+        }
     }
 
     // Tracks
     release.tracks.forEach(t => {
-        if (t.audioFile) {
-            newUrls[`${t.id}_full`] = URL.createObjectURL(t.audioFile);
+        if ((t as any).audioFile) {
+            const af: any = (t as any).audioFile;
+            if (typeof af === 'string') newUrls[`${t.id}_full`] = assetUrl(af);
+            else if (af instanceof Blob) newUrls[`${t.id}_full`] = URL.createObjectURL(af);
         }
-        if (t.audioClip) {
-            newUrls[`${t.id}_clip`] = URL.createObjectURL(t.audioClip);
+        if ((t as any).audioClip) {
+            const ac: any = (t as any).audioClip;
+            if (typeof ac === 'string') newUrls[`${t.id}_clip`] = assetUrl(ac);
+            else if (ac instanceof Blob) newUrls[`${t.id}_clip`] = URL.createObjectURL(ac);
         }
     });
     setObjectUrls(newUrls);
 
     return () => {
-        Object.values(newUrls).forEach(url => URL.revokeObjectURL(url));
+        Object.values(newUrls).forEach(url => {
+            // Revoke only blob/object urls
+            if (url.startsWith('blob:')) {
+                try { URL.revokeObjectURL(url); } catch {}
+            }
+        });
     };
   }, [isOpen, release.tracks, release.coverArt]);
 
@@ -178,6 +195,15 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
       document.body.removeChild(a);
   };
 
+  const getFileName = (f: any, fallback = ''): string => {
+      if (!f) return fallback;
+      if (typeof f === 'string') {
+          const parts = f.split(/[\\/]/);
+          return parts[parts.length - 1] || fallback;
+      }
+      return f.name || fallback;
+  };
+
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
       alert("Copied to clipboard!");
@@ -207,7 +233,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
         }
     };
 
-    const fileName = type === 'full' ? track.audioFile?.name : track.audioClip?.name;
+    const fileName = type === 'full' ? getFileName((track as any).audioFile, 'full_audio') : getFileName((track as any).audioClip, 'audio_clip');
 
     return (
         <div className="flex items-center gap-2">
@@ -288,7 +314,13 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
             <div className="flex flex-col md:flex-row gap-8 items-start mb-8 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl bg-gray-200 shadow-md overflow-hidden flex-shrink-0 border border-gray-300">
                     {release.coverArt ? (
-                        <img src={objectUrls['cover_art']} className="w-full h-full object-cover" />
+                        <img 
+                            src={objectUrls['cover_art']} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                            }}
+                        />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-400"><Disc size={40} /></div>
                     )}
@@ -352,7 +384,13 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                 <div className="md:col-span-1">
                                     <div className="aspect-square rounded-xl overflow-hidden border border-gray-200 mb-3 bg-gray-50">
                                         {release.coverArt ? (
-                                            <img src={objectUrls['cover_art']} className="w-full h-full object-cover" />
+                                            <img 
+                                                src={objectUrls['cover_art']} 
+                                                className="w-full h-full object-cover" 
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                                                }}
+                                            />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-slate-400">
                                                 <Disc size={40} />
@@ -360,7 +398,11 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                         )}
                                     </div>
                                     <button 
-                                        onClick={() => release.coverArt && downloadFile(objectUrls['cover_art'], release.coverArt.name)}
+                                        onClick={() => {
+                                            if (!release.coverArt) return;
+                                            const name = getFileName(release.coverArt, 'cover_art');
+                                            downloadFile(objectUrls['cover_art'], name);
+                                        }}
                                         disabled={!release.coverArt}
                                         className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                                     >
@@ -385,10 +427,10 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                     {/* Step 3 Data */}
                                     <InfoRow label="UPC Code" value={upcInput || release.upc || "Not Assigned"} highlight />
                                     <InfoRow label="Distribution Type" value={release.isNewRelease ? "New Release" : "Re-release"} />
-                                    <InfoRow label="Planned Release Date" value={release.plannedReleaseDate} highlight />
-                                    <InfoRow label="Original Release Date" value={!release.isNewRelease ? release.originalReleaseDate : "-"} />
+                                    <InfoRow label="Planned Release Date" value={formatDMY(release.plannedReleaseDate)} highlight />
+                                    <InfoRow label="Original Release Date" value={!release.isNewRelease ? formatDMY(release.originalReleaseDate) : "-"} />
                                     
-                                    <InfoRow label="Submission Date" value={release.submissionDate || "Not Submitted"} />
+                                    <InfoRow label="Submission Date" value={release.submissionDate ? formatDMY(release.submissionDate) : "Not Submitted"} />
                                     <InfoRow label="Total Tracks" value={release.tracks.length.toString()} />
                                     <InfoRow label="Current Status" value={status} />
                                     <InfoRow label="Aggregator" value={selectedAggregator || "-"} />
@@ -449,8 +491,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                                 <FileAudio size={12} /> Full Audio File
                                                             </span>
                                                             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                                                <div className="text-xs font-bold text-slate-700 truncate mb-2" title={track.audioFile?.name}>
-                                                                    {track.audioFile?.name || "No file uploaded"}
+                                                                <div className="text-xs font-bold text-slate-700 truncate mb-2" title={getFileName((track as any).audioFile)}>
+                                                                    {getFileName((track as any).audioFile) || "No file uploaded"}
                                                                 </div>
                                                                 <AudioPlayer track={track} type="full" />
                                                             </div>

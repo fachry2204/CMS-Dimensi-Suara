@@ -7,6 +7,7 @@ import { ReleaseWizard } from './screens/ReleaseWizard';
 import { AllReleases } from './screens/AllReleases';
 import { Dashboard } from './screens/Dashboard'; 
 import { Statistics } from './screens/Statistics'; 
+import { ReleaseDetailsPage } from './screens/ReleaseDetailsPage';
 // import { Publishing } from './screens/Publishing';
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
@@ -16,7 +17,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
-import { ReleaseType, ReleaseData, SavedSongwriter, ReportData, Notification } from './types';
+import { ReleaseType, ReleaseData, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 import { api, API_BASE_URL } from './utils/api';
 import { getProfileImageUrl } from './utils/imageUtils';
@@ -47,9 +48,7 @@ const App: React.FC = () => {
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Global App State with GENERATED DATA (50+)
-  const [savedSongwriters, setSavedSongwriters] = useState<SavedSongwriter[]>([]);
-  // const [allPublishing, setAllPublishing] = useState<PublishingRegistration[]>([]);
+  // Global App State
   const [allReleases, setAllReleases] = useState<ReleaseData[]>([]);
   const [dataFetchError, setDataFetchError] = useState<string | null>(null);
   
@@ -63,56 +62,48 @@ const App: React.FC = () => {
     const fetchData = async () => {
         if (!token) return;
 
-        try {
-            setDataFetchError(null);
-            // 1. Fetch Releases
-            const releases = await api.getReleases(token);
-            setAllReleases(releases);
-            
-            // 2. Fetch Reports
-            const reports = await api.getReports(token);
-            setReportData(reports);
+        setDataFetchError(null);
+        const handleAuthExpired = () => {
+            localStorage.removeItem('cms_auth');
+            localStorage.removeItem('cms_user');
+            localStorage.removeItem('cms_token');
+            localStorage.removeItem('cms_role');
+            setIsAuthenticated(false);
+            setCurrentUser('');
+            setToken('');
+            setUserRole('');
+            setDataFetchError('Session expired. Please login again.');
+            navigate('/');
+        };
 
-            // 3. Fetch Songwriters
-            const writers = await api.getSongwriters(token);
-            setSavedSongwriters(writers);
+        const p1 = api.getReleases(token)
+            .then(data => setAllReleases(data))
+            .catch((err: any) => {
+                if (err?.message === 'AUTH') return handleAuthExpired();
+                console.error('Failed to fetch releases:', err);
+                setDataFetchError(err.message || 'Failed to load releases');
+                setAllReleases([]);
+            });
 
-            // 4. Fetch Publishing Registrations
-            // const pubs = await api.getPublishing(token);
-            // setAllPublishing(pubs);
+        const p2 = api.getReports(token)
+            .then(data => setReportData(data))
+            .catch((err: any) => {
+                if (err?.message === 'AUTH') return handleAuthExpired();
+                console.warn('Failed to fetch reports:', err);
+            });
 
-            // 5. Fetch Aggregators
-            try {
-                const aggs = await api.getAggregators(token);
+        const p4 = api.getAggregators(token)
+            .then(aggs => {
                 if (aggs && Array.isArray(aggs) && aggs.length > 0) {
                     setAggregators(aggs);
                 }
-            } catch (aggErr) {
-                console.warn("Failed to fetch aggregators, using defaults", aggErr);
-            }
+            })
+            .catch((err: any) => {
+                if (err?.message === 'AUTH') return handleAuthExpired();
+                console.warn('Failed to fetch aggregators, using defaults', err);
+            });
 
-        } catch (err: any) {
-            if (err?.message === 'AUTH') {
-                // Token invalid/expired → force logout
-                localStorage.removeItem('cms_auth');
-                localStorage.removeItem('cms_user');
-                localStorage.removeItem('cms_token');
-                localStorage.removeItem('cms_role');
-                setIsAuthenticated(false);
-                setCurrentUser('');
-                setToken('');
-                setUserRole('');
-                setDataFetchError('Session expired. Please login again.');
-                navigate('/');
-                return;
-            }
-            console.error("Failed to fetch data from API:", err);
-            setDataFetchError(err.message || "Failed to load data");
-            // Fallback removed as per request (use DB only)
-            setAllReleases([]);
-            setSavedSongwriters([]);
-            // setAllPublishing([]);
-        }
+        await Promise.allSettled([p1, p2, p4]);
     };
 
     if (isAuthenticated) {
@@ -265,7 +256,72 @@ const App: React.FC = () => {
      }
   };
 
-  const handleViewDetails = (release: ReleaseData) => {
+  const handleViewDetails = async (release: ReleaseData) => {
+      // Fetch full detail from API to populate missing fields (p/c-line, language, ISRC, audio paths)
+      if (token && release.id) {
+          try {
+              const raw: any = await api.getRelease(token, release.id);
+              const mapArtists = (arr: any) => Array.isArray(arr) ? arr : (typeof arr === 'string' ? [arr] : []);
+              const primaryArtists = mapArtists(raw.primaryArtists);
+              
+              const mapped: ReleaseData = {
+                  id: String(raw.id),
+                  status: raw.status || release.status,
+                  submissionDate: raw.submission_date || release.submissionDate,
+                  aggregator: raw.aggregator || release.aggregator,
+
+                  coverArt: raw.cover_art || release.coverArt || null,
+                  type: raw.release_type || release.type,
+                  upc: raw.upc || release.upc || '',
+                  title: raw.title || release.title,
+                  language: raw.language || release.language || '',
+                  primaryArtists,
+                  label: raw.label || release.label || '',
+                  genre: raw.genre || release.genre,
+                  subGenre: raw.sub_genre || release.subGenre,
+                  pLine: raw.p_line || release.pLine || '',
+                  cLine: raw.c_line || release.cLine || '',
+                  version: raw.version || release.version || '',
+
+                  tracks: (raw.tracks || []).map((t: any) => {
+                      const p = mapArtists(t.primary_artists);
+                      const f = mapArtists(t.featured_artists);
+                      return {
+                          id: String(t.id ?? `${raw.id}_${t.track_number}`),
+                          audioFile: t.audio_file || null,
+                          audioClip: null,
+                          videoFile: null,
+                          trackNumber: String(t.track_number ?? ''),
+                          releaseDate: '',
+                          isrc: t.isrc || '',
+                          title: t.title || '',
+                          duration: t.duration || '',
+                          artists: [
+                              ...p.map((name: string) => ({ name, role: 'MainArtist' })),
+                              ...f.map((name: string) => ({ name, role: 'FeaturedArtist' })),
+                          ],
+                          genre: t.genre || '',
+                          subGenre: t.sub_genre || '',
+                          isInstrumental: undefined,
+                          explicitLyrics: t.explicit_lyrics || 'No',
+                          composer: t.composer || '',
+                          lyricist: t.lyricist || '',
+                          lyrics: t.lyrics || '',
+                          contributors: []
+                      };
+                  }),
+
+                  isNewRelease: raw.original_release_date ? false : true,
+                  originalReleaseDate: raw.original_release_date || '',
+                  plannedReleaseDate: raw.planned_release_date || release.plannedReleaseDate || ''
+              };
+
+              setViewingRelease(mapped);
+              return;
+          } catch (err) {
+              console.warn('Failed to load full release detail, falling back to summary', err);
+          }
+      }
       setViewingRelease(release);
   };
 
@@ -467,22 +523,32 @@ const App: React.FC = () => {
                 <NewReleaseFlow 
                     editingRelease={editingRelease}
                     setEditingRelease={setEditingRelease}
-                    savedSongwriters={savedSongwriters}
                     onSaveRelease={handleSaveRelease}
                 />
             } />
             <Route path="/releases" element={
                  <AllReleases 
                     releases={allReleases} 
-                    onViewDetails={handleViewDetails}
+                    onViewDetails={(r) => navigate(`/releases/${r.id}/view`)}
                     onEdit={(release) => {
                         setEditingRelease(release);
                         navigate('/new-release'); 
+                    }}
+                    onDelete={async (release) => {
+                        if (!token) return;
+                        if (!confirm(`Hapus release "${release.title}"?`)) return;
+                        try {
+                            await api.deleteRelease(token, release.id);
+                            setAllReleases(prev => prev.filter(r => r.id !== release.id));
+                        } catch (err: any) {
+                            alert(err?.message || 'Gagal menghapus release');
+                        }
                     }}
                     error={dataFetchError}
                 />
             } />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
+            <Route path="/releases/:id/view" element={<ReleaseDetailsPage token={token} aggregators={aggregators} />} />
             {/* <Route path="/publishing/*" element={
                  <Publishing 
                     activeTab={location.pathname.includes('writer') ? 'PUBLISHING_WRITER' : 
@@ -541,17 +607,6 @@ const App: React.FC = () => {
         <Footer />
 
         {/* Modals */}
-        {viewingRelease && (
-            <ReleaseDetailModal 
-                release={viewingRelease} 
-                onClose={() => setViewingRelease(null)} 
-                onEdit={() => {
-                    setEditingRelease(viewingRelease);
-                    setViewingRelease(null);
-                    navigate('/new-release');
-                }}
-            />
-        )}
 
         {showProfileModal && (
             <ProfileModal 

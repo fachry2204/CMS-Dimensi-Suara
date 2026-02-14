@@ -12,6 +12,7 @@ import {
     ArrowRight,
     Globe
 } from 'lucide-react';
+import { assetUrl } from '../utils/url';
 
 interface Props {
   releases: ReleaseData[];
@@ -125,6 +126,16 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                              if (release.status === 'Processing') statusClass = "bg-blue-100 text-blue-700 border-blue-200";
                              if (release.status === 'Pending') statusClass = "bg-yellow-100 text-yellow-700 border-yellow-200";
 
+                             const formatDMY = (value?: string) => {
+                                 if (!value) return "N/A";
+                                 const d = new Date(value);
+                                 if (isNaN(d.getTime())) return value;
+                                 const dd = String(d.getDate()).padStart(2, '0');
+                                 const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                 const yyyy = d.getFullYear();
+                                 return `${dd}/${mm}/${yyyy}`;
+                             };
+ 
                              return (
                                 <tr 
                                     key={release.id} 
@@ -135,8 +146,12 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                                         <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden border border-gray-200">
                                             {release.coverArt ? (
                                                 <img 
-                                                    src={typeof release.coverArt === 'string' ? release.coverArt : URL.createObjectURL(release.coverArt)} 
-                                                    className="w-full h-full object-cover" 
+                                                    src={typeof release.coverArt === 'string' ? assetUrl(release.coverArt) : URL.createObjectURL(release.coverArt)} 
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                                                        console.error("Failed to load image:", release.coverArt);
+                                                    }} 
                                                 />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-gray-400"><Disc size={16} /></div>
@@ -165,7 +180,7 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                                         </span>
                                     </td>
                                     <td className="px-6 py-3 text-sm text-slate-500">
-                                        {release.submissionDate || "N/A"}
+                                        {formatDMY(release.submissionDate)}
                                     </td>
                                 </tr>
                              )
