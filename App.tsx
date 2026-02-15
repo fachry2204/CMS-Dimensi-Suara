@@ -21,6 +21,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { ReleaseType, ReleaseData, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 import { api, API_BASE_URL } from './utils/api';
+import { publicAssetUrl } from './utils/url';
 import { getProfileImageUrl } from './utils/imageUtils';
 
 const App: React.FC = () => {
@@ -564,14 +565,28 @@ const App: React.FC = () => {
                                 composer: t.composer || '',
                                 lyricist: t.lyricist || '',
                                 lyrics: t.lyrics || '',
-                                contributors: []
+                                contributors: Array.isArray(t.contributors) ? t.contributors : []
                             }));
+                            const optionMap: Record<string, { id: string; label: string; logo: string }> = {
+                                'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: publicAssetUrl('assets/platforms/social.svg') },
+                                'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: publicAssetUrl('assets/platforms/youtube-music.svg') },
+                                'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: publicAssetUrl('assets/platforms/alldsp.svg') },
+                            };
+                            let distributionTargets: { id: string; label: string; logo: string }[] = [];
+                            const dtA: any = raw.distributionTargets ?? raw.distribution_targets;
+                            if (Array.isArray(dtA)) {
+                                if (typeof dtA[0] === 'string') {
+                                    distributionTargets = (dtA as string[]).map(id => optionMap[id]).filter(Boolean);
+                                } else {
+                                    distributionTargets = dtA;
+                                }
+                            }
                             const mapped: ReleaseData = {
                                 id: String(raw.id),
                                 status: raw.status || release.status,
                                 submissionDate: raw.submission_date || release.submissionDate,
                                 aggregator: raw.aggregator || release.aggregator,
-                                distributionTargets: raw.distributionTargets || release.distributionTargets,
+                                distributionTargets,
                                 coverArt: raw.cover_art || release.coverArt || null,
                                 type: (raw.release_type || release.type) as any,
                                 upc: raw.upc || release.upc || '',
