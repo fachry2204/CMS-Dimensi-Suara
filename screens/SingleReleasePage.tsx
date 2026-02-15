@@ -17,6 +17,23 @@ export const SingleReleasePage: React.FC = () => {
     const run = async () => {
       try {
         const raw: any = await api.getRelease(token, id!);
+        const normDate = (v: any) => {
+          if (!v) return '';
+          if (typeof v === 'string') {
+            const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
+            if (m) return m[1];
+            try {
+              const d = new Date(v);
+              if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+            } catch {}
+            return v.slice(0, 10);
+          }
+          try {
+            const d = new Date(v);
+            if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+          } catch {}
+          return '';
+        };
         const mapArr = (v: any) => Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
         const primaryArtists = mapArr(raw.primaryArtists);
         const optionMap: Record<string, { id: string; label: string; logo: string }> = {
@@ -86,8 +103,8 @@ export const SingleReleasePage: React.FC = () => {
           version: raw.version || '',
           tracks,
           isNewRelease: raw.original_release_date ? false : true,
-          originalReleaseDate: raw.original_release_date || '',
-          plannedReleaseDate: raw.planned_release_date || ''
+          originalReleaseDate: normDate(raw.original_release_date),
+          plannedReleaseDate: normDate(raw.planned_release_date)
         };
         setInitialData(mapped);
       } catch (e: any) {
