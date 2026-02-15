@@ -60,11 +60,11 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         const userId = req.user.id;
         const isUpdate = !!releaseData.id;
 
-        // Prepare target directory: "<PrimaryArtist> - <ReleaseTitle>"
         const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
         const sanitize = (s) => String(s || '').replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
-        const folderName = `${sanitize(primaryArtist)} - ${sanitize(releaseData.title)}`.substring(0, 150);
-        const targetDir = path.join(RELEASES_DIR, folderName);
+        const artistDirName = sanitize(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitize(releaseData.title).substring(0, 80) || 'Untitled_Release';
+        const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
         // Move uploaded files into targetDir and collect public paths
@@ -76,7 +76,7 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             if (f.path !== destPath) {
                 fs.renameSync(f.path, destPath);
             }
-            const publicPath = `/uploads/releases/${folderName}/${destName}`;
+            const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
             pathMap[f.fieldname] = publicPath;
         }
 
@@ -291,35 +291,51 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
     const releaseId = req.params.id;
     try {
-        // Fetch release to derive folder from cover_art path if any
-        const [rows] = await db.query('SELECT cover_art, title, primary_artists FROM releases WHERE id = ? AND user_id = ?', [releaseId, req.user.id]);
+        const [rows] = await db.query('SELECT id, user_id, cover_art, title, primary_artists FROM releases WHERE id = ?', [releaseId]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Release not found' });
         }
         const rel = rows[0];
-        // Attempt to remove folder if exists
-        if (rel.cover_art && typeof rel.cover_art === 'string') {
-            const normalized = String(rel.cover_art).replace(/^[\\/]+/, '');
-            const coverPath = normalized.startsWith('uploads/') || normalized.startsWith('/uploads/')
-                ? (normalized.startsWith('/') ? normalized : `/${normalized}`)
-                : `/uploads/${normalized}`;
-            const absCover = path.join(__dirname, '../../', coverPath.replace(/^\//, ''));
-            const releasesBase = path.join(__dirname, '../../uploads/releases');
-            let dirToRemove = releasesBase;
-            if (absCover.startsWith(releasesBase)) {
-                // remove the parent folder
-                dirToRemove = path.dirname(absCover);
+        if (req.user.role === 'User' && rel.user_id !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const releasesBase = path.join(__dirname, '../../uploads/releases');
+        const resolveDirFromPath = (p) => {
+            if (!p || typeof p !== 'string') return null;
+            const normalized = String(p).replace(/^[\\/]+/, '');
+            let relPath = normalized;
+            if (relPath.startsWith('uploads/')) {
+                relPath = relPath.replace(/^uploads[\\/]/, '');
+            } else if (relPath.startsWith('/uploads/')) {
+                relPath = relPath.replace(/^\/uploads[\\/]/, '');
             }
+            const abs = path.join(__dirname, '../../', relPath);
+            if (!abs.startsWith(releasesBase)) return null;
+            return path.dirname(abs);
+        };
+        let dirToRemove = resolveDirFromPath(rel.cover_art);
+        if (!dirToRemove) {
             try {
-                if (fs.existsSync(dirToRemove)) {
-                    fs.rmSync(dirToRemove, { recursive: true, force: true });
+                const [trows] = await db.query('SELECT audio_file FROM tracks WHERE release_id = ? AND audio_file IS NOT NULL LIMIT 1', [releaseId]);
+                if (trows.length > 0) {
+                    dirToRemove = resolveDirFromPath(trows[0].audio_file);
                 }
+            } catch {}
+        }
+        if (dirToRemove && fs.existsSync(dirToRemove)) {
+            try {
+                fs.rmSync(dirToRemove, { recursive: true, force: true });
             } catch (e) {
                 console.warn('Failed to remove release folder:', e.message);
             }
         }
-        // Delete release (tracks cascade)
-        await db.query('DELETE FROM releases WHERE id = ? AND user_id = ?', [releaseId, req.user.id]);
+        let deleteWhere = 'id = ?';
+        const deleteParams = [releaseId];
+        if (req.user.role === 'User') {
+            deleteWhere += ' AND user_id = ?';
+            deleteParams.push(req.user.id);
+        }
+        await db.query(`DELETE FROM releases WHERE ${deleteWhere}`, deleteParams);
         res.json({ message: 'Release deleted' });
     } catch (err) {
         console.error('Delete Release Error:', err);

@@ -100,7 +100,7 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators }) => {
       onClose={() => navigate('/releases')}
       onUpdate={(r) => setRelease(r)}
       availableAggregators={aggregators}
+      mode="view"
     />
   );
 };
-

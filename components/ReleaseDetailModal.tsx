@@ -12,9 +12,10 @@ interface Props {
   onClose: () => void;
   onUpdate: (updatedRelease: ReleaseData) => void;
   availableAggregators: string[];
+  mode?: 'view' | 'edit';
 }
 
-export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators }) => {
+export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators, mode = 'edit' }) => {
   const [activeTab, setActiveTab] = useState<'INFO' | 'DISTRIBUTION'>('INFO');
   
   // Accordion State for Tracklist
@@ -288,22 +289,24 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         <ArrowLeft size={20} />
                         Back to List
                     </button>
-                    <div className="flex gap-2">
-                        <button onClick={onClose} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">
-                            Discard
-                        </button>
-                        <button 
-                            onClick={handleSaveStatus}
-                            className={`px-5 py-2 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-all text-sm
-                                ${status === 'Rejected' 
-                                    ? 'bg-red-600 hover:bg-red-700 shadow-red-500/30' 
-                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}
-                            `}
-                        >
-                            <Save size={16} />
-                            {status === 'Rejected' ? 'Save Rejection' : 'Save Changes'}
-                        </button>
-                    </div>
+                    {mode === 'edit' && (
+                      <div className="flex gap-2">
+                          <button onClick={onClose} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">
+                              Discard
+                          </button>
+                          <button 
+                              onClick={handleSaveStatus}
+                              className={`px-5 py-2 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-all text-sm
+                                  ${status === 'Rejected' 
+                                      ? 'bg-red-600 hover:bg-red-700 shadow-red-500/30' 
+                                      : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}
+                              `}
+                          >
+                              <Save size={16} />
+                              {status === 'Rejected' ? 'Save Rejection' : 'Save Changes'}
+                          </button>
+                      </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -620,6 +623,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                     <select 
                                         value={status}
                                         onChange={(e) => setStatus(e.target.value as any)}
+                                        disabled={mode === 'view'}
                                         className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 font-bold text-slate-700
                                             ${status === 'Rejected' ? 'border-red-200 bg-red-50 focus:border-red-500 focus:ring-red-100' : 
                                             status === 'Live' ? 'border-green-200 bg-green-50 focus:border-green-500 focus:ring-green-100' :
@@ -647,12 +651,13 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                     <input 
                                                         value={rejectionReason}
                                                         onChange={(e) => setRejectionReason(e.target.value)}
+                                                        disabled={mode === 'view'}
                                                         placeholder="e.g. Cover Art tidak sesuai guideline"
                                                         className="flex-1 px-4 py-3 border border-red-200 rounded-lg focus:outline-none focus:border-red-500 text-sm"
                                                     />
                                                     <button 
                                                         onClick={generateRejectionMessage}
-                                                        disabled={isGeneratingAi || !rejectionReason.trim()}
+                                                        disabled={mode === 'view' || isGeneratingAi || !rejectionReason.trim()}
                                                         className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2 min-w-[80px] justify-center"
                                                         title="Generate Detailed Description with AI"
                                                     >
@@ -669,6 +674,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                 <textarea 
                                                     value={rejectionDesc}
                                                     onChange={(e) => setRejectionDesc(e.target.value)}
+                                                    disabled={mode === 'view'}
                                                     placeholder="Deskripsi detail akan muncul di sini setelah klik OK..."
                                                     rows={6}
                                                     className="w-full px-4 py-3 border border-red-200 rounded-lg focus:outline-none focus:border-red-500 text-sm resize-none bg-white shadow-sm"
@@ -688,6 +694,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                         <select 
                                             value={selectedAggregator}
                                             onChange={(e) => setSelectedAggregator(e.target.value)}
+                                            disabled={mode === 'view'}
                                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-purple-500 shadow-sm"
                                         >
                                             <option value="">-- Choose Aggregator --</option>
@@ -713,6 +720,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                             <input 
                                                 value={upcInput}
                                                 onChange={(e) => setUpcInput(e.target.value)}
+                                                disabled={mode === 'view'}
                                                 placeholder="Enter UPC Code (Required)"
                                                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm shadow-sm
                                                     ${!upcInput ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-white' : 'border-green-200 focus:ring-green-500'}`}
@@ -734,6 +742,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                             <input 
                                                                 value={isrcInputs[track.id] || ''}
                                                                 onChange={(e) => setIsrcInputs(prev => ({...prev, [track.id]: e.target.value}))}
+                                                                disabled={mode === 'view'}
                                                                 placeholder="ISRC (Required)"
                                                                 className={`flex-1 px-3 py-2 border rounded text-sm font-mono focus:outline-none
                                                                     ${!hasVal ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-green-500'}`}

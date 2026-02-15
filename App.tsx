@@ -59,7 +59,7 @@ const App: React.FC = () => {
   // IMPORTED REPORT DATA STATE
   const [reportData, setReportData] = useState<ReportData[]>([]);
 
-  const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn", "Tunecore", "Believe"]);
+  const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn"]);
   
   // Initialize Data
   useEffect(() => {
@@ -167,6 +167,8 @@ const App: React.FC = () => {
   // Wizard State (Managed internally by ReleaseWizardWrapper now, or kept here if needed for cross-component state)
   const [editingRelease, setEditingRelease] = useState<ReleaseData | null>(null); 
   const [viewingRelease, setViewingRelease] = useState<ReleaseData | null>(null); 
+  const [releaseToDelete, setReleaseToDelete] = useState<ReleaseData | null>(null);
+  const [isDeletingRelease, setIsDeletingRelease] = useState(false);
 
   // Check LocalStorage on Mount
   useEffect(() => {
@@ -225,6 +227,23 @@ const App: React.FC = () => {
 
   const cancelLogout = () => {
     setShowLogoutDialog(false);
+  };
+
+  const handleConfirmDeleteRelease = async () => {
+      if (!releaseToDelete || !token) {
+          setReleaseToDelete(null);
+          return;
+      }
+      setIsDeletingRelease(true);
+      try {
+          await api.deleteRelease(token, releaseToDelete.id);
+          setAllReleases(prev => prev.filter(r => r.id !== releaseToDelete.id));
+      } catch (err: any) {
+          alert(err?.message || 'Gagal menghapus release');
+      } finally {
+          setIsDeletingRelease(false);
+          setReleaseToDelete(null);
+      }
   };
 
   const handleSaveRelease = async (data: ReleaseData) => {
@@ -623,15 +642,8 @@ const App: React.FC = () => {
                             navigate('/new-release');
                         }
                     }}
-                    onDelete={async (release) => {
-                        if (!token) return;
-                        if (!confirm(`Hapus release "${release.title}"?`)) return;
-                        try {
-                            await api.deleteRelease(token, release.id);
-                            setAllReleases(prev => prev.filter(r => r.id !== release.id));
-                        } catch (err: any) {
-                            alert(err?.message || 'Gagal menghapus release');
-                        }
+                    onDelete={(release) => {
+                        setReleaseToDelete(release);
                     }}
                     error={dataFetchError}
                 />
@@ -731,6 +743,39 @@ const App: React.FC = () => {
                                 className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
                             >
                                 Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {releaseToDelete && (
+            <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all scale-100">
+                    <div className="p-6 text-center">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle size={32} className="text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Hapus Release?</h3>
+                        <p className="text-slate-500 text-sm mb-6">
+                            Apakah Anda yakin ingin menghapus release "{releaseToDelete.title}"? Tindakan ini tidak dapat dibatalkan.
+                        </p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setReleaseToDelete(null)}
+                                disabled={isDeletingRelease}
+                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-60"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                onClick={handleConfirmDeleteRelease}
+                                disabled={isDeletingRelease}
+                                className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30 disabled:opacity-60 flex items-center justify-center gap-2"
+                            >
+                                {isDeletingRelease && <Loader2 size={16} className="animate-spin" />}
+                                <span>Hapus</span>
                             </button>
                         </div>
                     </div>
