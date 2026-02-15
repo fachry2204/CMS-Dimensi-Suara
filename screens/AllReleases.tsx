@@ -306,14 +306,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                         </div>
                                     </td>
                                     {/* NEW AGGREGATOR COLUMN */}
-                                    <td className="px-6 py-4 text-xs">
+                                    <td className="px-6 py-4 text-[11px]">
                                         {release.aggregator ? (
-                                            <div className="flex items-center gap-2 text-sm font-medium text-purple-700 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100 w-fit">
-                                                <Globe size={14} />
+                                            <div className="flex items-center gap-1 text-[10px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
+                                                <Globe size={10} />
                                                 {release.aggregator}
                                             </div>
                                         ) : (
-                                            <span className="text-xs text-slate-300 italic">Not set</span>
+                                            <span className="text-[10px] text-slate-300 italic">Not set</span>
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
