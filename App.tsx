@@ -499,8 +499,8 @@ const App: React.FC = () => {
       <main className="flex-1 w-full md:ml-0 overflow-x-hidden min-h-screen flex flex-col relative">
         
         {/* GLOBAL HEADER */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-white/50 px-6 py-4 flex items-center justify-between shadow-sm">
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight hidden md:block">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-white/50 px-6 py-3 flex items-center justify-between shadow-sm">
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight hidden md:block">
                 {getPageTitle()}
             </h2>
             <div className="flex-1 md:flex-none flex justify-end items-center gap-6">
