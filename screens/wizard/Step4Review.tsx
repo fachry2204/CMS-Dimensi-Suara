@@ -70,11 +70,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         if (!token) throw new Error("No auth token found. Please login again.");
 
         const result = await api.createRelease(token, data);
-        
-        // Finalize Data
+
+        const normalizedId = String(result.id ?? data.id ?? Date.now());
         const finalizedData: ReleaseData = {
             ...data,
-            id: result.id || Date.now().toString(),
+            id: normalizedId,
             status: 'Pending',
             submissionDate: new Date().toISOString().split('T')[0]
         };

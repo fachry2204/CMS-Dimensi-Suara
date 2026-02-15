@@ -81,7 +81,7 @@ const App: React.FC = () => {
         };
 
         const p1 = api.getReleases(token)
-            .then(data => setAllReleases(data))
+            .then(data => setAllReleases(data.map((r: any) => ({ ...r, id: String(r.id) }))))
             .catch((err: any) => {
                 if (err?.message === 'AUTH') return handleAuthExpired();
                 console.error('Failed to fetch releases:', err);
@@ -248,11 +248,12 @@ const App: React.FC = () => {
 
   const handleSaveRelease = async (data: ReleaseData) => {
       try {
-          // Step4Review sudah memanggil api.createRelease dan mengembalikan id.
-          // Di sini kita hanya sinkronkan state lokal agar All Releases langsung ter-update,
-          // tanpa memanggil API lagi supaya tidak double-insert.
-          if (data.id && allReleases.some(r => r.id === data.id)) {
-              setAllReleases(prev => prev.map(r => r.id === data.id ? data : r));
+          const normalizedId = data.id ? String(data.id) : undefined;
+          if (normalizedId) {
+              setAllReleases(prev => {
+                  const without = prev.filter(r => String(r.id) !== normalizedId);
+                  return [{ ...data, id: normalizedId }, ...without];
+              });
           } else {
               setAllReleases(prev => [data, ...prev]);
           }
@@ -649,7 +650,16 @@ const App: React.FC = () => {
                 />
             } />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
-            <Route path="/releases/:id/view" element={<ReleaseDetailsPage token={token} aggregators={aggregators} />} />
+            <Route 
+                path="/releases/:id/view" 
+                element={
+                    <ReleaseDetailsPage 
+                        token={token} 
+                        aggregators={aggregators} 
+                        onReleaseUpdated={handleUpdateRelease}
+                    />
+                } 
+            />
             <Route path="/releases/:id/single" element={<SingleReleasePage />} />
             {/* <Route path="/publishing/*" element={
                  <Publishing 

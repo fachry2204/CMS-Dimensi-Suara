@@ -434,6 +434,69 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
+router.post('/:id/workflow', authenticateToken, async (req, res) => {
+    try {
+        const releaseId = req.params.id;
+        const { status, aggregator, upc, rejectionReason, rejectionDescription, tracks } = req.body || {};
+
+        const [releases] = await db.query('SELECT * FROM releases WHERE id = ?', [releaseId]);
+        if (releases.length === 0) return res.status(404).json({ error: 'Release not found' });
+        const release = releases[0];
+
+        if (req.user.role === 'User' && release.user_id !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
+        const releaseColNames = releaseCols.map(c => c.Field);
+        const setParts = [];
+        const vals = [];
+
+        if (typeof status === 'string' && status) {
+            setParts.push('status = ?');
+            vals.push(status);
+        }
+        if (releaseColNames.includes('aggregator')) {
+            setParts.push('aggregator = ?');
+            vals.push(aggregator || null);
+        }
+        if (releaseColNames.includes('upc')) {
+            setParts.push('upc = ?');
+            vals.push(upc || null);
+        }
+        if (releaseColNames.includes('rejection_reason')) {
+            setParts.push('rejection_reason = ?');
+            vals.push(rejectionReason || null);
+        }
+        if (releaseColNames.includes('rejection_description')) {
+            setParts.push('rejection_description = ?');
+            vals.push(rejectionDescription || null);
+        }
+
+        if (setParts.length > 0) {
+            await db.query(
+                `UPDATE releases SET ${setParts.join(', ')} WHERE id = ?`,
+                [...vals, releaseId]
+            );
+        }
+
+        if (Array.isArray(tracks) && tracks.length > 0) {
+            for (const t of tracks) {
+                if (!t || !t.id) continue;
+                await db.query(
+                    'UPDATE tracks SET isrc = ? WHERE id = ? AND release_id = ?',
+                    [t.isrc || null, t.id, releaseId]
+                );
+            }
+        }
+
+        res.json({ message: 'Workflow updated' });
+    } catch (err) {
+        console.error('Update workflow error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET SINGLE RELEASE
 router.get('/:id', authenticateToken, async (req, res) => {
     try {

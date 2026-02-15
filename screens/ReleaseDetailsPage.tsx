@@ -7,9 +7,10 @@ import { ReleaseDetailModal } from '../components/ReleaseDetailModal';
 interface Props {
   token: string;
   aggregators: string[];
+  onReleaseUpdated?: (release: ReleaseData) => void;
 }
 
-export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators }) => {
+export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onReleaseUpdated }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [release, setRelease] = useState<ReleaseData | null>(null);
@@ -42,8 +43,8 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators }) => {
           cLine: raw.c_line || '',
           version: raw.version || '',
           tracks: (raw.tracks || []).map((t: any) => {
-            const p = mapArtists(t.primary_artists);
-            const f = mapArtists(t.featured_artists);
+            const p = mapArtists(t.primaryArtists ?? t.primary_artists);
+            const f = mapArtists(t.featuredArtists ?? t.featured_artists);
             return {
               id: String(t.id ?? `${raw.id}_${t.track_number}`),
               audioFile: t.audio_file || null,
@@ -65,7 +66,7 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators }) => {
               composer: t.composer || '',
               lyricist: t.lyricist || '',
               lyrics: t.lyrics || '',
-              contributors: []
+              contributors: Array.isArray(t.contributors) ? t.contributors : []
             };
           }),
           isNewRelease: raw.original_release_date ? false : true,
@@ -98,7 +99,15 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators }) => {
       release={release}
       isOpen={true}
       onClose={() => navigate('/releases')}
-      onUpdate={(r) => setRelease(r)}
+      onUpdate={async (r) => {
+        try {
+          await api.updateReleaseWorkflow(token, r);
+          if (onReleaseUpdated) onReleaseUpdated(r);
+          navigate('/releases');
+        } catch (e: any) {
+          alert(e?.message || 'Gagal menyimpan status release');
+        }
+      }}
       availableAggregators={aggregators}
       mode="view"
     />

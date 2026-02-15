@@ -37,6 +37,9 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
   const [rejectionDesc, setRejectionDesc] = useState(release.rejectionDescription || '');
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
+  const upcDisplay = upcInput || release.upc || '';
+  const primaryIsrc = release.tracks[0]?.isrc || '';
+
   useEffect(() => {
     if (isOpen) {
         // Initialize ISRC inputs from existing tracks
@@ -184,7 +187,6 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
       };
 
       onUpdate(updatedRelease);
-      onClose();
   };
 
   const downloadFile = (url: string, filename: string) => {
@@ -375,9 +377,39 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                     <div className="space-y-8 animate-fade-in-up">
                         {/* RELEASE METADATA CARD (Detailed Step 1 & 3) */}
                         <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-                            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
-                                <FileText size={20} className="text-blue-500" />
-                                <h3 className="font-bold text-slate-700 text-xl">Full Release Metadata</h3>
+                            <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4 gap-4">
+                                <div className="flex items-center gap-2">
+                                    <FileText size={20} className="text-blue-500" />
+                                    <h3 className="font-bold text-slate-700 text-xl">Full Release Metadata</h3>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 text-xs">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400">UPC</span>
+                                        <button
+                                            disabled={!upcDisplay}
+                                            onClick={() => upcDisplay && navigator.clipboard.writeText(upcDisplay)}
+                                            className={`px-2 py-1 rounded border text-[11px] font-mono ${
+                                                upcDisplay ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' : 'text-slate-300 border-slate-100 cursor-default'
+                                            }`}
+                                            title={upcDisplay ? 'Copy UPC' : 'UPC not set'}
+                                        >
+                                            {upcDisplay || 'Not Assigned'}
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400">Primary ISRC</span>
+                                        <button
+                                            disabled={!primaryIsrc}
+                                            onClick={() => primaryIsrc && navigator.clipboard.writeText(primaryIsrc)}
+                                            className={`px-2 py-1 rounded border text-[11px] font-mono ${
+                                                primaryIsrc ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' : 'text-slate-300 border-slate-100 cursor-default'
+                                            }`}
+                                            title={primaryIsrc ? 'Copy ISRC (Track 1)' : 'ISRC not set'}
+                                        >
+                                            {primaryIsrc || 'Not Assigned'}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -414,7 +446,32 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                 {/* Metadata Grid */}
                                 <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-6 content-start">
                                     <InfoRow label="Release Title" value={release.title} />
-                                    <InfoRow label="Primary Artist(s)" value={release.primaryArtists.join(", ")} />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                            Primary / Featured Artists
+                                        </span>
+                                        <div className="text-sm text-slate-700 space-y-1">
+                                            {release.tracks[0]?.artists && release.tracks[0].artists.length > 0 ? (
+                                                release.tracks[0].artists.map((a, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2">
+                                                        <span className="font-semibold">{a.name}</span>
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold uppercase">
+                                                            {a.role === 'MainArtist' ? 'Primary' : a.role === 'FeaturedArtist' ? 'Featured' : a.role}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                (release.primaryArtists || []).map((name, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2">
+                                                        <span className="font-semibold">{name}</span>
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold uppercase">
+                                                            Primary
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
                                     <InfoRow label="Label Name" value={release.label} />
                                     <InfoRow label="Language / Territory" value={release.language} />
                                     
@@ -463,9 +520,16 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                     </div>
                                                     <div>
                                                         <h4 className="font-bold text-lg text-slate-800">{track.title}</h4>
-                                                        <p className="text-xs text-slate-500">
-                                                            {track.artists.map(a => `${a.name} (${a.role})`).join(", ")}
-                                                        </p>
+                                                        <div className="mt-1 space-y-0.5">
+                                                            {track.artists.map((a, idx) => (
+                                                                <div key={idx} className="text-xs text-slate-600 flex items-center gap-2">
+                                                                    <span>{a.name}</span>
+                                                                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[9px] font-bold uppercase text-slate-600">
+                                                                        {a.role === 'MainArtist' ? 'Primary' : a.role === 'FeaturedArtist' ? 'Featured' : a.role}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-6">
@@ -522,6 +586,10 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                             <div>
                                                                 <span className="text-[10px] uppercase font-bold text-slate-400">Genre</span>
                                                                 <div className="text-sm font-medium text-slate-700">{track.genre}</div>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400">Sub Genre</span>
+                                                                <div className="text-sm font-medium text-slate-700">{track.subGenre}</div>
                                                             </div>
                                                             <div>
                                                                 <span className="text-[10px] uppercase font-bold text-slate-400">Explicit</span>

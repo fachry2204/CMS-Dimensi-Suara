@@ -64,6 +64,29 @@ export const api = {
         return parseResponse(res);
     },
 
+    updateReleaseWorkflow: async (token, data) => {
+        const res = await fetch(`${API_BASE_URL}/releases/${data.id}/workflow`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                status: data.status,
+                aggregator: data.aggregator,
+                upc: data.upc,
+                rejectionReason: (data as any).rejectionReason,
+                rejectionDescription: (data as any).rejectionDescription,
+                tracks: (data.tracks || []).map((t: any) => ({
+                    id: t.id,
+                    isrc: t.isrc
+                }))
+            })
+        });
+        return parseResponse(res);
+    },
+
     getRelease: async (token, id) => {
         const res = await fetch(`${API_BASE_URL}/releases/${id}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {},
