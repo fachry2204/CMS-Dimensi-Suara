@@ -11,6 +11,8 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+const sanitizeName = (s) => String(s || '').replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
+
 // Configure Multer for Audio and Cover Art
 // Ensure directories exist
 const UPLOADS_ROOT = path.join(__dirname, '../../uploads');
@@ -27,10 +29,32 @@ const storage = multer.diskStorage({
         cb(null, RELEASES_DIR);
     },
     filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        // Clean filename
-        const cleanName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-        cb(null, `${file.fieldname}-${uniqueSuffix}-${cleanName}`);
+        let artist = 'Unknown_Artist';
+        let title = 'Untitled_Release';
+        try {
+            if (req.body && typeof req.body.data === 'string') {
+                const payload = JSON.parse(req.body.data);
+                const primaryArtist = (Array.isArray(payload.primaryArtists) && payload.primaryArtists[0]) ? payload.primaryArtists[0] : 'Unknown_Artist';
+                artist = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+                title = sanitizeName(payload.title).substring(0, 80) || 'Untitled_Release';
+            }
+        } catch {}
+        const ext = path.extname(file.originalname) || '';
+        const base = `${artist} - ${title}`;
+        let suffix = '';
+        if (file.fieldname === 'coverArt') {
+            suffix = '-cover';
+        } else {
+            const m = file.fieldname.match(/^track_(\d+)_(audio|clip|ipl)$/);
+            if (m) {
+                const idx = parseInt(m[1], 10) + 1;
+                const kind = m[2];
+                if (kind === 'audio') suffix = `-track${idx}`;
+                else suffix = `-track${idx}-${kind}`;
+            }
+        }
+        const fileName = `${base}${suffix}${ext}`;
+        cb(null, fileName);
     }
 });
 
@@ -61,9 +85,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         const isUpdate = !!releaseData.id;
 
         const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
-        const sanitize = (s) => String(s || '').replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
-        const artistDirName = sanitize(primaryArtist).substring(0, 80) || 'Unknown_Artist';
-        const releaseDirName = sanitize(releaseData.title).substring(0, 80) || 'Untitled_Release';
+        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
@@ -358,16 +381,33 @@ router.get('/', authenticateToken, async (req, res) => {
 
         const [releases] = await db.query(query, params);
 
-        // Fetch tracks for each release (optional, or fetch on detail)
-        // For list view, we might not need tracks, but the frontend type expects them?
-        // Let's just return basic info + primary artists parsed
-        
+        let tracksByRelease = new Map();
+        if (releases.length > 0) {
+            const releaseIds = releases.map(r => r.id);
+            try {
+                const [trackRows] = await db.query(
+                    `SELECT id, release_id, track_number, isrc FROM tracks WHERE release_id IN (${releaseIds.map(() => '?').join(',')}) ORDER BY release_id, track_number ASC`,
+                    releaseIds
+                );
+                trackRows.forEach(t => {
+                    if (!tracksByRelease.has(t.release_id)) tracksByRelease.set(t.release_id, []);
+                    tracksByRelease.get(t.release_id).push({
+                        id: t.id,
+                        trackNumber: t.track_number,
+                        isrc: t.isrc
+                    });
+                });
+            } catch (e) {
+                tracksByRelease = new Map();
+            }
+        }
+
         const processedReleases = releases.map(r => {
             let parsedArtists = [];
             try {
                 parsedArtists = typeof r.primary_artists === 'string' ? JSON.parse(r.primary_artists) : r.primary_artists;
             } catch (e) {
-                parsedArtists = [r.primary_artists]; // Fallback
+                parsedArtists = [r.primary_artists];
             }
 
             return {
@@ -383,7 +423,7 @@ router.get('/', authenticateToken, async (req, res) => {
                 version: r.version,
                 type: r.release_type,
                 aggregator: r.aggregator,
-                tracks: [] // Empty for list view to save bandwidth
+                tracks: tracksByRelease.get(r.id) || []
             };
         });
 
