@@ -7,7 +7,15 @@ export const assetUrl = (p?: string | null): string => {
 };
 
 export const publicAssetUrl = (path: string): string => {
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalized = path.replace(/^\/+/, '');
+  // Prefer runtime base from document for subpath deployments
+  try {
+    const baseUri = (globalThis as any)?.document?.baseURI;
+    if (baseUri) {
+      return new URL(normalized, baseUri).toString();
+    }
+  } catch {}
   const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
-  const normalized = path.startsWith('/') ? path.slice(1) : path;
   return `${base}/${normalized}`;
 };
