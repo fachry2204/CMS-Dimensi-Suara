@@ -244,7 +244,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                 : undefined;
 
                             return (
-                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group">
+                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group text-xs">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
@@ -266,7 +266,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                 )}
                                             </div>
                                             <div className="min-w-[150px]">
-                                                <div className="font-bold text-slate-800 truncate max-w-[200px]" title={release.title}>{release.title || "Untitled Release"}</div>
+                                                <div className="font-bold text-slate-800 truncate max-w-[200px] text-sm" title={release.title}>{release.title || "Untitled Release"}</div>
                                                 <div className="text-xs text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
                                             </div>
                                         </div>
@@ -283,13 +283,13 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             {formatDMY(displayDateRaw)}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                                    <td className="px-6 py-4 text-xs text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <Calendar size={14} className="text-slate-400" />
                                             {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-4 text-xs">
                                         <div className="flex flex-col gap-1.5">
                                             <div className="flex items-center gap-2 text-xs">
                                                 <span className="font-bold text-slate-400 w-8">UPC</span>
@@ -306,7 +306,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                         </div>
                                     </td>
                                     {/* NEW AGGREGATOR COLUMN */}
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-4 text-xs">
                                         {release.aggregator ? (
                                             <div className="flex items-center gap-2 text-sm font-medium text-purple-700 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100 w-fit">
                                                 <Globe size={14} />
