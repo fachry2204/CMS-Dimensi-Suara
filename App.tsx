@@ -19,7 +19,7 @@ import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ReleaseType, ReleaseData, ReportData, Notification } from './types';
-import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
+import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X, Loader2 } from 'lucide-react';
 import { api, API_BASE_URL } from './utils/api';
 import socialLogo from './assets/platforms/social.svg';
 import youtubeMusicLogo from './assets/platforms/youtube-music.svg';
