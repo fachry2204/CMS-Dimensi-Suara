@@ -58,6 +58,7 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         // Parse JSON payload from 'data' field when using multipart/form-data
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
         const userId = req.user.id;
+        const isUpdate = !!releaseData.id;
 
         // Prepare target directory: "<PrimaryArtist> - <ReleaseTitle>"
         const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
@@ -109,30 +110,39 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             });
         }
 
-        // --- DUPLICATE CHECK ---
-        const [existing] = await db.query(
-            'SELECT id FROM releases WHERE user_id = ? AND title = ? AND version = ? AND status != "Rejected"',
-            [userId, releaseData.title, releaseData.version]
-        );
-        if (existing.length > 0) {
-            return res.status(200).json({ 
-                message: 'Release already exists', 
-                id: existing[0].id,
-                isDuplicate: true 
-            });
+        if (isUpdate) {
+            const [rows] = await db.query('SELECT * FROM releases WHERE id = ?', [releaseData.id]);
+            if (rows.length === 0) {
+                return res.status(404).json({ error: 'Release not found' });
+            }
+            const existingRelease = rows[0];
+            if (req.user.role === 'User' && existingRelease.user_id !== userId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+        } else {
+            const [existing] = await db.query(
+                'SELECT id FROM releases WHERE user_id = ? AND title = ? AND version = ? AND status != "Rejected"',
+                [userId, releaseData.title, releaseData.version]
+            );
+            if (existing.length > 0) {
+                return res.status(200).json({ 
+                    message: 'Release already exists', 
+                    id: existing[0].id,
+                    isDuplicate: true 
+                });
+            }
         }
 
-        // 1. Insert Release (dynamic columns for optional fields)
+        // 1. Insert/Update Release (dynamic columns for optional fields)
         const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
         const releaseColNames = releaseCols.map(c => c.Field);
         const cols = [
-            'user_id','title','version','release_type',
+            'title','version','release_type',
             'primary_artists','cover_art','label',
             'p_line','c_line','genre','sub_genre','language',
             'upc'
         ];
         const vals = [
-            userId,
             releaseData.title,
             releaseData.version || '',
             releaseData.type,
@@ -158,19 +168,29 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             cols.push('planned_release_date');
             vals.push(releaseData.plannedReleaseDate || null);
         }
-        cols.push('submission_date'); vals.push(new Date());
-        cols.push('status'); vals.push('Pending');
         if (releaseColNames.includes('aggregator')) {
             cols.push('aggregator'); vals.push(releaseData.aggregator || null);
         }
-
-        const placeholders = `(${cols.map(() => '?').join(', ')})`;
-        const [releaseResult] = await db.query(
-            `INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`,
-            vals
-        );
-
-        const releaseId = releaseResult.insertId;
+        let releaseId;
+        if (!isUpdate) {
+            cols.unshift('user_id');
+            vals.unshift(userId);
+            cols.push('submission_date'); vals.push(new Date());
+            cols.push('status'); vals.push('Pending');
+            const placeholders = `(${cols.map(() => '?').join(', ')})`;
+            const [releaseResult] = await db.query(
+                `INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`,
+                vals
+            );
+            releaseId = releaseResult.insertId;
+        } else {
+            const setParts = cols.map(col => `${col} = ?`);
+            await db.query(
+                `UPDATE releases SET ${setParts.join(', ')} WHERE id = ?`,
+                [...vals, releaseData.id]
+            );
+            releaseId = releaseData.id;
+        }
 
         // 2. Insert Tracks (dynamic columns for optional fields like audio_clip, lyrics)
         if (releaseData.tracks && releaseData.tracks.length > 0) {
@@ -189,6 +209,9 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             if (trackColNames.includes('is_instrumental')) optCols.push('is_instrumental');
 
             const allCols = baseCols.concat(optCols);
+            if (isUpdate) {
+                await db.query('DELETE FROM tracks WHERE release_id = ?', [releaseId]);
+            }
             const trackValues = releaseData.tracks.map(track => {
                 const values = [
                     releaseId,
@@ -256,7 +279,7 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             }
         }
 
-        res.status(201).json({ message: 'Release submitted successfully', id: releaseId });
+        res.status(isUpdate ? 200 : 201).json({ message: isUpdate ? 'Release updated successfully' : 'Release submitted successfully', id: releaseId });
 
     } catch (err) {
         console.error("Create Release Error:", err);
