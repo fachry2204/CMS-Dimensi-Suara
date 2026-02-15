@@ -142,26 +142,26 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-                <h1 className="text-2xl font-bold text-slate-800 tracking-tight">All Releases</h1>
-                <p className="text-slate-500 mt-1 text-[13px]">Manage and track your music catalog status.</p>
+                <h1 className="text-xl font-bold text-slate-800 tracking-tight">All Releases</h1>
+                <p className="text-slate-500 mt-1 text-[12px]">Manage and track your music catalog status.</p>
             </div>
             <div className="w-full md:w-auto flex items-center gap-3">
                 <div className="relative w-full md:w-80">
                     <input 
-                        type="text" 
+                        type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search Title, Artist, UPC, Aggregator..." 
-                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all"
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all text-[13px]"
                     />
-                    <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+                    <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
                 </div>
                 <button
                     onClick={() => navigate('/new-release')}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold shadow-sm"
+                    className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-[13px] font-semibold shadow-sm"
                     title="Create New Release"
                 >
-                    <Plus size={18} />
+                    <Plus size={16} />
                     New Release
                 </button>
             </div>
