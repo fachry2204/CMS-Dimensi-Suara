@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { backupIfNewDatabase, writeLastDbName } from './utils/db-backup.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,19 @@ const initDb = async () => {
         console.log('🔌 Connected to MySQL server');
 
         const dbName = process.env.DB_NAME || 'dimensi_suara_db';
+
+        // Optional auto backup when DB name changes or on first run with different DB
+        try {
+            await backupIfNewDatabase({
+                host: process.env.DB_HOST || 'localhost',
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
+                dbName
+            });
+        } catch (e) {
+            console.warn('DB auto-backup skipped/warn:', e.message);
+        }
         
         // Create DB if not exists and Use it
         console.log(`🔨 Creating/Selecting database: ${dbName}...`);
@@ -171,6 +185,11 @@ const initDb = async () => {
         }
 
         console.log('✅ Database initialized successfully!');
+        try {
+            await writeLastDbName(dbName);
+        } catch (e) {
+            console.warn('Failed to write last DB name record:', e.message);
+        }
         
         await connection.end();
     } catch (err) {

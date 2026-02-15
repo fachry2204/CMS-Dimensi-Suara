@@ -11,6 +11,8 @@ import reportRoutes from './routes/reportRoutes.js';
 // import publishingRoutes from './routes/publishingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import { loadBackupScheduleFromDb } from './utils/scheduler.js';
 import userRoutes from './routes/userRoutes.js';
 
 import { initDb } from './init-db.js';
@@ -28,6 +30,9 @@ const PORT = process.env.PORT || 3000;
 // Run Database Migration on Startup
 initDb().then(() => {
     console.log('Database migration check completed.');
+    loadBackupScheduleFromDb().then(() => {
+        console.log('Backup schedule loaded.');
+    }).catch(err => console.warn('Load backup schedule failed:', err.message));
 }).catch(err => {
     console.error('Database migration check failed:', err);
 });
@@ -74,6 +79,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Test Database Connection Route
 app.get('/api/health', async (req, res) => {
