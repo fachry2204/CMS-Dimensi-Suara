@@ -180,20 +180,63 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             {tabs.map((tab) => {
                 const isActive = activeStatusTab === tab.id;
                 const count = getCount(tab.statusMap);
+                const baseColors =
+                    tab.id === 'PENDING'
+                        ? isActive
+                            ? 'bg-yellow-100 text-yellow-800 border-yellow-300 shadow-sm'
+                            : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100/60'
+                        : tab.id === 'PROCESSING'
+                        ? isActive
+                            ? 'bg-blue-100 text-blue-800 border-blue-300 shadow-sm'
+                            : 'bg-blue-50 text-blue-700 border-blue-200/80 hover:bg-blue-100/60'
+                        : tab.id === 'RELEASED'
+                        ? isActive
+                            ? 'bg-green-100 text-green-800 border-green-300 shadow-sm'
+                            : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100/60'
+                        : tab.id === 'REJECTED'
+                        ? isActive
+                            ? 'bg-red-100 text-red-800 border-red-300 shadow-sm'
+                            : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100/60'
+                        : isActive
+                        ? 'bg-slate-800 text-white border-slate-800 shadow-md'
+                        : 'bg-white text-slate-500 border-gray-200 hover:border-slate-300 hover:bg-gray-50';
                 
                 return (
                     <button
                         key={tab.id}
                         onClick={() => setActiveStatusTab(tab.id)}
                         className={`
-                            whitespace-nowrap px-4 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 border
-                            ${isActive 
-                                ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' 
-                                : 'bg-white text-slate-500 border-gray-200 hover:border-slate-300 hover:bg-gray-50'}
+                            whitespace-nowrap px-4 py-2 rounded-full font-semibold text-[11px] transition-all flex items-center gap-2 border
+                            ${baseColors}
                         `}
                     >
                         {tab.label}
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] min-w-[20px] text-center ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        <span
+                            className={`
+                                px-1.5 py-0.5 rounded-full text-[10px] min-w-[20px] text-center border
+                                ${
+                                    tab.id === 'PENDING'
+                                        ? isActive
+                                            ? 'bg-yellow-50/80 text-yellow-800 border-yellow-300'
+                                            : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                        : tab.id === 'PROCESSING'
+                                        ? isActive
+                                            ? 'bg-blue-50/80 text-blue-800 border-blue-300'
+                                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                                        : tab.id === 'RELEASED'
+                                        ? isActive
+                                            ? 'bg-green-50/80 text-green-800 border-green-300'
+                                            : 'bg-green-50 text-green-700 border-green-200'
+                                        : tab.id === 'REJECTED'
+                                        ? isActive
+                                            ? 'bg-red-50/80 text-red-800 border-red-300'
+                                            : 'bg-red-50 text-red-700 border-red-200'
+                                        : isActive
+                                        ? 'bg-white/10 text-white border-white/30'
+                                        : 'bg-slate-100 text-slate-600 border-slate-200'
+                                }
+                            `}
+                        >
                             {count}
                         </span>
                     </button>
@@ -201,7 +244,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             })}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100/80 overflow-hidden flex flex-col min-h-[500px]">
             <div className="overflow-x-auto flex-1">
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-gray-100">
