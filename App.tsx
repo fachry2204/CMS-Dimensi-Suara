@@ -341,6 +341,104 @@ const App: React.FC = () => {
       setViewingRelease(release);
   };
 
+  const handleEditRelease = async (release: ReleaseData) => {
+      if (!release.id || !token) {
+          setEditingRelease(release);
+          navigate('/new-release');
+          return;
+      }
+      try {
+          const raw: any = await api.getRelease(token, release.id);
+          const normDate = (v: any) => {
+              if (!v) return '';
+              if (typeof v === 'string') {
+                  const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
+                  if (m) return m[1];
+                  try {
+                      const d = new Date(v);
+                      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+                  } catch {}
+                  return v.slice(0, 10);
+              }
+              try {
+                  const d = new Date(v);
+                  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+              } catch {}
+              return '';
+          };
+          const mapArr = (v: any) => Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
+          const primaryArtists = mapArr(raw.primaryArtists);
+          const toArtistObjs = (arr: any[], role: string) => (Array.isArray(arr) ? arr : []).map((name: string) => ({ name, role }));
+          const tracks = (raw.tracks || []).map((t: any, idx: number) => ({
+              id: String(t.id ?? `${raw.id}_${idx+1}`),
+              audioFile: t.audio_file || null,
+              audioClip: t.audio_clip || null,
+              videoFile: null,
+              iplFile: t.ipl_file || null,
+              trackNumber: String(t.track_number ?? (idx+1)),
+              releaseDate: '',
+              isrc: t.isrc || '',
+              title: t.title || '',
+              duration: t.duration || '',
+              artists: [
+                ...toArtistObjs(mapArr(t.primary_artists), 'MainArtist'),
+                ...toArtistObjs(mapArr(t.featured_artists), 'FeaturedArtist'),
+              ],
+              genre: t.genre || '',
+              subGenre: t.sub_genre || '',
+              isInstrumental: t.is_instrumental ? 'Yes' : 'No',
+              explicitLyrics: t.explicit_lyrics || 'No',
+              composer: t.composer || '',
+              lyricist: t.lyricist || '',
+              lyrics: t.lyrics || '',
+              contributors: Array.isArray(t.contributors) ? t.contributors : []
+          }));
+          const optionMap: Record<string, { id: string; label: string; logo: string }> = {
+              'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: socialLogo },
+              'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: youtubeMusicLogo },
+              'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: allDspLogo },
+          };
+          let distributionTargets: { id: string; label: string; logo: string }[] = [];
+          const dtA: any = raw.distributionTargets ?? raw.distribution_targets;
+          if (Array.isArray(dtA)) {
+              if (typeof dtA[0] === 'string') {
+                  distributionTargets = (dtA as string[]).map(id => optionMap[id]).filter(Boolean);
+              } else {
+                  distributionTargets = dtA;
+              }
+          }
+          const mapped: ReleaseData = {
+              id: String(raw.id),
+              status: raw.status || release.status,
+              submissionDate: raw.submission_date || release.submissionDate,
+              aggregator: raw.aggregator || release.aggregator,
+              distributionTargets,
+              coverArt: raw.cover_art || release.coverArt || null,
+              type: (raw.release_type || release.type) as any,
+              upc: raw.upc || release.upc || '',
+              title: raw.title || release.title || '',
+              language: raw.language || release.language || '',
+              primaryArtists,
+              label: raw.label || release.label || '',
+              genre: raw.genre || release.genre || '',
+              subGenre: raw.sub_genre || release.subGenre || '',
+              pLine: raw.p_line || release.pLine || '',
+              cLine: raw.c_line || release.cLine || '',
+              version: raw.version || release.version || '',
+              tracks,
+              isNewRelease: raw.original_release_date ? false : true,
+              originalReleaseDate: normDate(raw.original_release_date),
+              plannedReleaseDate: normDate(raw.planned_release_date)
+          };
+          setEditingRelease(mapped);
+          navigate('/new-release');
+      } catch (e) {
+          console.error('Failed to load full release for edit', e);
+          setEditingRelease(release);
+          navigate('/new-release');
+      }
+  };
+
   const handleSaveAggregators = async (newList: string[]) => {
       setAggregators(newList);
       if (token) {
@@ -546,106 +644,6 @@ const App: React.FC = () => {
                  <AllReleases 
                     releases={allReleases} 
                     onViewDetails={(r) => navigate(`/releases/${r.id}/view`)}
-                    onEdit={async (release) => {
-                        if (!release.id || !token) {
-                            setEditingRelease(release);
-                            navigate('/new-release');
-                            return;
-                        }
-                        try {
-                            const raw: any = await api.getRelease(token, release.id);
-                            const normDate = (v: any) => {
-                                if (!v) return '';
-                                if (typeof v === 'string') {
-                                    const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
-                                    if (m) return m[1];
-                                    try {
-                                        const d = new Date(v);
-                                        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-                                    } catch {}
-                                    return v.slice(0, 10);
-                                }
-                                try {
-                                    const d = new Date(v);
-                                    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-                                } catch {}
-                                return '';
-                            };
-                            const mapArr = (v: any) => Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
-                            const primaryArtists = mapArr(raw.primaryArtists);
-                            const toArtistObjs = (arr: any[], role: string) => (Array.isArray(arr) ? arr : []).map((name: string) => ({ name, role }));
-                            const tracks = (raw.tracks || []).map((t: any, idx: number) => ({
-                                id: String(t.id ?? `${raw.id}_${idx+1}`),
-                                audioFile: t.audio_file || null,
-                                audioClip: t.audio_clip || null,
-                                videoFile: null,
-                                iplFile: t.ipl_file || null,
-                                trackNumber: String(t.track_number ?? (idx+1)),
-                                releaseDate: '',
-                                isrc: t.isrc || '',
-                                title: t.title || '',
-                                duration: t.duration || '',
-                                artists: [
-                                  ...toArtistObjs(mapArr(t.primary_artists), 'MainArtist'),
-                                  ...toArtistObjs(mapArr(t.featured_artists), 'FeaturedArtist'),
-                                ],
-                                genre: t.genre || '',
-                                subGenre: t.sub_genre || '',
-                                isInstrumental: t.is_instrumental ? 'Yes' : 'No',
-                                explicitLyrics: t.explicit_lyrics || 'No',
-                                composer: t.composer || '',
-                                lyricist: t.lyricist || '',
-                                lyrics: t.lyrics || '',
-                                contributors: Array.isArray(t.contributors) ? t.contributors : []
-                            }));
-                            const optionMap: Record<string, { id: string; label: string; logo: string }> = {
-                                'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: socialLogo },
-                                'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: youtubeMusicLogo },
-                                'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: allDspLogo },
-                            };
-                            let distributionTargets: { id: string; label: string; logo: string }[] = [];
-                            const dtA: any = raw.distributionTargets ?? raw.distribution_targets;
-                            if (Array.isArray(dtA)) {
-                                if (typeof dtA[0] === 'string') {
-                                    distributionTargets = (dtA as string[]).map(id => optionMap[id]).filter(Boolean);
-                                } else {
-                                    distributionTargets = dtA;
-                                }
-                            }
-                            const mapped: ReleaseData = {
-                                id: String(raw.id),
-                                status: raw.status || release.status,
-                                submissionDate: raw.submission_date || release.submissionDate,
-                                aggregator: raw.aggregator || release.aggregator,
-                                distributionTargets,
-                                coverArt: raw.cover_art || release.coverArt || null,
-                                type: (raw.release_type || release.type) as any,
-                                upc: raw.upc || release.upc || '',
-                                title: raw.title || release.title || '',
-                                language: raw.language || release.language || '',
-                                primaryArtists,
-                                label: raw.label || release.label || '',
-                                genre: raw.genre || release.genre || '',
-                                subGenre: raw.sub_genre || release.subGenre || '',
-                                pLine: raw.p_line || release.pLine || '',
-                                cLine: raw.c_line || release.cLine || '',
-                                version: raw.version || release.version || '',
-                                tracks,
-                                isNewRelease: raw.original_release_date ? false : true,
-                                originalReleaseDate: normDate(raw.original_release_date),
-                                plannedReleaseDate: normDate(raw.planned_release_date)
-                            };
-                            setEditingRelease(mapped);
-                            navigate('/new-release');
-                        } catch (e) {
-                            console.error('Failed to load full release for edit', e);
-                            setEditingRelease(release);
-                            navigate('/new-release');
-                        }
-                    }}
-                    onDelete={(release) => {
-                        setReleaseToDelete(release);
-                    }}
                     error={dataFetchError}
                 />
             } />
@@ -657,6 +655,10 @@ const App: React.FC = () => {
                         token={token} 
                         aggregators={aggregators} 
                         onReleaseUpdated={handleUpdateRelease}
+                        onEditRelease={handleEditRelease}
+                        onDeleteRelease={(release) => {
+                            setReleaseToDelete(release);
+                        }}
                     />
                 } 
             />

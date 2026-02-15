@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ReleaseData, Track } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp, Edit3, Trash2 } from 'lucide-react';
 import { formatDMY } from '../utils/date';
 import { assetUrl } from '../utils/url';
 
@@ -13,9 +13,11 @@ interface Props {
   onUpdate: (updatedRelease: ReleaseData) => void;
   availableAggregators: string[];
   mode?: 'view' | 'edit';
+  onEdit?: (release: ReleaseData) => void;
+  onDelete?: (release: ReleaseData) => void;
 }
 
-export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators, mode = 'edit' }) => {
+export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators, mode = 'edit', onEdit, onDelete }) => {
   const [activeTab, setActiveTab] = useState<'INFO' | 'DISTRIBUTION'>('INFO');
   
   // Accordion State for Tracklist
@@ -350,6 +352,28 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-slate-600 border border-gray-200 flex items-center gap-1.5">
                              <Music2 size={14} /> {release.tracks.length > 1 ? 'Album' : 'Single'}
                          </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        {onEdit && (
+                            <button
+                                onClick={() => onEdit(release)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
+                                title="Edit Release"
+                            >
+                                <Edit3 size={14} />
+                                Edit Release
+                            </button>
+                        )}
+                        {onDelete && (
+                            <button
+                                onClick={() => onDelete(release)}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-200 hover:bg-red-100 transition-colors"
+                                title="Delete Release"
+                            >
+                                <Trash2 size={14} />
+                                Delete Release
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

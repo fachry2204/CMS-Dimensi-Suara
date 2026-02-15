@@ -8,9 +8,11 @@ interface Props {
   token: string;
   aggregators: string[];
   onReleaseUpdated?: (release: ReleaseData) => void;
+  onEditRelease?: (release: ReleaseData) => void;
+  onDeleteRelease?: (release: ReleaseData) => void;
 }
 
-export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onReleaseUpdated }) => {
+export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onReleaseUpdated, onEditRelease, onDeleteRelease }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [release, setRelease] = useState<ReleaseData | null>(null);
@@ -110,6 +112,8 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onRele
       }}
       availableAggregators={aggregators}
       mode="view"
+      onEdit={onEditRelease}
+      onDelete={onDeleteRelease}
     />
   );
 };

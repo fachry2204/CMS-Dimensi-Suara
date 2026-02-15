@@ -9,7 +9,7 @@ import { assetUrl } from '../utils/url';
 interface Props {
   releases: ReleaseData[];
   onViewDetails: (release: ReleaseData) => void;
-  onEdit: (release: ReleaseData) => void;
+  onEdit?: (release: ReleaseData) => void;
   availableAggregators?: string[];
   error?: string | null;
   onDelete?: (release: ReleaseData) => void;
@@ -23,7 +23,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, availableAggregators, error, onDelete }) => {
+export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availableAggregators, error }) => {
   const navigate = useNavigate();
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -209,6 +209,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                             <ThSortable label="Release" sortKey="title" />
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
+                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Submit Date</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Codes</th>
                             <ThSortable label="Aggregator" sortKey="aggregator" />
                             <ThSortable label="Status" sortKey="status" />
@@ -276,10 +277,16 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                             {type}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                                <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <Calendar size={14} className="text-slate-400" />
                                             {formatDMY(displayDateRaw)}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar size={14} className="text-slate-400" />
+                                            {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -323,26 +330,12 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                         <div className="flex justify-end gap-2">
                                             <button 
                                                 onClick={() => {
-                                                    navigate(`/releases/${release.id}/view`);
+                                                    onViewDetails(release);
                                                 }}
                                                 className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
                                             >
                                                 <Eye size={14} /> View
-                                            </button>
-                                            <button 
-                                                onClick={() => onEdit(release)}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-purple-600 hover:border-purple-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
-                                                title="Edit"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button 
-                                                onClick={() => onDelete && onDelete(release)}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-red-600 hover:border-red-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
-                                                title="Delete"
-                                            >
-                                                Delete
                                             </button>
                                         </div>
                                     </td>
