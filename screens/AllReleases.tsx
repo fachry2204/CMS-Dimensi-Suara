@@ -323,12 +323,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, onEdit, 
                                         <div className="flex justify-end gap-2">
                                             <button 
                                                 onClick={() => {
-                                                    const isSingle = (release.tracks || []).length <= 1 || release.type === 'SINGLE';
-                                                    if (isSingle) {
-                                                        navigate(`/releases/${release.id}/single`);
-                                                    } else {
-                                                        navigate(`/releases/${release.id}/view`);
-                                                    }
+                                                    navigate(`/releases/${release.id}/view`);
                                                 }}
                                                 className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
