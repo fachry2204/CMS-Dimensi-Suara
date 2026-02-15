@@ -209,11 +209,11 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             <ThSortable label="Release" sortKey="title" />
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Submit Date</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Codes</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submit Date</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Codes</th>
                             <ThSortable label="Aggregator" sortKey="aggregator" />
                             <ThSortable label="Status" sortKey="status" />
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                            <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -244,7 +244,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                 : undefined;
 
                             return (
-                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group text-xs">
+                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group text-[11px]">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
@@ -266,47 +266,47 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                 )}
                                             </div>
                                             <div className="min-w-[150px]">
-                                                <div className="font-bold text-slate-800 truncate max-w-[200px] text-sm" title={release.title}>{release.title || "Untitled Release"}</div>
-                                                <div className="text-xs text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
+                                                <div className="font-bold text-slate-800 truncate max-w-[200px] text-[13px]" title={release.title}>{release.title || "Untitled Release"}</div>
+                                                <div className="text-[11px] text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-slate-600 border border-gray-200 whitespace-nowrap shadow-sm">
-                                            <Music size={12} />
+                                    <td className="px-6 py-3">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white text-slate-600 border border-gray-200 whitespace-nowrap shadow-sm">
+                                            <Music size={10} />
                                             {type}
                                         </span>
                                     </td>
-                                <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={14} className="text-slate-400" />
+                                <td className="px-6 py-3 text-[11px] text-slate-600 whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <Calendar size={12} className="text-slate-400" />
                                             {formatDMY(displayDateRaw)}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-xs text-slate-600 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={14} className="text-slate-400" />
+                                    <td className="px-6 py-3 text-[11px] text-slate-600 whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <Calendar size={12} className="text-slate-400" />
                                             {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-xs">
+                                    <td className="px-6 py-3 text-[11px]">
                                         <div className="flex flex-col gap-1.5">
-                                            <div className="flex items-center gap-2 text-xs">
+                                            <div className="flex items-center gap-1.5 text-[11px]">
                                                 <span className="font-bold text-slate-400 w-8">UPC</span>
-                                                <span className={`font-mono px-1.5 py-0.5 rounded ${release.upc ? 'bg-slate-100 text-slate-700' : 'text-slate-300 italic'}`}>
+                                                <span className={`font-mono px-1 py-0.5 rounded text-[11px] ${release.upc ? 'bg-slate-100 text-slate-700' : 'text-slate-300 italic'}`}>
                                                     {release.upc || "Pending"}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs">
+                                            <div className="flex items-center gap-1.5 text-[11px]">
                                                 <span className="font-bold text-slate-400 w-8">ISRC</span>
-                                                <span className={`font-mono px-1.5 py-0.5 rounded ${isrcDisplay !== '-' ? 'bg-slate-100 text-slate-700' : 'text-slate-300 italic'}`}>
+                                                <span className={`font-mono px-1 py-0.5 rounded text-[11px] ${isrcDisplay !== '-' ? 'bg-slate-100 text-slate-700' : 'text-slate-300 italic'}`}>
                                                     {isrcDisplay}
                                                 </span>
                                             </div>
                                         </div>
                                     </td>
                                     {/* NEW AGGREGATOR COLUMN */}
-                                    <td className="px-6 py-4 text-[11px]">
+                                    <td className="px-6 py-3 text-[11px]">
                                         {release.aggregator ? (
                                             <div className="flex items-center gap-1 text-[10px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
                                                 <Globe size={10} />
@@ -316,26 +316,26 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             <span className="text-[10px] text-slate-300 italic">Not set</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-3">
                                         <div className="flex flex-col items-start gap-1">
                                             <span 
                                                 title={rejectionTooltip}
-                                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap border ${statusClass}`}
+                                                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap border ${statusClass}`}
                                             >
                                                 {status === 'Live' ? 'Released' : status}
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right">
+                                    <td className="px-6 py-3 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button 
                                                 onClick={() => {
                                                     onViewDetails(release);
                                                 }}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-xs font-bold shadow-sm whitespace-nowrap"
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[11px] font-semibold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
                                             >
-                                                <Eye size={14} /> View
+                                                <Eye size={12} /> View
                                             </button>
                                         </div>
                                     </td>
