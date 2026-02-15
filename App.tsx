@@ -500,9 +500,56 @@ const App: React.FC = () => {
         
         {/* GLOBAL HEADER */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-white/50 px-6 py-3 flex items-center justify-between shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 tracking-tight hidden md:block">
-                {getPageTitle()}
-            </h2>
+            {location.pathname === '/dashboard' ? (
+                <div className="hidden md:flex flex-col leading-tight">
+                    <span className="text-sm text-slate-800 tracking-tight">
+                        Dashboard
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                        Welcome back, here is your catalog overview.
+                    </span>
+                </div>
+            ) : location.pathname === '/releases' ? (
+                <div className="hidden md:flex flex-col leading-tight">
+                    <span className="text-sm text-slate-800 tracking-tight">
+                        All Releases
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                        Manage and track your music catalog status.
+                    </span>
+                </div>
+            ) : location.pathname === '/settings' ? (
+                <div className="hidden md:flex flex-col leading-tight">
+                    <span className="text-sm text-slate-800 tracking-tight">
+                        Settings
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                        Configure your CMS parameters.
+                    </span>
+                </div>
+            ) : location.pathname === '/users' ? (
+                <div className="hidden md:flex flex-col leading-tight">
+                    <span className="text-sm text-slate-800 tracking-tight">
+                        User Management
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                        Manage system access and registered users.
+                    </span>
+                </div>
+            ) : location.pathname === '/statistics' ? (
+                <div className="hidden md:flex flex-col leading-tight">
+                    <span className="text-sm text-slate-800 tracking-tight">
+                        Statistik &amp; Laporan
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                        Analisis performa katalog musik dan pendapatan Anda.
+                    </span>
+                </div>
+            ) : (
+                <h2 className="text-base text-slate-800 tracking-tight hidden md:block">
+                    {getPageTitle()}
+                </h2>
+            )}
             <div className="flex-1 md:flex-none flex justify-end items-center gap-6">
                 {/* Notifications */}
                 <div className="relative">

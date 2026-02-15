@@ -85,9 +85,9 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
 
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
-       <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Statistik & Laporan</h1>
-            <p className="text-slate-500 mt-1">Analisis performa katalog musik dan pendapatan Anda.</p>
+       <div className="mb-6 md:hidden">
+            <h1 className="text-lg text-slate-800 tracking-tight">Statistik &amp; Laporan</h1>
+            <p className="text-slate-500 mt-0.5 text-[12px]">Analisis performa katalog musik dan pendapatan Anda.</p>
        </div>
 
        {/* CATALOG STATS */}

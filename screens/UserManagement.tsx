@@ -94,12 +94,12 @@ export const UserManagement: React.FC = () => {
 
   return (
     <div className="p-8 max-w-7xl mx-auto min-h-screen">
-       <div className="mb-8 border-b border-gray-200 pb-6">
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
-                <Users size={32} className="text-slate-400" />
+       <div className="mb-6 border-b border-gray-200 pb-4 md:hidden">
+            <h1 className="text-lg text-slate-800 tracking-tight flex items-center gap-2">
+                <Users size={22} className="text-slate-400" />
                 User Management
             </h1>
-            <p className="text-slate-500 mt-1 ml-11">Manage system access and registered users.</p>
+            <p className="text-slate-500 mt-1 ml-8 text-[12px]">Manage system access and registered users.</p>
        </div>
 
        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 animate-fade-in">

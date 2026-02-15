@@ -51,9 +51,9 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
 
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
-       <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
-            <p className="text-slate-500 mt-1 text-[13px]">Welcome back, here is your catalog overview.</p>
+       <div className="mb-6 md:hidden">
+            <h1 className="text-lg text-slate-800 tracking-tight">Dashboard</h1>
+            <p className="text-slate-500 mt-0.5 text-[12px]">Welcome back, here is your catalog overview.</p>
        </div>
 
        {/* STATS CARDS */}
@@ -95,13 +95,13 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
        {/* RECENT ACTIVITY TABLE */}
        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
+                <h3 className="text-sm text-slate-800 flex items-center gap-2">
                     <LayoutDashboard size={20} className="text-slate-400" />
                     Recent Activity (Pending & Processing)
                 </h3>
                 <button 
                     onClick={onNavigateToAll}
-                    className="text-[13px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    className="text-[12px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
                 >
                     View All <ArrowRight size={16} />
                 </button>

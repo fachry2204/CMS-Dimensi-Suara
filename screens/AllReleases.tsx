@@ -141,9 +141,9 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-                <h1 className="text-xl font-bold text-slate-800 tracking-tight">All Releases</h1>
-                <p className="text-slate-500 mt-1 text-[12px]">Manage and track your music catalog status.</p>
+            <div className="md:hidden">
+                <h1 className="text-[15px] text-slate-800 tracking-tight">All Releases</h1>
+                <p className="text-slate-500 mt-0.5 text-[11px]">Manage and track your music catalog status.</p>
             </div>
             <div className="w-full md:w-auto flex items-center gap-3">
                 <div className="relative w-full md:w-80">
