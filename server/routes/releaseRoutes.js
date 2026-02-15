@@ -410,14 +410,20 @@ router.get('/', authenticateToken, async (req, res) => {
                 parsedArtists = [r.primary_artists];
             }
 
+            const submissionDate = r.submission_date;
+            const plannedReleaseDate = r.planned_release_date;
+            const originalReleaseDate = r.original_release_date;
+
             return {
                 id: r.id,
                 title: r.title,
                 status: r.status,
                 coverArt: r.cover_art,
                 primaryArtists: parsedArtists,
-                releaseDate: r.submission_date,
-                submissionDate: r.submission_date,
+                releaseDate: plannedReleaseDate || originalReleaseDate || submissionDate,
+                submissionDate,
+                plannedReleaseDate,
+                originalReleaseDate,
                 upc: r.upc,
                 label: r.label,
                 version: r.version,
