@@ -262,9 +262,9 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
   };
 
   const InfoRow = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
-      <div className="flex flex-col mb-3">
-          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-0.5">{label}</span>
-          <div className={`text-sm font-semibold flex items-center justify-between group ${highlight ? 'text-blue-700' : 'text-slate-800'}`}>
+      <div className="flex flex-col mb-2.5">
+          <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider mb-0.5">{label}</span>
+          <div className={`text-[13px] flex items-center justify-between group ${highlight ? 'text-blue-700' : 'text-slate-800'}`}>
               <span className="truncate pr-2">{value || "-"}</span>
               {value && (
                   <button 
