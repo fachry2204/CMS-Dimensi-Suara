@@ -2,7 +2,9 @@ import React from 'react';
 import { ReleaseData } from '../../types';
 import { TextInput } from '../../components/Input';
 import { Calendar, Globe } from 'lucide-react';
-import { publicAssetUrl } from '../../utils/url';
+import socialLogo from '../../assets/platforms/social.svg';
+import youtubeMusicLogo from '../../assets/platforms/youtube-music.svg';
+import allDspLogo from '../../assets/platforms/alldsp.svg';
 
 interface Props {
   data: ReleaseData;
@@ -58,9 +60,9 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData }) => {
         <label className="block text-base font-bold text-slate-700 mb-6">Pilih Release Anda</label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { id: 'SOCIAL', label: 'Social Media', logo: publicAssetUrl('assets/platforms/social.svg') },
-            { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: publicAssetUrl('assets/platforms/youtube-music.svg') },
-            { id: 'ALL_DSP', label: 'All DSP', logo: publicAssetUrl('assets/platforms/alldsp.svg') },
+            { id: 'SOCIAL', label: 'Social Media', logo: socialLogo },
+            { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: youtubeMusicLogo },
+            { id: 'ALL_DSP', label: 'All DSP', logo: allDspLogo },
           ].map(opt => {
             const selected = Array.isArray(data.distributionTargets) && data.distributionTargets.some(t => t.id === opt.id);
             return (

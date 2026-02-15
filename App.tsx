@@ -21,7 +21,9 @@ import { ProfileModal } from './components/ProfileModal';
 import { ReleaseType, ReleaseData, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 import { api, API_BASE_URL } from './utils/api';
-import { publicAssetUrl } from './utils/url';
+import socialLogo from './assets/platforms/social.svg';
+import youtubeMusicLogo from './assets/platforms/youtube-music.svg';
+import allDspLogo from './assets/platforms/alldsp.svg';
 import { getProfileImageUrl } from './utils/imageUtils';
 
 const App: React.FC = () => {
@@ -585,9 +587,9 @@ const App: React.FC = () => {
                                 contributors: Array.isArray(t.contributors) ? t.contributors : []
                             }));
                             const optionMap: Record<string, { id: string; label: string; logo: string }> = {
-                                'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: publicAssetUrl('assets/platforms/social.svg') },
-                                'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: publicAssetUrl('assets/platforms/youtube-music.svg') },
-                                'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: publicAssetUrl('assets/platforms/alldsp.svg') },
+                                'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: socialLogo },
+                                'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: youtubeMusicLogo },
+                                'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: allDspLogo },
                             };
                             let distributionTargets: { id: string; label: string; logo: string }[] = [];
                             const dtA: any = raw.distributionTargets ?? raw.distribution_targets;

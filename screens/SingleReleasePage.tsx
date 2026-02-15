@@ -3,7 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ReleaseWizard } from './ReleaseWizard';
 import { ReleaseData } from '../types';
 import { api } from '../utils/api';
-import { publicAssetUrl } from '../utils/url';
+import socialLogo from '../assets/platforms/social.svg';
+import youtubeMusicLogo from '../assets/platforms/youtube-music.svg';
+import allDspLogo from '../assets/platforms/alldsp.svg';
 
 export const SingleReleasePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,9 +39,9 @@ export const SingleReleasePage: React.FC = () => {
         const mapArr = (v: any) => Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
         const primaryArtists = mapArr(raw.primaryArtists);
         const optionMap: Record<string, { id: string; label: string; logo: string }> = {
-          'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: publicAssetUrl('assets/platforms/social.svg') },
-          'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: publicAssetUrl('assets/platforms/youtube-music.svg') },
-          'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: publicAssetUrl('assets/platforms/alldsp.svg') },
+          'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: socialLogo },
+          'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: youtubeMusicLogo },
+          'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: allDspLogo },
         };
         let distributionTargets: { id: string; label: string; logo: string }[] = [];
         if (Array.isArray(raw.distributionTargets)) {
