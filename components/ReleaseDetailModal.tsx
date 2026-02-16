@@ -556,16 +556,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-6">
-                                                    <div className="text-right hidden sm:block">
-                                                        <div className="text-[10px] font-bold text-slate-400 uppercase">ISRC CODE</div>
-                                                        <div className="font-mono text-sm font-medium text-slate-700 bg-white px-2 py-1 rounded border border-gray-200">
-                                                            {isrcInputs[track.id] || track.isrc || "N/A"}
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-slate-400">
-                                                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                                    </div>
+                                                <div className="text-slate-400">
+                                                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                                 </div>
                                             </div>
 
@@ -624,8 +616,23 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                         </div>
                                                     </div>
 
-                                                    {/* Column 2: Credits & Contributors */}
+                                                    {/* Column 2: Artists, Credits & Contributors */}
                                                     <div className="space-y-6">
+                                                        {/* Artists (moved above composer & lyrics) */}
+                                                        <div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400">Artists</span>
+                                                            <div className="mt-1 space-y-0.5">
+                                                                {track.artists.map((a, idx) => (
+                                                                    <div key={idx} className="text-xs text-slate-600 flex items-center gap-2">
+                                                                        <span>{a.name}</span>
+                                                                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[9px] font-bold uppercase text-slate-600">
+                                                                            {a.role === 'MainArtist' ? 'Primary' : a.role === 'FeaturedArtist' ? 'Featured' : a.role}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
                                                         <div className="grid grid-cols-2 gap-4">
                                                              <div>
                                                                 <span className="text-[10px] uppercase font-bold text-slate-400">Composer</span>
@@ -636,7 +643,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                                 <div className="text-sm font-medium text-slate-700">{track.lyricist}</div>
                                                             </div>
                                                         </div>
-
+            
                                                         {/* Full Additional Contributors Display */}
                                                         <div>
                                                             <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-2">
@@ -666,6 +673,14 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                             ) : (
                                                                 <div className="text-xs text-slate-400 italic">None added.</div>
                                                             )}
+                                                        </div>
+
+                                                        {/* ISRC Code (moved below Additional Contributors) */}
+                                                        <div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400">ISRC Code</span>
+                                                            <div className="font-mono text-sm font-medium text-slate-700 bg-white px-2 py-1 rounded border border-gray-200 mt-1">
+                                                                {isrcInputs[track.id] || track.isrc || "N/A"}
+                                                            </div>
                                                         </div>
                                                     </div>
 

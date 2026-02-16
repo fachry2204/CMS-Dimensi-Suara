@@ -253,7 +253,6 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
                             <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submit Date</th>
-                            <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Codes</th>
                             <ThSortable label="Aggregator" sortKey="aggregator" />
                             <ThSortable label="Status" sortKey="status" />
                             <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
@@ -332,23 +331,6 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-3 text-[11px]">
-                                        <div className="flex flex-col gap-1.5">
-                                            <div className="flex items-center gap-1.5 text-[11px]">
-                                                <span className="font-bold text-slate-400 w-8">UPC</span>
-                                                <span className={`font-mono px-1 py-0.5 rounded text-[11px] ${release.upc ? 'bg-slate-100 text-slate-700' : 'text-slate-300 italic'}`}>
-                                                    {release.upc || "Pending"}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-[11px]">
-                                                <span className="font-bold text-slate-400 w-8">ISRC</span>
-                                                <span className={`font-mono px-1 py-0.5 rounded text-[11px] ${isrcDisplay !== '-' ? 'bg-slate-100 text-slate-700' : 'text-slate-300 italic'}`}>
-                                                    {isrcDisplay}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    {/* NEW AGGREGATOR COLUMN */}
                                     <td className="px-6 py-3 text-[11px]">
                                         {release.aggregator ? (
                                             <div className="flex items-center gap-1 text-[10px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
