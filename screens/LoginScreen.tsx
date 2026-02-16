@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Music4, User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, Loader2, Building2, ChevronLeft, CheckCircle2 } from 'lucide-react';
 
 import { api } from '../utils/api';
+import { COUNTRIES_WITH_DIAL_CODES } from '../constants';
 
 interface Props {
   onLogin: (user: any, token: string) => void;
@@ -56,44 +57,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
 
-  const [countries, setCountries] = useState<{ name: string; dialCode: string }[]>([]);
-  const [isCountriesLoading, setIsCountriesLoading] = useState(false);
-  const [countriesError, setCountriesError] = useState('');
+  const [countries] = useState(COUNTRIES_WITH_DIAL_CODES);
 
   const selectedCountryDialCode =
     countries.find((c) => c.name === country)?.dialCode || '';
-
-  useEffect(() => {
-    if (mode !== 'register' || countries.length > 0 || isCountriesLoading) return;
-    const loadCountries = async () => {
-      try {
-        setIsCountriesLoading(true);
-        setCountriesError('');
-        const res = await fetch('https://restcountries.com/v3.1/all');
-        const json: any[] = await res.json();
-        const mapped = json
-          .map((c) => {
-            const name = c?.name?.common as string | undefined;
-            const root = c?.idd?.root as string | undefined;
-            const suffixes = c?.idd?.suffixes as string[] | undefined;
-            if (!name) return null;
-            let dial = '';
-            if (root && Array.isArray(suffixes) && suffixes.length > 0) {
-              dial = `${root}${suffixes[0]}`;
-            }
-            return { name, dialCode: dial };
-          })
-          .filter(Boolean) as { name: string; dialCode: string }[];
-        mapped.sort((a, b) => a.name.localeCompare(b.name));
-        setCountries(mapped);
-      } catch (e: any) {
-        setCountriesError('Gagal memuat daftar negara, silakan isi manual jika perlu.');
-      } finally {
-        setIsCountriesLoading(false);
-      }
-    };
-    loadCountries();
-  }, [mode, countries.length, isCountriesLoading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,12 +435,6 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
             </option>
           ))}
         </select>
-        {isCountriesLoading && (
-          <p className="text-xs text-slate-400">Memuat daftar negara...</p>
-        )}
-        {countriesError && (
-          <p className="text-xs text-red-500">{countriesError}</p>
-        )}
       </div>
 
       {country === 'Indonesia' ? (
@@ -839,7 +800,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-8 md:p-10 animate-fade-in-up">
+      <div
+        className={`w-full bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-8 md:p-10 animate-fade-in-up
+          ${mode === 'register' ? 'max-w-3xl' : 'max-w-md'}
+        `}
+      >
         {mode === 'login' ? renderLogin() : renderRegister()}
       </div>
     </div>
