@@ -84,6 +84,19 @@ export const api = {
         });
         return parseResponse(res);
     },
+    checkRegisterDuplicatesGet: async (payload) => {
+        const params = new URLSearchParams();
+        Object.entries(payload || {}).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && String(v).length > 0) {
+                params.append(k, String(v));
+            }
+        });
+        const res = await fetch(`${API_BASE_URL}/auth/check-duplicate?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     // Releases
     getReleases: async (token) => {

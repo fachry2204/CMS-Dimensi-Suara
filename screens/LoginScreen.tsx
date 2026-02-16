@@ -76,6 +76,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [regErrorModalOpen, setRegErrorModalOpen] = useState(false);
+  const [dupNik, setDupNik] = useState(false);
+  const [dupCompany, setDupCompany] = useState(false);
+  const [dupEmail, setDupEmail] = useState(false);
+  const [dupPhone, setDupPhone] = useState(false);
+  const [isCheckingDup, setIsCheckingDup] = useState(false);
 
   const [countries] = useState(COUNTRIES_WITH_DIAL_CODES);
 
@@ -132,6 +137,122 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     };
     loadProvinces();
   }, [country, provinces.length, isWilayahLoading]);
+
+  useEffect(() => {
+    if (!nik || !/^\d{16}$/.test(nik)) {
+      setDupNik(false);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setIsCheckingDup(true);
+        const res = await api.checkRegisterDuplicatesGet({ nik });
+        const dup = res?.duplicate || [];
+        const found = Array.isArray(dup) && dup.includes('NIK');
+        setDupNik(found);
+        if (found) {
+          setRegError('NIK sudah terdaftar. Gunakan NIK lain.');
+          setRegErrorModalOpen(true);
+        }
+      } catch {
+      } finally {
+        if (!cancelled) setIsCheckingDup(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [nik]);
+
+  useEffect(() => {
+    if (accountType !== 'COMPANY' || !companyName?.trim()) {
+      setDupCompany(false);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setIsCheckingDup(true);
+        const res = await api.checkRegisterDuplicatesGet({ companyName: companyName.trim() });
+        const dup = res?.duplicate || [];
+        const found = Array.isArray(dup) && dup.includes('COMPANY');
+        setDupCompany(found);
+        if (found) {
+          setRegError('Nama Perusahaan sudah terdaftar. Gunakan nama lain.');
+          setRegErrorModalOpen(true);
+        }
+      } catch {
+      } finally {
+        if (!cancelled) setIsCheckingDup(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [accountType, companyName]);
+
+  useEffect(() => {
+    const email = (regEmail || '').trim().toLowerCase();
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!email || !valid) {
+      setDupEmail(false);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setIsCheckingDup(true);
+        const res = await api.checkRegisterDuplicatesGet({ email });
+        const dup = res?.duplicate || [];
+        const found = Array.isArray(dup) && dup.includes('EMAIL');
+        setDupEmail(found);
+        if (found) {
+          setRegError('Email sudah terdaftar. Gunakan email lain.');
+          setRegErrorModalOpen(true);
+        }
+      } catch {
+      } finally {
+        if (!cancelled) setIsCheckingDup(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [regEmail]);
+
+  useEffect(() => {
+    const local = regPhoneLocal.replace(/[^0-9]/g, '').replace(/^0+/, '').trim();
+    const phone = local ? `${selectedCountryDialCode || ''}${local}` : '';
+    if (!phone) {
+      setDupPhone(false);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setIsCheckingDup(true);
+        const res = await api.checkRegisterDuplicatesGet({ phone });
+        const dup = res?.duplicate || [];
+        const found = Array.isArray(dup) && dup.includes('PHONE');
+        setDupPhone(found);
+        if (found) {
+          setRegError('No Handphone sudah terdaftar. Gunakan nomor lain.');
+          setRegErrorModalOpen(true);
+        }
+      } catch {
+      } finally {
+        if (!cancelled) setIsCheckingDup(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [regPhoneLocal, selectedCountryDialCode]);
 
   useEffect(() => {
     if (!provinceCode) {
@@ -389,10 +510,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     try {
       if (step === 1) {
         const payload: any = {};
-        if (nik) payload.nik = nik;
-        if (accountType === 'COMPANY' && companyName) payload.companyName = companyName;
+        if (nik) payload.nik = String(nik).trim();
+        if (accountType === 'COMPANY' && companyName) payload.companyName = String(companyName).trim();
         if (Object.keys(payload).length > 0) {
-          const res = await api.checkRegisterDuplicates(payload);
+          let res = await api.checkRegisterDuplicates(payload);
           const dup = res?.duplicate || [];
           if (Array.isArray(dup) && dup.length > 0) {
             const mapLabel: Record<string, string> = { NIK: 'NIK', COMPANY: 'Nama Perusahaan' };
@@ -401,16 +522,28 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
             setRegErrorModalOpen(true);
             return;
           }
+          // fallback GET if server not supports POST
+          if (dup.length === 0 && (res?.status === 404 || !res)) {
+            res = await api.checkRegisterDuplicatesGet(payload);
+            const dup2 = res?.duplicate || [];
+            if (Array.isArray(dup2) && dup2.length > 0) {
+              const mapLabel: Record<string, string> = { NIK: 'NIK', COMPANY: 'Nama Perusahaan' };
+              const labels = dup2.map((d: string) => mapLabel[d] || d).join(', ');
+              setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
+              setRegErrorModalOpen(true);
+              return;
+            }
+          }
         }
       }
       if (step === 2) {
         const phoneLocalClean = regPhoneLocal.replace(/^0+/, '').trim();
         const phone = selectedCountryDialCode ? `${selectedCountryDialCode}${phoneLocalClean}` : phoneLocalClean;
         const payload: any = {};
-        if (regEmail) payload.email = regEmail;
+        if (regEmail) payload.email = regEmail.trim().toLowerCase();
         if (phone) payload.phone = phone;
         if (Object.keys(payload).length > 0) {
-          const res = await api.checkRegisterDuplicates(payload);
+          let res = await api.checkRegisterDuplicates(payload);
           const dup = res?.duplicate || [];
           if (Array.isArray(dup) && dup.length > 0) {
             const mapLabel: Record<string, string> = { EMAIL: 'Email', PHONE: 'No Handphone' };
@@ -419,14 +552,21 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
             setRegErrorModalOpen(true);
             return;
           }
+          if (dup.length === 0 && (res?.status === 404 || !res)) {
+            res = await api.checkRegisterDuplicatesGet(payload);
+            const dup2 = res?.duplicate || [];
+            if (Array.isArray(dup2) && dup2.length > 0) {
+              const mapLabel: Record<string, string> = { EMAIL: 'Email', PHONE: 'No Handphone' };
+              const labels = dup2.map((d: string) => mapLabel[d] || d).join(', ');
+              setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
+              setRegErrorModalOpen(true);
+              return;
+            }
+          }
         }
       }
       if (step < 4) setStep(step + 1);
     } catch (e: any) {
-      if (e?.status === 404) {
-        if (step < 4) setStep(step + 1);
-        return;
-      }
       setRegError(e.message || 'Gagal memeriksa duplikasi');
       setRegErrorModalOpen(true);
     }
@@ -1306,7 +1446,14 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
           <button
             type="button"
             onClick={goNextStep}
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs font-semibold shadow-md shadow-blue-500/25 hover:brightness-110 active:scale-95"
+            disabled={(step === 1 && (dupNik || dupCompany || isCheckingDup)) || (step === 2 && (dupEmail || dupPhone || isCheckingDup))}
+            className={`flex-1 py-3 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/25 active:scale-95
+              ${
+                (step === 1 && (dupNik || dupCompany || isCheckingDup)) || (step === 2 && (dupEmail || dupPhone || isCheckingDup))
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:brightness-110'
+              }
+            `}
           >
             Lanjut
           </button>
