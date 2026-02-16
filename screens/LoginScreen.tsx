@@ -423,6 +423,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
       }
       if (step < 4) setStep(step + 1);
     } catch (e: any) {
+      if (e?.status === 404) {
+        if (step < 4) setStep(step + 1);
+        return;
+      }
       setRegError(e.message || 'Gagal memeriksa duplikasi');
       setRegErrorModalOpen(true);
     }

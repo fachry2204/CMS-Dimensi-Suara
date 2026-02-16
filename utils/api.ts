@@ -20,11 +20,14 @@ const parseResponse = async (res: Response) => {
                 msg += ` (Duplikasi: ${j.duplicate.join(', ')})`;
             }
             const err: any = new Error(msg);
+            (err as any).status = res.status;
             err.payload = j;
             throw err;
         } catch {
             const t = await res.text().catch(() => '');
-            throw new Error(t || 'Request failed');
+            const err: any = new Error(t || 'Request failed');
+            (err as any).status = res.status;
+            throw err;
         }
     }
     return res.json();

@@ -204,4 +204,32 @@ router.post('/check-duplicate', async (req, res) => {
     }
 });
 
+router.get('/check-duplicate', async (req, res) => {
+    try {
+        const { nik, companyName, email, phone } = req.query || {};
+        const duplicateReasons = [];
+
+        if (email) {
+            const [rows] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
+            if (rows.length > 0) duplicateReasons.push('EMAIL');
+        }
+        if (phone) {
+            const [rows] = await db.query('SELECT id FROM users WHERE phone = ?', [phone]);
+            if (rows.length > 0) duplicateReasons.push('PHONE');
+        }
+        if (nik) {
+            const [rows] = await db.query('SELECT id FROM users WHERE nik = ?', [nik]);
+            if (rows.length > 0) duplicateReasons.push('NIK');
+        }
+        if (companyName) {
+            const [rows] = await db.query('SELECT id FROM users WHERE company_name = ?', [companyName]);
+            if (rows.length > 0) duplicateReasons.push('COMPANY');
+        }
+
+        res.json({ duplicate: duplicateReasons });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;
