@@ -94,7 +94,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       try {
         setIsWilayahLoading(true);
         setWilayahError('');
-        const res = await fetch('https://wilayah.id/api/provinces.json');
+        const res = await fetch('/api/wilayah/provinces');
         if (!res.ok) throw new Error('Failed to load provinces');
         const json = await res.json();
         const data = (json && json.data) || [];
@@ -122,7 +122,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       try {
         setIsWilayahLoading(true);
         setWilayahError('');
-        const res = await fetch(`https://wilayah.id/api/regencies/${provinceCode}.json`);
+        const res = await fetch(`/api/wilayah/regencies/${provinceCode}`);
         if (!res.ok) throw new Error('Failed to load regencies');
         const json = await res.json();
         const data = (json && json.data) || [];
@@ -148,7 +148,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       try {
         setIsWilayahLoading(true);
         setWilayahError('');
-        const res = await fetch(`https://wilayah.id/api/districts/${regencyCode}.json`);
+        const res = await fetch(`/api/wilayah/districts/${regencyCode}`);
         if (!res.ok) throw new Error('Failed to load districts');
         const json = await res.json();
         const data = (json && json.data) || [];
@@ -172,7 +172,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       try {
         setIsWilayahLoading(true);
         setWilayahError('');
-        const res = await fetch(`https://wilayah.id/api/villages/${districtCode}.json`);
+        const res = await fetch(`/api/wilayah/villages/${districtCode}`);
         if (!res.ok) throw new Error('Failed to load villages');
         const json = await res.json();
         const data = (json && json.data) || [];

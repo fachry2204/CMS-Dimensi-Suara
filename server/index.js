@@ -81,6 +81,54 @@ app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Proxy Wilayah.id (to avoid browser CORS)
+app.get('/api/wilayah/provinces', async (req, res) => {
+    try {
+        const upstream = await fetch('https://wilayah.id/api/provinces.json');
+        const json = await upstream.json();
+        res.json(json);
+    } catch (err) {
+        console.error('Wilayah provinces error:', err);
+        res.status(500).json({ error: 'Failed to load provinces' });
+    }
+});
+
+app.get('/api/wilayah/regencies/:provinceCode', async (req, res) => {
+    try {
+        const { provinceCode } = req.params;
+        const upstream = await fetch(`https://wilayah.id/api/regencies/${provinceCode}.json`);
+        const json = await upstream.json();
+        res.json(json);
+    } catch (err) {
+        console.error('Wilayah regencies error:', err);
+        res.status(500).json({ error: 'Failed to load regencies' });
+    }
+});
+
+app.get('/api/wilayah/districts/:regencyCode', async (req, res) => {
+    try {
+        const { regencyCode } = req.params;
+        const upstream = await fetch(`https://wilayah.id/api/districts/${regencyCode}.json`);
+        const json = await upstream.json();
+        res.json(json);
+    } catch (err) {
+        console.error('Wilayah districts error:', err);
+        res.status(500).json({ error: 'Failed to load districts' });
+    }
+});
+
+app.get('/api/wilayah/villages/:districtCode', async (req, res) => {
+    try {
+        const { districtCode } = req.params;
+        const upstream = await fetch(`https://wilayah.id/api/villages/${districtCode}.json`);
+        const json = await upstream.json();
+        res.json(json);
+    } catch (err) {
+        console.error('Wilayah villages error:', err);
+        res.status(500).json({ error: 'Failed to load villages' });
+    }
+});
+
 // Test Database Connection Route
 app.get('/api/health', async (req, res) => {
     try {
