@@ -181,6 +181,10 @@ app.get('/api/wilayah/postal-code', async (req, res) => {
             candidate = list.find((item) => normalizeName(item.village) === villageNorm);
         }
 
+        if (!candidate && list.length > 0) {
+            candidate = list[0];
+        }
+
         if (!candidate) {
             return res.status(404).json({ error: 'Postal code not found' });
         }

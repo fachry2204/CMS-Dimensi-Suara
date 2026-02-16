@@ -473,7 +473,13 @@ const App: React.FC = () => {
   if (isAuthChecking) return null;
 
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />;
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
+        <Route path="/register" element={<LoginScreen onLogin={handleLogin} initialMode="register" />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
   }
 
   // Determine Page Title for Header

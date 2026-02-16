@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Music4, User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, Loader2, Building2, ChevronLeft, CheckCircle2 } from 'lucide-react';
 
 import { api } from '../utils/api';
@@ -7,16 +8,18 @@ import { COUNTRIES_WITH_DIAL_CODES } from '../constants';
 
 interface Props {
   onLogin: (user: any, token: string) => void;
+  initialMode?: 'login' | 'register';
 }
 
-export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
+export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' }) => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [accountType, setAccountType] = useState<'PERSONAL' | 'COMPANY' | null>(null);
   const [step, setStep] = useState(1);
 
@@ -477,8 +480,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <button
           type="button"
           onClick={() => {
-            setMode('register');
             resetRegistrationState();
+            navigate('/register');
           }}
           className="text-xs font-semibold text-blue-600 hover:text-blue-700"
         >
@@ -956,8 +959,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <button
           type="button"
           onClick={() => {
-            setMode('login');
             resetRegistrationState();
+            navigate('/login');
           }}
           className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
         >
