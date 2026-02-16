@@ -14,6 +14,7 @@ router.post('/register', async (req, res) => {
             email,
             password,
             accountType,
+            companyName,
             nik,
             fullName,
             address,
@@ -43,7 +44,28 @@ router.post('/register', async (req, res) => {
         const colNames = cols.map(c => c.Field);
         const hasRole = colNames.includes('role');
         const hasStatus = colNames.includes('status');
-        const hasProfileJson = colNames.includes('profile_json');
+
+        const duplicateReasons = [];
+
+        const [emailRows] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
+        if (emailRows.length > 0) duplicateReasons.push('EMAIL');
+
+        if (phone) {
+            const [phoneRows] = await db.query('SELECT id FROM users WHERE phone = ?', [phone]);
+            if (phoneRows.length > 0) duplicateReasons.push('PHONE');
+        }
+
+        if (accountType === 'COMPANY' && companyName) {
+            const [companyRows] = await db.query('SELECT id FROM users WHERE company_name = ?', [companyName]);
+            if (companyRows.length > 0) duplicateReasons.push('COMPANY');
+        }
+
+        if (duplicateReasons.length > 0) {
+            return res.status(400).json({
+                error: 'Data sudah terdaftar. Mohon gunakan email, nomor WhatsApp, atau nama perusahaan lain.',
+                duplicate: duplicateReasons
+            });
+        }
 
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(password, salt);
@@ -64,28 +86,53 @@ router.post('/register', async (req, res) => {
 
         const [result] = await db.query(sql, params);
 
-        if (hasProfileJson) {
-            const profile = {
-                accountType: accountType || 'PERSONAL',
-                nik: nik || '',
-                fullName: fullName || '',
-                address: address || '',
-                country: country || '',
-                province: province || '',
-                city: city || '',
-                district: district || '',
-                subdistrict: subdistrict || '',
-                postalCode: postalCode || '',
-                phone: phone || '',
-                picName: picName || '',
-                picPosition: picPosition || '',
-                picPhone: picPhone || '',
-                nibDocPath: nibDocPath || '',
-                kemenkumhamDocPath: kemenkumhamDocPath || '',
-                ktpDocPath: ktpDocPath || '',
-                npwpDocPath: npwpDocPath || ''
-            };
-            await db.query('UPDATE users SET profile_json = ? WHERE id = ?', [JSON.stringify(profile), result.insertId]);
+        try {
+            await db.query(
+                `UPDATE users SET
+                    account_type = ?,
+                    company_name = ?,
+                    nik = ?,
+                    full_name = ?,
+                    address = ?,
+                    country = ?,
+                    province = ?,
+                    city = ?,
+                    district = ?,
+                    subdistrict = ?,
+                    postal_code = ?,
+                    phone = ?,
+                    pic_name = ?,
+                    pic_position = ?,
+                    pic_phone = ?,
+                    nib_doc_path = ?,
+                    kemenkumham_doc_path = ?,
+                    ktp_doc_path = ?,
+                    npwp_doc_path = ?
+                 WHERE id = ?`,
+                [
+                    accountType || 'PERSONAL',
+                    accountType === 'COMPANY' ? (companyName || '') : '',
+                    nik || '',
+                    fullName || '',
+                    address || '',
+                    country || '',
+                    province || '',
+                    city || '',
+                    district || '',
+                    subdistrict || '',
+                    postalCode || '',
+                    phone || '',
+                    picName || '',
+                    picPosition || '',
+                    picPhone || '',
+                    nibDocPath || '',
+                    kemenkumhamDocPath || '',
+                    ktpDocPath || '',
+                    npwpDocPath || '',
+                    result.insertId
+                ]
+            );
+        } catch (e) {
         }
 
         res.status(201).json({ 

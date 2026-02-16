@@ -94,7 +94,41 @@ const initDb = async () => {
             console.warn('Warning checking/updating users.status enum:', err.message);
         }
 
-        // 3. Check 'cover_art' in 'releases'
+        // 3. Ensure extended registration columns in 'users'
+        const userProfileColumns = [
+            { name: 'account_type', type: "ENUM('PERSONAL','COMPANY') DEFAULT 'PERSONAL'" },
+            { name: 'company_name', type: "VARCHAR(255)" },
+            { name: 'nik', type: "VARCHAR(32)" },
+            { name: 'full_name', type: "VARCHAR(255)" },
+            { name: 'address', type: "TEXT" },
+            { name: 'country', type: "VARCHAR(100)" },
+            { name: 'province', type: "VARCHAR(100)" },
+            { name: 'city', type: "VARCHAR(100)" },
+            { name: 'district', type: "VARCHAR(100)" },
+            { name: 'subdistrict', type: "VARCHAR(100)" },
+            { name: 'postal_code', type: "VARCHAR(20)" },
+            { name: 'phone', type: "VARCHAR(50)" },
+            { name: 'pic_name', type: "VARCHAR(255)" },
+            { name: 'pic_position', type: "VARCHAR(255)" },
+            { name: 'pic_phone', type: "VARCHAR(50)" },
+            { name: 'nib_doc_path', type: "VARCHAR(255)" },
+            { name: 'kemenkumham_doc_path', type: "VARCHAR(255)" },
+            { name: 'ktp_doc_path', type: "VARCHAR(255)" },
+            { name: 'npwp_doc_path', type: "VARCHAR(255)" }
+        ];
+
+        for (const col of userProfileColumns) {
+            try {
+                await connection.query(`SELECT \`${col.name}\` FROM users LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to users table`);
+                    await connection.query(`ALTER TABLE users ADD COLUMN \`${col.name}\` ${col.type}`);
+                }
+            }
+        }
+
+        // 4. Check 'cover_art' in 'releases'
         try {
             await connection.query('SELECT cover_art FROM releases LIMIT 1');
         } catch (err) {
@@ -104,7 +138,7 @@ const initDb = async () => {
             }
         }
 
-        // 4. Check 'primary_artists' in 'releases'
+        // 5. Check 'primary_artists' in 'releases'
         try {
             await connection.query('SELECT primary_artists FROM releases LIMIT 1');
         } catch (err) {
@@ -114,7 +148,7 @@ const initDb = async () => {
             }
         }
 
-        // 5. Check other missing columns in 'releases'
+        // 6. Check other missing columns in 'releases'
         const releaseColumns = [
             { name: 'release_type', type: "ENUM('SINGLE', 'ALBUM')" },
             { name: 'version', type: "VARCHAR(50)" },
@@ -141,7 +175,7 @@ const initDb = async () => {
             }
         }
 
-        // 6. Check 'profile_json' in 'users' for extended registration data
+        // 7. Check 'profile_json' in 'users' for extended registration data
         try {
             await connection.query('SELECT profile_json FROM users LIMIT 1');
         } catch (err) {
@@ -151,7 +185,7 @@ const initDb = async () => {
             }
         }
 
-        // 7. Check missing columns in 'tracks'
+        // 8. Check missing columns in 'tracks'
         const trackColumns = [
             { name: 'track_number', type: "VARCHAR(10)" },
             { name: 'duration', type: "VARCHAR(20)" },

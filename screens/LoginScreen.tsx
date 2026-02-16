@@ -23,6 +23,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
   const [accountType, setAccountType] = useState<'PERSONAL' | 'COMPANY' | null>(null);
   const [step, setStep] = useState(1);
 
+  const [companyName, setCompanyName] = useState('');
   const [nik, setNik] = useState('');
   const [fullName, setFullName] = useState('');
   const [address, setAddress] = useState('');
@@ -55,6 +56,15 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
 
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [docError, setDocError] = useState('');
+  const [docPreviews, setDocPreviews] = useState<{ ktp?: string; npwp?: string; nib?: string; kemenkumham?: string }>({});
+
+  const [statusModalStatus, setStatusModalStatus] = useState<string | null>(null);
+  const [statusModalUser, setStatusModalUser] = useState<string | null>(null);
+
+  const [cropField, setCropField] = useState<'ktp' | 'npwp' | 'nib' | 'kemenkumham' | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+  const [cropScale, setCropScale] = useState(1);
 
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
@@ -200,25 +210,27 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     setIsLoading(true);
 
     try {
-      // Try API login first
       const data = await api.login(username, password);
-      onLogin(data.user, data.token);
-    } catch (err: any) {
-        // Fallback for demo if API fails (Optional, but user asked for DB only)
-        // But since I can't run DB locally, I must keep the demo logic OR explain it won't work without DB.
-        // User said "agar menyimpan data BUKAN di lokal".
-        // So I should enforce API.
-        // However, to prevent "broken" app for me right now, I'll add a check.
-        // If API fails, I'll show error.
-        console.error(err);
-        setError(err.message || 'Login gagal. Pastikan server berjalan.');
+      const user = data.user;
+      const status = ((user.status as string) || '').toLowerCase();
+      if (user.role === 'User' && status && !['approved', 'active'].includes(status)) {
+        setStatusModalUser(user.username || username);
+        setStatusModalStatus(user.status || 'Pending');
         setIsLoading(false);
+        return;
+      }
+      onLogin(user, data.token);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Login gagal. Pastikan server berjalan.');
+      setIsLoading(false);
     }
   };
 
   const resetRegistrationState = () => {
     setAccountType(null);
     setStep(1);
+    setCompanyName('');
     setNik('');
     setFullName('');
     setAddress('');
@@ -248,6 +260,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     setDocError('');
     setRegError('');
     setRegSuccess('');
+    setDocPreviews({});
   };
 
   const handleSelectAccountType = (type: 'PERSONAL' | 'COMPANY') => {
@@ -289,8 +302,18 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
       return false;
     }
     if (currentStep === 1) {
-      if (!nik || !fullName || !address || !country) {
-        setRegError('NIK, Nama Lengkap, Alamat, dan Negara wajib diisi.');
+      if (
+        !nik ||
+        !fullName ||
+        !address ||
+        !country ||
+        (accountType === 'COMPANY' && !companyName)
+      ) {
+        setRegError(
+          accountType === 'COMPANY'
+            ? 'NIK, Nama Direktur, Nama Perusahaan, Alamat, dan Negara wajib diisi.'
+            : 'NIK, Nama Lengkap, Alamat, dan Negara wajib diisi.'
+        );
         return false;
       }
       if (country === 'Indonesia') {
@@ -360,6 +383,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         email: regEmail,
         password: regPassword,
         accountType,
+        companyName,
         nik,
         fullName,
         address,
@@ -524,6 +548,19 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         </button>
       </div>
 
+      {accountType === 'COMPANY' && (
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">Nama Perusahaan</label>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            placeholder="Masukkan nama perusahaan"
+          />
+        </div>
+      )}
+
       <div className="space-y-2">
         <label className="text-sm font-semibold text-slate-700">NIK</label>
         <input
@@ -536,13 +573,15 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">Nama Lengkap</label>
+        <label className="text-sm font-semibold text-slate-700">
+          {accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}
+        </label>
         <input
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-          placeholder="Masukkan nama lengkap"
+          placeholder={accountType === 'COMPANY' ? 'Masukkan nama direktur' : 'Masukkan nama lengkap'}
         />
       </div>
 
@@ -854,6 +893,65 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     </div>
   );
 
+  const handleFileSelect = (field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham', file: File | null) => {
+    setDocError('');
+    if (!file) return;
+    if (file.type && file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setCropField(field);
+      setCropFile(file);
+      setCropImageUrl(url);
+      setCropScale(1);
+      return;
+    }
+    handleDocChange(field, file);
+  };
+
+  const applyCrop = () => {
+    if (!cropFile || !cropImageUrl || !cropField) return;
+    const img = new Image();
+    img.onload = () => {
+      const size = 600;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const baseScale = Math.max(size / img.width, size / img.height);
+      const scale = baseScale * cropScale;
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      const dx = (size - dw) / 2;
+      const dy = (size - dh) / 2;
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(img, dx, dy, dw, dh);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const croppedFile = new File([blob], cropFile.name, { type: 'image/jpeg' });
+        setDocPreviews((prev) => ({
+          ...prev,
+          [cropField]: dataUrl
+        }));
+        handleDocChange(cropField, croppedFile);
+        URL.revokeObjectURL(cropImageUrl);
+        setCropField(null);
+        setCropFile(null);
+        setCropImageUrl(null);
+      }, 'image/jpeg', 0.9);
+    };
+    img.src = cropImageUrl;
+  };
+
+  const cancelCrop = () => {
+    if (cropImageUrl) {
+      URL.revokeObjectURL(cropImageUrl);
+    }
+    setCropField(null);
+    setCropFile(null);
+    setCropImageUrl(null);
+  };
+
   const renderDocUploadItem = (
     label: string,
     field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham',
@@ -880,11 +978,16 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] || null;
-              if (f) handleDocChange(field, f);
+              if (f) handleFileSelect(field, f);
             }}
           />
           {file ? file.name : 'Pilih file'}
         </label>
+        {docPreviews[field] && (
+          <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+            <img src={docPreviews[field]} alt={label} className="w-full h-full object-cover" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -916,8 +1019,9 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     <div className="space-y-4 text-xs text-slate-700">
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
         <p className="font-semibold text-slate-800 text-sm">Data Akun</p>
+        {accountType === 'COMPANY' && <p>Nama Perusahaan: {companyName}</p>}
         <p>NIK: {nik}</p>
-        <p>Nama Lengkap: {fullName}</p>
+        <p>{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}: {fullName}</p>
         <p>Negara: {country}</p>
         {country === 'Indonesia' && (
           <>
@@ -947,12 +1051,46 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         <p className="font-semibold text-slate-800 text-sm">Dokumen</p>
         {accountType === 'COMPANY' && (
           <>
-            <p>NIB: {nibFile ? 'Sudah diupload' : 'Belum diupload'}</p>
-            <p>Dokumen Kemenkumham: {kemenkumhamFile ? 'Sudah diupload' : 'Belum diupload'}</p>
+            <div className="flex items-center gap-2">
+              <p className="flex-1">NIB:</p>
+              {docPreviews.nib && (
+                <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
+                  <img src={docPreviews.nib} alt="NIB" className="w-full h-full object-cover" />
+                </div>
+              )}
+              {!docPreviews.nib && <span>{nibFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="flex-1">Dokumen Kemenkumham:</p>
+              {docPreviews.kemenkumham && (
+                <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
+                  <img src={docPreviews.kemenkumham} alt="Dokumen Kemenkumham" className="w-full h-full object-cover" />
+                </div>
+              )}
+              {!docPreviews.kemenkumham && (
+                <span>{kemenkumhamFile ? 'Sudah diupload' : 'Belum diupload'}</span>
+              )}
+            </div>
           </>
         )}
-        <p>KTP: {ktpFile ? 'Sudah diupload' : 'Belum diupload'}</p>
-        <p>NPWP: {npwpFile ? 'Sudah diupload' : 'Belum diupload'}</p>
+        <div className="flex items-center gap-2">
+          <p className="flex-1">{accountType === 'COMPANY' ? 'KTP Direktur:' : 'KTP:'}</p>
+          {docPreviews.ktp && (
+            <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
+              <img src={docPreviews.ktp} alt="KTP" className="w-full h-full object-cover" />
+            </div>
+          )}
+          {!docPreviews.ktp && <span>{ktpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <p className="flex-1">NPWP:</p>
+          {docPreviews.npwp && (
+            <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
+              <img src={docPreviews.npwp} alt="NPWP" className="w-full h-full object-cover" />
+            </div>
+          )}
+          {!docPreviews.npwp && <span>{npwpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
+        </div>
       </div>
     </div>
   );
@@ -1060,6 +1198,82 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
       >
         {mode === 'login' ? renderLogin() : renderRegister()}
       </div>
+
+      {statusModalStatus && statusModalUser && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={24} className="text-amber-500" />
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Status Akun Belum Approved</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Hi {statusModalUser}, saat ini status akun kamu adalah{' '}
+                  <span className="font-semibold">{statusModalStatus}</span>. Kamu belum bisa login ke CMS
+                  sampai status berubah menjadi Approved.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusModalStatus(null);
+                  setStatusModalUser(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cropImageUrl && cropField && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+            <p className="text-sm font-semibold text-slate-800">Crop {cropField.toUpperCase()}</p>
+            <div className="w-full flex items-center justify-center">
+              <div className="w-64 h-64 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center">
+                <img
+                  src={cropImageUrl}
+                  alt="Crop"
+                  className="w-full h-full object-cover"
+                  style={{ transform: `scale(${cropScale})` }}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-600">Zoom</p>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={cropScale}
+                onChange={(e) => setCropScale(parseFloat(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={cancelCrop}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-700"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={applyCrop}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+              >
+                Simpan Crop
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
