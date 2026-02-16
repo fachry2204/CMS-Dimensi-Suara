@@ -344,7 +344,7 @@ const App: React.FC = () => {
   const handleEditRelease = async (release: ReleaseData) => {
       if (!release.id || !token) {
           setEditingRelease(release);
-          navigate('/new-release');
+          navigate(release.type === 'SINGLE' ? '/new-release/single' : '/new-release/album');
           return;
       }
       try {
@@ -431,11 +431,11 @@ const App: React.FC = () => {
               plannedReleaseDate: normDate(raw.planned_release_date)
           };
           setEditingRelease(mapped);
-          navigate('/new-release');
+          navigate(mapped.type === 'SINGLE' ? '/new-release/single' : '/new-release/album');
       } catch (e) {
           console.error('Failed to load full release for edit', e);
           setEditingRelease(release);
-          navigate('/new-release');
+          navigate(release.type === 'SINGLE' ? '/new-release/single' : '/new-release/album');
       }
   };
 
@@ -685,6 +685,28 @@ const App: React.FC = () => {
                     editingRelease={editingRelease}
                     setEditingRelease={setEditingRelease}
                     onSaveRelease={handleSaveRelease}
+                />
+            } />
+            <Route path="/new-release/single" element={
+                <ReleaseWizard 
+                    type="SINGLE"
+                    onBack={() => {
+                        setEditingRelease(null);
+                        navigate('/new-release');
+                    }}
+                    onSave={handleSaveRelease}
+                    initialData={editingRelease || undefined}
+                />
+            } />
+            <Route path="/new-release/album" element={
+                <ReleaseWizard 
+                    type="ALBUM"
+                    onBack={() => {
+                        setEditingRelease(null);
+                        navigate('/new-release');
+                    }}
+                    onSave={handleSaveRelease}
+                    initialData={editingRelease || undefined}
                 />
             } />
             <Route path="/releases" element={

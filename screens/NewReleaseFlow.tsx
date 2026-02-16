@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReleaseTypeSelection } from './ReleaseTypeSelection';
-import { ReleaseWizard } from './ReleaseWizard';
 import { ReleaseType, ReleaseData } from '../types';
 
 interface NewReleaseFlowProps {
@@ -16,46 +15,23 @@ export const NewReleaseFlow: React.FC<NewReleaseFlowProps> = ({
     onSaveRelease 
 }) => {
     const navigate = useNavigate();
-    const [wizardStep, setWizardStep] = useState<'SELECTION' | 'WIZARD'>('SELECTION');
-    const [releaseType, setReleaseType] = useState<ReleaseType | null>(null);
 
-    // Initial state setup if editing
+    // Jika sedang edit release, langsung arahkan ke halaman wizard sesuai type
     useEffect(() => {
         if (editingRelease) {
-            setReleaseType(editingRelease.type as ReleaseType);
-            setWizardStep('WIZARD');
+            const targetPath = editingRelease.type === 'SINGLE' 
+                ? '/new-release/single' 
+                : '/new-release/album';
+            navigate(targetPath);
         }
-    }, [editingRelease]);
+    }, [editingRelease, navigate]);
 
     const handleSelectType = (type: ReleaseType) => {
-        setReleaseType(type);
-        setWizardStep('WIZARD');
+        const targetPath = type === 'SINGLE' 
+            ? '/new-release/single' 
+            : '/new-release/album';
+        navigate(targetPath);
     };
-
-    const handleBack = () => {
-        // Confirmation is now handled within ReleaseWizard component
-        setWizardStep('SELECTION');
-        setReleaseType(null);
-        setEditingRelease(null); // Clear editing state when going back
-        
-        // No local/session storage for wizard (by policy)
-    };
-
-    const handleSave = (data: ReleaseData) => {
-        // No persistence cleanup needed; nothing stored locally
-        onSaveRelease(data);
-    };
-
-    if (wizardStep === 'WIZARD' && releaseType) {
-        return (
-            <ReleaseWizard 
-                type={releaseType} 
-                onBack={handleBack}
-                onSave={handleSave}
-                initialData={editingRelease || undefined}
-            />
-        );
-    }
 
     return <ReleaseTypeSelection onSelect={handleSelectType} />;
 };
