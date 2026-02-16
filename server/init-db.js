@@ -119,7 +119,17 @@ const initDb = async () => {
             }
         }
 
-        // 5. Check missing columns in 'tracks'
+        // 5. Check 'profile_json' in 'users' for extended registration data
+        try {
+            await connection.query('SELECT profile_json FROM users LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: profile_json to users table');
+                await connection.query('ALTER TABLE users ADD COLUMN profile_json JSON');
+            }
+        }
+
+        // 6. Check missing columns in 'tracks'
         const trackColumns = [
             { name: 'track_number', type: "VARCHAR(10)" },
             { name: 'duration', type: "VARCHAR(20)" },

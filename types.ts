@@ -121,7 +121,7 @@ export interface User {
   name: string;
   email: string;
   role: 'Admin' | 'Operator' | 'User'; // User = Registered User
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved';
   joinedDate: string;
   password?: string; // Optional for UI display
   profilePicture?: string;

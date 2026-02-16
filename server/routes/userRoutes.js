@@ -23,12 +23,26 @@ const storage = multer.diskStorage({
         cb(null, PROFILES_DIR);
     },
     filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const baseType = req.body && req.body.type ? String(req.body.type).toLowerCase() : 'profile';
+        cb(null, baseType + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 
 const upload = multer({ storage: storage });
+
+// PUBLIC: Upload registration documents (KTP, NPWP, NIB, Kemenkumham)
+router.post('/upload-doc', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        const filePath = `/uploads/profiles/${req.file.filename}`;
+        res.json({ path: filePath });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // GET CURRENT USER PROFILE
 router.get('/profile', authenticateToken, async (req, res) => {
@@ -127,7 +141,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // CREATE USER (Admin/Operator)
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, status } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'Name, email, and password are required' });
@@ -137,10 +151,22 @@ router.post('/', authenticateToken, async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(password, salt);
 
-        const [result] = await db.query(
-            'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-            [name, email, hash, role || 'User']
-        );
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        const hasStatus = colNames.includes('status');
+
+        let sql = '';
+        let params = [];
+
+        if (hasStatus) {
+            sql = 'INSERT INTO users (username, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)';
+            params = [name, email, hash, role || 'User', status || 'Active'];
+        } else {
+            sql = 'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)';
+            params = [name, email, hash, role || 'User'];
+        }
+
+        const [result] = await db.query(sql, params);
 
         res.status(201).json({ 
             message: 'User created successfully', 
@@ -149,7 +175,7 @@ router.post('/', authenticateToken, async (req, res) => {
                 name,
                 email,
                 role: role || 'User',
-                status: 'Active',
+                status: status || 'Active',
                 joinedDate: new Date().toISOString().split('T')[0]
             }
         });

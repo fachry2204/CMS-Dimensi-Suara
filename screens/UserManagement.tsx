@@ -31,7 +31,8 @@ export const UserManagement: React.FC = () => {
     name: '',
     email: '',
     role: 'Operator' as 'Admin' | 'Operator' | 'User',
-    password: ''
+    password: '',
+    status: 'Active' as 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved'
   });
 
   // Fetch Users
@@ -59,12 +60,13 @@ export const UserManagement: React.FC = () => {
     try {
         const payload = {
             ...newUser,
-            role: addUserContext === 'REGISTERED' ? 'User' : newUser.role
+            role: addUserContext === 'REGISTERED' ? 'User' : newUser.role,
+            status: addUserContext === 'REGISTERED' ? 'Pending' : newUser.status
         };
         const response = await api.createUser(token, payload);
         setUsers(prev => [response.user, ...prev]);
         setShowAddUserModal(false);
-        setNewUser({ name: '', email: '', role: 'Operator', password: '' });
+        setNewUser({ name: '', email: '', role: 'Operator', password: '', status: 'Active' });
         alert('User created successfully');
     } catch (err: any) {
         alert(`Failed to create user: ${err.message}`);

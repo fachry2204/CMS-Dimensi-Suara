@@ -57,15 +57,14 @@ export const api = {
         return res.json();
     },
 
-    register: async (username, email, password) => {
+    register: async (payload) => {
         const res = await fetch(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password }),
+            body: JSON.stringify(payload),
             credentials: 'include'
         });
-        if (!res.ok) throw new Error('Registration failed');
-        return res.json();
+        return parseResponse(res);
     },
 
     // Releases
@@ -239,6 +238,20 @@ export const api = {
             headers: { 
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
+            body: formData,
+            credentials: 'include'
+        });
+
+        return parseResponse(res);
+    },
+
+    uploadUserDoc: async (_token, type, file) => {
+        const formData = new FormData();
+        formData.append('type', type);
+        formData.append('file', file);
+
+        const res = await fetch(`${API_BASE_URL}/users/upload-doc`, {
+            method: 'POST',
             body: formData,
             credentials: 'include'
         });

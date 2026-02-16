@@ -15,6 +15,7 @@ import { UserManagement } from './screens/UserManagement';
 import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
+import { UserStatusScreen } from './screens/UserStatusScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [token, setToken] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
+  const [userStatus, setUserStatus] = useState<string>('');
   
   // Notification State
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -121,10 +123,13 @@ const App: React.FC = () => {
         // Fetch Profile
         api.getProfile(token).then(user => {
             setCurrentUserData(user);
-            // Sync role from DB to State/LocalStorage
             if (user.role && user.role !== userRole) {
                 setUserRole(user.role);
                 localStorage.setItem('cms_role', user.role);
+            }
+            if (user.status && user.status !== userStatus) {
+                setUserStatus(user.status);
+                localStorage.setItem('cms_status', user.status);
             }
         }).catch(err => console.error("Failed to fetch profile", err));
 
@@ -176,12 +181,14 @@ const App: React.FC = () => {
     const storedUser = localStorage.getItem('cms_user');
     const storedToken = localStorage.getItem('cms_token');
     const storedRole = localStorage.getItem('cms_role');
+    const storedStatus = localStorage.getItem('cms_status');
     
     if (storedAuth === 'true') {
       setIsAuthenticated(true);
       if (storedUser) setCurrentUser(storedUser);
       if (storedToken) setToken(storedToken);
       if (storedRole) setUserRole(storedRole);
+      if (storedStatus) setUserStatus(storedStatus);
     }
     setIsAuthChecking(false);
   }, []);
@@ -191,12 +198,23 @@ const App: React.FC = () => {
     localStorage.setItem('cms_user', user.username);
     localStorage.setItem('cms_token', token);
     localStorage.setItem('cms_role', user.role || 'User');
+    if (user.status) {
+      localStorage.setItem('cms_status', user.status);
+    } else {
+      localStorage.removeItem('cms_status');
+    }
     setCurrentUser(user.username);
     setToken(token);
     setUserRole(user.role || 'User');
+    setUserStatus(user.status || '');
     setCurrentUserData(user);
+    const effectiveStatus = (user.status || '').toLowerCase();
     setIsAuthenticated(true);
-    navigate('/dashboard');
+    if (user.role === 'User' && effectiveStatus && !['approved', 'active'].includes(effectiveStatus)) {
+      navigate('/user-status');
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   const handleLogoutClick = () => {
@@ -210,6 +228,7 @@ const App: React.FC = () => {
     localStorage.removeItem('cms_user');
     localStorage.removeItem('cms_token');
     localStorage.removeItem('cms_role');
+    localStorage.removeItem('cms_status');
     // Clear any wizard/draft remnants just in case
     try {
       sessionStorage.removeItem('cms_wizard_step');
@@ -221,6 +240,7 @@ const App: React.FC = () => {
     setCurrentUser('');
     setToken('');
     setUserRole('');
+    setUserStatus('');
     setShowLogoutDialog(false);
     navigate('/');
   };
@@ -672,7 +692,23 @@ const App: React.FC = () => {
         {/* CONTENT */}
         <div className="flex-1">
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/user-status"
+              element={
+                <UserStatusScreen
+                  username={currentUser || currentUserData?.username || ''}
+                  status={userStatus}
+                />
+              }
+            />
+            <Route
+              path="/"
+              element={
+                userRole === 'User' && userStatus && !['approved', 'active'].includes(userStatus.toLowerCase())
+                  ? <Navigate to="/user-status" replace />
+                  : <Navigate to="/dashboard" replace />
+              }
+            />
             <Route path="/dashboard" element={
                 <Dashboard 
                     releases={allReleases}

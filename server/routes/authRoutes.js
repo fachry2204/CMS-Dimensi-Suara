@@ -6,22 +6,97 @@ import db from '../config/db.js';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 
-// REGISTER (Admin only in real app, but public for now or initial setup)
+// REGISTER (Public: creates basic User with Pending status and optional extended profile)
 router.post('/register', async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const {
+            username: rawUsername,
+            email,
+            password,
+            accountType,
+            nik,
+            fullName,
+            address,
+            country,
+            province,
+            city,
+            district,
+            subdistrict,
+            postalCode,
+            phone,
+            picName,
+            picPosition,
+            picPhone,
+            nibDocPath,
+            kemenkumhamDocPath,
+            ktpDocPath,
+            npwpDocPath
+        } = req.body;
+
+        const username = rawUsername || email;
         
-        // Hash password
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: 'Username, email, and password are required' });
+        }
+
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        const hasRole = colNames.includes('role');
+        const hasStatus = colNames.includes('status');
+        const hasProfileJson = colNames.includes('profile_json');
+
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(password, salt);
 
-        const [result] = await db.query(
-            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-            [username, email, hash]
-        );
+        let sql = '';
+        let params = [];
 
-        res.status(201).json({ message: 'User registered successfully', userId: result.insertId });
+        if (hasRole && hasStatus) {
+            sql = 'INSERT INTO users (username, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)';
+            params = [username, email, hash, 'User', 'Pending'];
+        } else if (hasRole) {
+            sql = 'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)';
+            params = [username, email, hash, 'User'];
+        } else {
+            sql = 'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)';
+            params = [username, email, hash];
+        }
+
+        const [result] = await db.query(sql, params);
+
+        if (hasProfileJson) {
+            const profile = {
+                accountType: accountType || 'PERSONAL',
+                nik: nik || '',
+                fullName: fullName || '',
+                address: address || '',
+                country: country || '',
+                province: province || '',
+                city: city || '',
+                district: district || '',
+                subdistrict: subdistrict || '',
+                postalCode: postalCode || '',
+                phone: phone || '',
+                picName: picName || '',
+                picPosition: picPosition || '',
+                picPhone: picPhone || '',
+                nibDocPath: nibDocPath || '',
+                kemenkumhamDocPath: kemenkumhamDocPath || '',
+                ktpDocPath: ktpDocPath || '',
+                npwpDocPath: npwpDocPath || ''
+            };
+            await db.query('UPDATE users SET profile_json = ? WHERE id = ?', [JSON.stringify(profile), result.insertId]);
+        }
+
+        res.status(201).json({ 
+            message: 'User registered successfully', 
+            userId: result.insertId,
+            status: hasStatus ? 'Pending' : undefined
+        });
     } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ error: 'Username or email already exists' });
+        }
         res.status(500).json({ error: err.message });
     }
 });
@@ -58,6 +133,7 @@ router.post('/login', async (req, res) => {
                 id: user.id, 
                 username: user.username, 
                 role: user.role,
+                status: user.status,
                 profile_picture: user.profile_picture 
             } 
         });
