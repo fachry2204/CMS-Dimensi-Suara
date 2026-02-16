@@ -62,6 +62,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
 
   const [countries] = useState(COUNTRIES_WITH_DIAL_CODES);
 
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
   type WilayahItem = { code: string; name: string };
 
   const [provinces, setProvinces] = useState<WilayahItem[]>([]);
