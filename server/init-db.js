@@ -72,7 +72,29 @@ const initDb = async () => {
             }
         }
 
-        // 2. Check 'cover_art' in 'releases'
+        // 2. Ensure extended status enum in 'users'
+        try {
+            const [rows] = await connection.query("SHOW COLUMNS FROM users LIKE 'status'");
+            if (rows.length > 0) {
+                const type = String(rows[0].Type || '').toLowerCase();
+                const needsUpdate =
+                    !type.includes('pending') ||
+                    !type.includes('review') ||
+                    !type.includes('approved') ||
+                    !type.includes('inactive') ||
+                    !type.includes('active');
+                if (needsUpdate) {
+                    console.log('⚠️ Updating users.status enum to support registration workflow');
+                    await connection.query(
+                        "ALTER TABLE users MODIFY COLUMN status ENUM('Pending','Review','Approved','Active','Inactive') DEFAULT 'Pending'"
+                    );
+                }
+            }
+        } catch (err) {
+            console.warn('Warning checking/updating users.status enum:', err.message);
+        }
+
+        // 3. Check 'cover_art' in 'releases'
         try {
             await connection.query('SELECT cover_art FROM releases LIMIT 1');
         } catch (err) {
@@ -82,7 +104,7 @@ const initDb = async () => {
             }
         }
 
-        // 3. Check 'primary_artists' in 'releases'
+        // 4. Check 'primary_artists' in 'releases'
         try {
             await connection.query('SELECT primary_artists FROM releases LIMIT 1');
         } catch (err) {
@@ -92,7 +114,7 @@ const initDb = async () => {
             }
         }
 
-        // 4. Check other missing columns in 'releases'
+        // 5. Check other missing columns in 'releases'
         const releaseColumns = [
             { name: 'release_type', type: "ENUM('SINGLE', 'ALBUM')" },
             { name: 'version', type: "VARCHAR(50)" },
@@ -119,7 +141,7 @@ const initDb = async () => {
             }
         }
 
-        // 5. Check 'profile_json' in 'users' for extended registration data
+        // 6. Check 'profile_json' in 'users' for extended registration data
         try {
             await connection.query('SELECT profile_json FROM users LIMIT 1');
         } catch (err) {
@@ -129,7 +151,7 @@ const initDb = async () => {
             }
         }
 
-        // 6. Check missing columns in 'tracks'
+        // 7. Check missing columns in 'tracks'
         const trackColumns = [
             { name: 'track_number', type: "VARCHAR(10)" },
             { name: 'duration', type: "VARCHAR(20)" },

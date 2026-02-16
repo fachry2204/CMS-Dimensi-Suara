@@ -5,9 +5,10 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('Admin', 'Operator', 'User') DEFAULT 'User',
-    status ENUM('Active', 'Inactive') DEFAULT 'Active',
+    status ENUM('Pending', 'Review', 'Approved', 'Active', 'Inactive') DEFAULT 'Pending',
     joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    profile_picture VARCHAR(255)
+    profile_picture VARCHAR(255),
+    profile_json JSON
 );
 
 -- 2. Releases
