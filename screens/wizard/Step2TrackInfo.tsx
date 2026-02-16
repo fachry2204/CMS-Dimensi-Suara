@@ -874,7 +874,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         })}
       </div>
 
-       {releaseType === 'ALBUM' && data.tracks.length > 3 && (
+      {releaseType === 'ALBUM' && (
         <button 
             onClick={addTrack}
             className="w-full mt-6 py-4 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center gap-2"
