@@ -415,7 +415,18 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
       setPassword('');
       resetRegistrationState();
     } catch (e: any) {
-      setRegError(e.message || 'Pendaftaran gagal');
+      const dup = e?.payload?.duplicate;
+      if (Array.isArray(dup) && dup.length > 0) {
+        const mapLabel: Record<string, string> = {
+          EMAIL: 'Email',
+          PHONE: 'Nomor WhatsApp',
+          COMPANY: 'Nama Perusahaan'
+        };
+        const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
+        setRegError(`Data duplikat: ${labels}. Gunakan data yang berbeda.`);
+      } else {
+        setRegError(e.message || 'Pendaftaran gagal');
+      }
     } finally {
       setIsRegistering(false);
     }
