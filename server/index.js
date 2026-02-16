@@ -129,6 +129,74 @@ app.get('/api/wilayah/villages/:districtCode', async (req, res) => {
     }
 });
 
+const normalizeName = (value) => {
+    if (!value) return '';
+    return String(value)
+        .toLowerCase()
+        .replace(/\./g, '')
+        .replace(/\s+/g, ' ')
+        .replace(/^(kabupaten|kab|kota adm|kota administratif|kota)\s+/g, '')
+        .trim();
+};
+
+app.get('/api/wilayah/postal-code', async (req, res) => {
+    const { province, city, district, village } = req.query;
+    if (!province || !city || !district || !village) {
+        return res.status(400).json({ error: 'Missing location parameters' });
+    }
+    try {
+        const searchQuery = encodeURIComponent(village);
+        const upstream = await fetch(`https://kodepos.vercel.app/search/?q=${searchQuery}`);
+        if (!upstream.ok) {
+            return res.status(502).json({ error: 'Postal code service unavailable' });
+        }
+        const json = await upstream.json();
+        const list = Array.isArray(json.data) ? json.data : [];
+
+        const provinceNorm = normalizeName(province);
+        const cityNorm = normalizeName(city);
+        const districtNorm = normalizeName(district);
+        const villageNorm = normalizeName(village);
+
+        let candidate = list.find((item) => {
+            return (
+                normalizeName(item.province) === provinceNorm &&
+                normalizeName(item.regency) === cityNorm &&
+                normalizeName(item.district) === districtNorm &&
+                normalizeName(item.village) === villageNorm
+            );
+        });
+
+        if (!candidate) {
+            candidate = list.find((item) => {
+                return (
+                    normalizeName(item.regency) === cityNorm &&
+                    normalizeName(item.district) === districtNorm &&
+                    normalizeName(item.village) === villageNorm
+                );
+            });
+        }
+
+        if (!candidate) {
+            candidate = list.find((item) => normalizeName(item.village) === villageNorm);
+        }
+
+        if (!candidate) {
+            return res.status(404).json({ error: 'Postal code not found' });
+        }
+
+        const code = String(candidate.code || candidate.zipcode || '');
+        if (!code) {
+            return res.status(404).json({ error: 'Postal code not found' });
+        }
+
+        res.json({ code });
+    } catch (err) {
+        console.error('Postal code lookup error:', err);
+        res.status(500).json({ error: 'Failed to lookup postal code' });
+    }
+});
+
 // Test Database Connection Route
 app.get('/api/health', async (req, res) => {
     try {

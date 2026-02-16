@@ -71,6 +71,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const [villageCode, setVillageCode] = useState('');
   const [wilayahError, setWilayahError] = useState('');
   const [isWilayahLoading, setIsWilayahLoading] = useState(false);
+  const [isPostalLoading, setIsPostalLoading] = useState(false);
 
   const selectedCountryDialCode =
     countries.find((c) => c.name === country)?.dialCode || '';
@@ -673,12 +674,40 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
             {villages.length > 0 ? (
               <select
                 value={villageCode}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const code = e.target.value;
                   setVillageCode(code);
                   const selected = villages.find((v) => v.code === code);
-                  setSubdistrict(selected?.name || '');
-                  setPostalCode('');
+                  const name = selected?.name || '';
+                  setSubdistrict(name);
+                  if (!name || !district || !city || !province) {
+                    setPostalCode('');
+                    return;
+                  }
+                  try {
+                    setIsPostalLoading(true);
+                    const params = new URLSearchParams({
+                      province,
+                      city,
+                      district,
+                      village: name
+                    });
+                    const res = await fetch(`/api/wilayah/postal-code?${params.toString()}`);
+                    if (!res.ok) {
+                      setPostalCode('');
+                      return;
+                    }
+                    const data = await res.json();
+                    if (data && data.code) {
+                      setPostalCode(String(data.code));
+                    } else {
+                      setPostalCode('');
+                    }
+                  } catch {
+                    setPostalCode('');
+                  } finally {
+                    setIsPostalLoading(false);
+                  }
                 }}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
               >
@@ -707,7 +736,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
               value={postalCode}
               onChange={(e) => setPostalCode(e.target.value)}
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
-              placeholder="Kodepos"
+              placeholder={isPostalLoading ? 'Mencari kodepos...' : 'Kodepos'}
             />
           </div>
         </div>
