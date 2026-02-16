@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Music4, User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, Loader2, Building2, ChevronLeft, CheckCircle2 } from 'lucide-react';
 
 import { api } from '../utils/api';
@@ -59,8 +59,132 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   const [countries] = useState(COUNTRIES_WITH_DIAL_CODES);
 
+  type WilayahItem = { code: string; name: string };
+
+  const [provinces, setProvinces] = useState<WilayahItem[]>([]);
+  const [regencies, setRegencies] = useState<WilayahItem[]>([]);
+  const [districts, setDistricts] = useState<WilayahItem[]>([]);
+  const [villages, setVillages] = useState<WilayahItem[]>([]);
+  const [provinceCode, setProvinceCode] = useState('');
+  const [regencyCode, setRegencyCode] = useState('');
+  const [districtCode, setDistrictCode] = useState('');
+  const [villageCode, setVillageCode] = useState('');
+  const [wilayahError, setWilayahError] = useState('');
+  const [isWilayahLoading, setIsWilayahLoading] = useState(false);
+
   const selectedCountryDialCode =
     countries.find((c) => c.name === country)?.dialCode || '';
+
+  useEffect(() => {
+    if (country !== 'Indonesia') {
+      setProvinces([]);
+      setRegencies([]);
+      setDistricts([]);
+      setVillages([]);
+      setProvinceCode('');
+      setRegencyCode('');
+      setDistrictCode('');
+      setVillageCode('');
+      setWilayahError('');
+      setIsWilayahLoading(false);
+      return;
+    }
+    if (provinces.length > 0 || isWilayahLoading) return;
+    const loadProvinces = async () => {
+      try {
+        setIsWilayahLoading(true);
+        setWilayahError('');
+        const res = await fetch('https://wilayah.id/api/provinces.json');
+        if (!res.ok) throw new Error('Failed to load provinces');
+        const json = await res.json();
+        const data = (json && json.data) || [];
+        setProvinces(data);
+      } catch (e: any) {
+        setWilayahError('Gagal memuat data provinsi, silakan isi manual jika perlu.');
+      } finally {
+        setIsWilayahLoading(false);
+      }
+    };
+    loadProvinces();
+  }, [country, provinces.length, isWilayahLoading]);
+
+  useEffect(() => {
+    if (!provinceCode) {
+      setRegencies([]);
+      setDistricts([]);
+      setVillages([]);
+      setRegencyCode('');
+      setDistrictCode('');
+      setVillageCode('');
+      return;
+    }
+    const loadRegencies = async () => {
+      try {
+        setIsWilayahLoading(true);
+        setWilayahError('');
+        const res = await fetch(`https://wilayah.id/api/regencies/${provinceCode}.json`);
+        if (!res.ok) throw new Error('Failed to load regencies');
+        const json = await res.json();
+        const data = (json && json.data) || [];
+        setRegencies(data);
+      } catch (e: any) {
+        setWilayahError('Gagal memuat data kota/kabupaten, silakan isi manual jika perlu.');
+      } finally {
+        setIsWilayahLoading(false);
+      }
+    };
+    loadRegencies();
+  }, [provinceCode]);
+
+  useEffect(() => {
+    if (!regencyCode) {
+      setDistricts([]);
+      setVillages([]);
+      setDistrictCode('');
+      setVillageCode('');
+      return;
+    }
+    const loadDistricts = async () => {
+      try {
+        setIsWilayahLoading(true);
+        setWilayahError('');
+        const res = await fetch(`https://wilayah.id/api/districts/${regencyCode}.json`);
+        if (!res.ok) throw new Error('Failed to load districts');
+        const json = await res.json();
+        const data = (json && json.data) || [];
+        setDistricts(data);
+      } catch (e: any) {
+        setWilayahError('Gagal memuat data kecamatan, silakan isi manual jika perlu.');
+      } finally {
+        setIsWilayahLoading(false);
+      }
+    };
+    loadDistricts();
+  }, [regencyCode]);
+
+  useEffect(() => {
+    if (!districtCode) {
+      setVillages([]);
+      setVillageCode('');
+      return;
+    }
+    const loadVillages = async () => {
+      try {
+        setIsWilayahLoading(true);
+        setWilayahError('');
+        const res = await fetch(`https://wilayah.id/api/villages/${districtCode}.json`);
+        if (!res.ok) throw new Error('Failed to load villages');
+        const json = await res.json();
+        const data = (json && json.data) || [];
+        setVillages(data);
+      } catch (e: any) {
+        setWilayahError('Gagal memuat data kelurahan, silakan isi manual jika perlu.');
+      } finally {
+        setIsWilayahLoading(false);
+      }
+    };
+    loadVillages();
+  }, [districtCode]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,6 +390,9 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg shadow-blue-500/30">
           <Music4 size={32} />
         </div>
+        {wilayahError && (
+          <p className="text-xs text-red-500">{wilayahError}</p>
+        )}
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dimensi Suara CMS</h1>
         <p className="text-slate-500 text-sm mt-1">Sign in to manage your music distribution</p>
       </div>
@@ -439,9 +566,32 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
       {country === 'Indonesia' ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Provinsi</label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700">Provinsi</label>
+            {provinces.length > 0 ? (
+              <select
+                value={provinceCode}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setProvinceCode(code);
+                  const selected = provinces.find((p) => p.code === code);
+                  setProvince(selected?.name || '');
+                  setCity('');
+                  setDistrict('');
+                  setSubdistrict('');
+                  setPostalCode('');
+                }}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+              >
+                <option value="">Pilih provinsi</option>
+                {provinces.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
               <input
                 type="text"
                 value={province}
@@ -449,9 +599,32 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
                 placeholder="Provinsi"
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Kota / Kabupaten</label>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700">Kota / Kabupaten</label>
+            {regencies.length > 0 ? (
+              <select
+                value={regencyCode}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setRegencyCode(code);
+                  const selected = regencies.find((r) => r.code === code);
+                  setCity(selected?.name || '');
+                  setDistrict('');
+                  setSubdistrict('');
+                  setPostalCode('');
+                }}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+              >
+                <option value="">Pilih kota / kabupaten</option>
+                {regencies.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
               <input
                 type="text"
                 value={city}
@@ -459,11 +632,33 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
                 placeholder="Kota / Kabupaten"
               />
-            </div>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Kecamatan</label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700">Kecamatan</label>
+            {districts.length > 0 ? (
+              <select
+                value={districtCode}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setDistrictCode(code);
+                  const selected = districts.find((d) => d.code === code);
+                  setDistrict(selected?.name || '');
+                  setSubdistrict('');
+                  setPostalCode('');
+                }}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+              >
+                <option value="">Pilih kecamatan</option>
+                {districts.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
               <input
                 type="text"
                 value={district}
@@ -471,9 +666,30 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
                 placeholder="Kecamatan"
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Kelurahan</label>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700">Kelurahan</label>
+            {villages.length > 0 ? (
+              <select
+                value={villageCode}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setVillageCode(code);
+                  const selected = villages.find((v) => v.code === code);
+                  setSubdistrict(selected?.name || '');
+                  setPostalCode('');
+                }}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+              >
+                <option value="">Pilih kelurahan</option>
+                {villages.map((v) => (
+                  <option key={v.code} value={v.code}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
               <input
                 type="text"
                 value={subdistrict}
@@ -481,8 +697,9 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
                 placeholder="Kelurahan"
               />
-            </div>
+            )}
           </div>
+        </div>
           <div className="space-y-2">
             <label className="text-xs font-semibold text-slate-700">Kodepos</label>
             <input
