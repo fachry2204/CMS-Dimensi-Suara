@@ -3,6 +3,7 @@ import { ReleaseData, ReleaseType } from '../../types';
 import { TextInput, SelectInput } from '../../components/Input';
 import { LANGUAGES, VERSIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { ImagePlus, UserPlus, Trash2, Loader2 } from 'lucide-react';
+import { api } from '../../utils/api';
 
 interface Props {
   data: ReleaseData;
@@ -57,7 +58,25 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
       setIsProcessingImg(true);
       try {
         const processedFile = await processImage(e.target.files[0]);
-        updateData({ coverArt: processedFile });
+        const token = localStorage.getItem('cms_token') || '';
+        let storedCover: any = processedFile;
+        if (token) {
+          try {
+            const resp = await api.uploadReleaseFile(
+              token,
+              { title: data.title, primaryArtists: data.primaryArtists },
+              'coverArt',
+              processedFile
+            );
+            if (resp && resp.paths && resp.paths['coverArt']) {
+              storedCover = resp.paths['coverArt'];
+            }
+          } catch (err) {
+            console.error('Upload cover art failed:', err);
+            alert('Upload cover art ke server gagal. Gambar belum tersimpan di server.');
+          }
+        }
+        updateData({ coverArt: storedCover });
       } catch (error) {
         console.error("Image processing failed", error);
         alert("Failed to process image.");

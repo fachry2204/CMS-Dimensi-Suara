@@ -3,6 +3,7 @@ import { ReleaseData, Track, TrackArtist, TrackContributor, ReleaseType } from '
 import { Music, Trash2, PlusCircle, Info, ChevronDown, ChevronUp, FileAudio, Video, Mic2, User, UserPlus, Loader2, Scissors, Play, Pause, X, Check } from 'lucide-react';
 import { ARTIST_ROLES, CONTRIBUTOR_TYPES, EXPLICIT_OPTIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { processFullAudio, cropAndConvertAudio, getAudioDuration } from '../../utils/audioProcessing';
+import { api } from '../../utils/api';
 
 interface Props {
   data: ReleaseData;
@@ -189,7 +190,29 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             60, // Duration fixed to 60s
             trackTitle
         );
-        updateTrack(trimmerState.trackId, { audioClip: processedFile });
+        const token = localStorage.getItem('cms_token') || '';
+        let storedClip: any = processedFile;
+        if (token) {
+            const trackIndex = data.tracks.findIndex(t => t.id === trimmerState.trackId);
+            if (trackIndex >= 0) {
+                const fieldName = `track_${trackIndex}_clip`;
+                try {
+                    const resp = await api.uploadReleaseFile(
+                        token,
+                        { title: data.title, primaryArtists: data.primaryArtists },
+                        fieldName,
+                        processedFile
+                    );
+                    if (resp && resp.paths && resp.paths[fieldName]) {
+                        storedClip = resp.paths[fieldName];
+                    }
+                } catch (e) {
+                    console.error('Upload audio clip failed:', e);
+                    alert('Upload audio clip ke server gagal. File belum tersimpan di server.');
+                }
+            }
+        }
+        updateTrack(trimmerState.trackId, { audioClip: storedClip });
       } catch (error) {
           console.error(error);
           alert("Failed to trim audio.");
@@ -285,7 +308,29 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         try {
             // Convert to WAV 24bit/44.1kHz and Rename
             const processedFile = await processFullAudio(file, trackNameBase);
-            updateTrack(trackId, { audioFile: processedFile });
+            const token = localStorage.getItem('cms_token') || '';
+            let storedAudio: any = processedFile;
+            if (token) {
+                const trackIndex = data.tracks.findIndex(t => t.id === trackId);
+                if (trackIndex >= 0) {
+                    const fieldName = `track_${trackIndex}_audio`;
+                    try {
+                        const resp = await api.uploadReleaseFile(
+                            token,
+                            { title: data.title, primaryArtists: data.primaryArtists },
+                            fieldName,
+                            processedFile
+                        );
+                        if (resp && resp.paths && resp.paths[fieldName]) {
+                            storedAudio = resp.paths[fieldName];
+                        }
+                    } catch (e) {
+                        console.error('Upload audio file failed:', e);
+                        alert('Upload audio ke server gagal. File belum tersimpan di server.');
+                    }
+                }
+            }
+            updateTrack(trackId, { audioFile: storedAudio });
         } catch (error) {
             console.error("File processing error:", error);
             alert("Error processing Full Audio.");

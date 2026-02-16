@@ -60,7 +60,35 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit (adjust as needed for WAV)
+    limits: { fileSize: 100 * 1024 * 1024 }
+});
+
+router.post('/upload', authenticateToken, upload.any(), async (req, res) => {
+    try {
+        const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
+        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
+        const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        const files = Array.isArray(req.files) ? req.files : [];
+        const paths = {};
+        for (const f of files) {
+            const destName = f.filename;
+            const destPath = path.join(targetDir, destName);
+            if (f.path !== destPath) {
+                fs.renameSync(f.path, destPath);
+            }
+            const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
+            paths[f.fieldname] = publicPath;
+        }
+
+        res.json({ paths });
+    } catch (err) {
+        console.error('Upload Release File Error:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // CREATE NEW RELEASE

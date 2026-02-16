@@ -85,7 +85,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         
     } catch (error: any) {
         console.error("Submission failed:", error);
-        alert(`Upload failed: ${error.message || "Please try again."}`);
+        let message = error?.message || "Please try again.";
+        if (error?.status === 413 || message === 'UPLOAD_TOO_LARGE' || /content too large|payload too large|413/i.test(message)) {
+            message = "Total ukuran file (cover + audio + clip) terlalu besar untuk dikirim. Coba kompres atau perkecil ukuran file, atau kurangi jumlah track per sekali upload.";
+        }
+        alert(`Upload failed: ${message}`);
     } finally {
         setIsSubmitting(false);
     }
@@ -219,9 +223,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                                 <td className="px-6 py-4 font-bold text-slate-700">{track.trackNumber}</td>
                                 <td className="px-6 py-4">
                                     <div className="font-bold text-slate-800">{track.title}</div>
-                                    <div className="text-xs text-blue-500 flex items-center gap-1 mt-1 truncate max-w-[200px]" title={track.audioFile?.name}>
+                                    <div className="text-xs text-blue-500 flex items-center gap-1 mt-1 truncate max-w-[200px]" title={typeof track.audioFile === 'string' ? track.audioFile : track.audioFile?.name}>
                                         <FileAudio size={10} />
-                                        {track.audioFile?.name || "No File"}
+                                        {typeof track.audioFile === 'string'
+                                            ? track.audioFile.split('/').slice(-1)[0]
+                                            : (track.audioFile?.name || "No File")}
                                     </div>
                                     {track.videoFile && (
                                         <div className="text-xs text-purple-500 flex items-center gap-1 mt-0.5">

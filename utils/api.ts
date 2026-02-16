@@ -6,6 +6,11 @@ const parseResponse = async (res: Response) => {
         err.status = res.status;
         throw err;
     }
+    if (res.status === 413) {
+        const err: any = new Error('UPLOAD_TOO_LARGE');
+        err.status = 413;
+        throw err;
+    }
     if (!res.ok) {
         // Try read json, else text
         try {
@@ -107,7 +112,6 @@ export const api = {
     createRelease: async (token, data) => {
         const formData = new FormData();
         
-        // Append files
         if (data.coverArt instanceof File) {
             formData.append('coverArt', data.coverArt);
         }
@@ -139,6 +143,24 @@ export const api = {
             credentials: 'include'
         });
         
+        return parseResponse(res);
+    },
+
+    uploadReleaseFile: async (token, releaseMeta, fieldName, file) => {
+        const formData = new FormData();
+        formData.append('data', JSON.stringify({
+            title: releaseMeta.title,
+            primaryArtists: releaseMeta.primaryArtists || []
+        }));
+        formData.append(fieldName, file);
+
+        const res = await fetch(`${API_BASE_URL}/releases/upload`, {
+            method: 'POST',
+            headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+            body: formData,
+            credentials: 'include'
+        });
+
         return parseResponse(res);
     },
 
