@@ -15,7 +15,13 @@ const parseResponse = async (res: Response) => {
         // Try read json, else text
         try {
             const j = await res.json();
-            throw new Error(j.error || 'Request failed');
+            let msg = j.error || 'Request failed';
+            if (j.duplicate && Array.isArray(j.duplicate) && j.duplicate.length > 0) {
+                msg += ` (Duplikasi: ${j.duplicate.join(', ')})`;
+            }
+            const err: any = new Error(msg);
+            err.payload = j;
+            throw err;
         } catch {
             const t = await res.text().catch(() => '');
             throw new Error(t || 'Request failed');
