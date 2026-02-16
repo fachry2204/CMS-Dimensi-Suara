@@ -911,19 +911,18 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     if (!cropFile || !cropImageUrl || !cropField) return;
     const img = new Image();
     img.onload = () => {
-      const size = 600;
+      const maxDim = 1024;
+      const ratio = Math.min(1, maxDim / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      const baseScale = Math.max(size / img.width, size / img.height);
-      const scale = baseScale * cropScale;
-      const dw = img.width * scale;
-      const dh = img.height * scale;
-      const dx = (size - dw) / 2;
-      const dy = (size - dh) / 2;
-      ctx.clearRect(0, 0, size, size);
+      const dw = canvas.width * cropScale;
+      const dh = canvas.height * cropScale;
+      const dx = (canvas.width - dw) / 2;
+      const dy = (canvas.height - dh) / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, dx, dy, dw, dh);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
       canvas.toBlob((blob) => {
@@ -985,7 +984,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         </label>
         {docPreviews[field] && (
           <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
-            <img src={docPreviews[field]} alt={label} className="w-full h-full object-cover" />
+            <img src={docPreviews[field]} alt={label} className="w-full h-full object-contain" />
           </div>
         )}
       </div>
@@ -1055,7 +1054,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
               <p className="flex-1">NIB:</p>
               {docPreviews.nib && (
                 <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
-                  <img src={docPreviews.nib} alt="NIB" className="w-full h-full object-cover" />
+                  <img src={docPreviews.nib} alt="NIB" className="w-full h-full object-contain" />
                 </div>
               )}
               {!docPreviews.nib && <span>{nibFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
@@ -1064,7 +1063,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
               <p className="flex-1">Dokumen Kemenkumham:</p>
               {docPreviews.kemenkumham && (
                 <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
-                  <img src={docPreviews.kemenkumham} alt="Dokumen Kemenkumham" className="w-full h-full object-cover" />
+                  <img src={docPreviews.kemenkumham} alt="Dokumen Kemenkumham" className="w-full h-full object-contain" />
                 </div>
               )}
               {!docPreviews.kemenkumham && (
@@ -1077,7 +1076,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
           <p className="flex-1">{accountType === 'COMPANY' ? 'KTP Direktur:' : 'KTP:'}</p>
           {docPreviews.ktp && (
             <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
-              <img src={docPreviews.ktp} alt="KTP" className="w-full h-full object-cover" />
+              <img src={docPreviews.ktp} alt="KTP" className="w-full h-full object-contain" />
             </div>
           )}
           {!docPreviews.ktp && <span>{ktpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
@@ -1086,7 +1085,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
           <p className="flex-1">NPWP:</p>
           {docPreviews.npwp && (
             <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100">
-              <img src={docPreviews.npwp} alt="NPWP" className="w-full h-full object-cover" />
+              <img src={docPreviews.npwp} alt="NPWP" className="w-full h-full object-contain" />
             </div>
           )}
           {!docPreviews.npwp && <span>{npwpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
@@ -1234,11 +1233,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
             <p className="text-sm font-semibold text-slate-800">Crop {cropField.toUpperCase()}</p>
             <div className="w-full flex items-center justify-center">
-              <div className="w-64 h-64 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center">
+              <div className="max-w-[512px] max-h-[360px] w-full h-full bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center">
                 <img
                   src={cropImageUrl}
                   alt="Crop"
-                  className="w-full h-full object-cover"
+                  className="max-w-full max-h-[360px] object-contain"
                   style={{ transform: `scale(${cropScale})` }}
                 />
               </div>
@@ -1247,8 +1246,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
               <p className="text-xs text-slate-600">Zoom</p>
               <input
                 type="range"
-                min={1}
-                max={3}
+                min={0.2}
+                max={4}
                 step={0.01}
                 value={cropScale}
                 onChange={(e) => setCropScale(parseFloat(e.target.value))}
