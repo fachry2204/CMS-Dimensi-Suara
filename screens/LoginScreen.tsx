@@ -65,6 +65,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [cropScale, setCropScale] = useState(1);
+  const [cropAngle, setCropAngle] = useState(0);
+  const [cropTranslate, setCropTranslate] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [cropRect, setCropRect] = useState<{ x: number; y: number; w: number; h: number }>({ x: 128, y: 64, w: 256, h: 192 });
+  const [cropDragMode, setCropDragMode] = useState<null | 'moveRect' | 'moveImage' | 'resize'>(null);
+  const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number; rect?: { x: number; y: number; w: number; h: number }; translate?: { x: number; y: number } } | null>(null);
 
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
@@ -911,33 +916,60 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     if (!cropFile || !cropImageUrl || !cropField) return;
     const img = new Image();
     img.onload = () => {
-      const maxDim = 1024;
-      const ratio = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.width * ratio);
-      canvas.height = Math.round(img.height * ratio);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const dw = canvas.width * cropScale;
-      const dh = canvas.height * cropScale;
-      const dx = (canvas.width - dw) / 2;
-      const dy = (canvas.height - dh) / 2;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, dx, dy, dw, dh);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      canvas.toBlob((blob) => {
+      const CONTAINER_W = 512;
+      const CONTAINER_H = 360;
+      const previewCanvas = document.createElement('canvas');
+      previewCanvas.width = CONTAINER_W;
+      previewCanvas.height = CONTAINER_H;
+      const pctx = previewCanvas.getContext('2d');
+      if (!pctx) return;
+
+      const baseScale = Math.min(CONTAINER_W / img.width, CONTAINER_H / img.height);
+      const scale = baseScale * cropScale;
+
+      pctx.clearRect(0, 0, CONTAINER_W, CONTAINER_H);
+      pctx.save();
+      pctx.translate(CONTAINER_W / 2 + cropTranslate.x, CONTAINER_H / 2 + cropTranslate.y);
+      pctx.rotate((cropAngle * Math.PI) / 180);
+      pctx.scale(scale, scale);
+      pctx.drawImage(img, -img.width / 2, -img.height / 2);
+      pctx.restore();
+
+      const sx = Math.max(0, Math.min(CONTAINER_W, cropRect.x));
+      const sy = Math.max(0, Math.min(CONTAINER_H, cropRect.y));
+      const sw = Math.max(1, Math.min(CONTAINER_W - sx, cropRect.w));
+      const sh = Math.max(1, Math.min(CONTAINER_H - sy, cropRect.h));
+
+      const imageData = pctx.getImageData(sx, sy, sw, sh);
+      const outCanvas = document.createElement('canvas');
+      const maxOut = 2048;
+      const scaleOut = Math.min(1, maxOut / Math.max(sw, sh));
+      outCanvas.width = Math.round(sw * scaleOut);
+      outCanvas.height = Math.round(sh * scaleOut);
+      const octx = outCanvas.getContext('2d');
+      if (!octx) return;
+      const tmp = document.createElement('canvas');
+      tmp.width = sw;
+      tmp.height = sh;
+      const tctx = tmp.getContext('2d');
+      if (!tctx) return;
+      tctx.putImageData(imageData, 0, 0);
+      octx.imageSmoothingQuality = 'high';
+      octx.drawImage(tmp, 0, 0, outCanvas.width, outCanvas.height);
+
+      const dataUrl = outCanvas.toDataURL('image/jpeg', 0.92);
+      outCanvas.toBlob((blob) => {
         if (!blob) return;
         const croppedFile = new File([blob], cropFile.name, { type: 'image/jpeg' });
-        setDocPreviews((prev) => ({
-          ...prev,
-          [cropField]: dataUrl
-        }));
+        setDocPreviews((prev) => ({ ...prev, [cropField]: dataUrl }));
         handleDocChange(cropField, croppedFile);
         URL.revokeObjectURL(cropImageUrl);
         setCropField(null);
         setCropFile(null);
         setCropImageUrl(null);
-      }, 'image/jpeg', 0.9);
+        setCropTranslate({ x: 0, y: 0 });
+        setCropAngle(0);
+      }, 'image/jpeg', 0.92);
     };
     img.src = cropImageUrl;
   };
@@ -1233,26 +1265,125 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
             <p className="text-sm font-semibold text-slate-800">Crop {cropField.toUpperCase()}</p>
             <div className="w-full flex items-center justify-center">
-              <div className="max-w-[512px] max-h-[360px] w-full h-full bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center">
+              <div
+                className="relative bg-slate-100 rounded-xl overflow-hidden"
+                style={{ width: 512, height: 360 }}
+                onMouseDown={(e) => {
+                  const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const inRect =
+                    x >= cropRect.x && x <= cropRect.x + cropRect.w &&
+                    y >= cropRect.y && y <= cropRect.y + cropRect.h;
+                  if (inRect) {
+                    setCropDragMode('moveRect');
+                    setCropDragStart({ x, y, rect: { ...cropRect } });
+                  } else {
+                    setCropDragMode('moveImage');
+                    setCropDragStart({ x, y, translate: { ...cropTranslate } });
+                  }
+                }}
+                onMouseMove={(e) => {
+                  if (!cropDragMode || !cropDragStart) return;
+                  const rectEl = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                  const x = e.clientX - rectEl.left;
+                  const y = e.clientY - rectEl.top;
+                  if (cropDragMode === 'moveRect' && cropDragStart.rect) {
+                    const dx = x - cropDragStart.x;
+                    const dy = y - cropDragStart.y;
+                    setCropRect((prev) => ({
+                      ...prev,
+                      x: Math.max(0, Math.min(512 - prev.w, (cropDragStart.rect!.x + dx))),
+                      y: Math.max(0, Math.min(360 - prev.h, (cropDragStart.rect!.y + dy)))
+                    }));
+                  } else if (cropDragMode === 'moveImage' && cropDragStart.translate) {
+                    const dx = x - cropDragStart.x;
+                    const dy = y - cropDragStart.y;
+                    setCropTranslate({ x: cropDragStart.translate.x + dx, y: cropDragStart.translate.y + dy });
+                  }
+                }}
+                onMouseUp={() => {
+                  setCropDragMode(null);
+                  setCropDragStart(null);
+                }}
+                onMouseLeave={() => {
+                  setCropDragMode(null);
+                  setCropDragStart(null);
+                }}
+              >
                 <img
                   src={cropImageUrl}
                   alt="Crop"
-                  className="max-w-full max-h-[360px] object-contain"
-                  style={{ transform: `scale(${cropScale})` }}
+                  className="absolute left-1/2 top-1/2 select-none"
+                  style={{
+                    transform: `translate(-50%, -50%) translate(${cropTranslate.x}px, ${cropTranslate.y}px) scale(${cropScale}) rotate(${cropAngle}deg)`,
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain'
+                  }}
+                  draggable={false}
+                />
+                <div
+                  className="absolute border-2 border-white/80 shadow-inner"
+                  style={{
+                    left: cropRect.x,
+                    top: cropRect.y,
+                    width: cropRect.w,
+                    height: cropRect.h,
+                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,0,0,0.3)',
+                    borderRadius: 6
+                  }}
                 />
               </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs text-slate-600">Zoom</p>
-              <input
-                type="range"
-                min={0.2}
-                max={4}
-                step={0.01}
-                value={cropScale}
-                onChange={(e) => setCropScale(parseFloat(e.target.value))}
-                className="w-full"
-              />
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <p className="text-xs text-slate-600">Zoom</p>
+                <input
+                  type="range"
+                  min={0.2}
+                  max={4}
+                  step={0.01}
+                  value={cropScale}
+                  onChange={(e) => setCropScale(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-slate-600">Rotasi</p>
+                <input
+                  type="range"
+                  min={-15}
+                  max={15}
+                  step={0.1}
+                  value={cropAngle}
+                  onChange={(e) => setCropAngle(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-slate-600">Lebar/Tinggi Crop</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={64}
+                    max={512}
+                    step={1}
+                    value={cropRect.w}
+                    onChange={(e) => setCropRect((prev) => ({ ...prev, w: Math.min(512 - prev.x, parseInt(e.target.value)) }))}
+                    className="flex-1"
+                  />
+                  <input
+                    type="range"
+                    min={64}
+                    max={360}
+                    step={1}
+                    value={cropRect.h}
+                    onChange={(e) => setCropRect((prev) => ({ ...prev, h: Math.min(360 - prev.y, parseInt(e.target.value)) }))}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
