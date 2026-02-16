@@ -15,6 +15,7 @@ import { UserManagement } from './screens/UserManagement';
 import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
+import { RegisterScreen } from './screens/RegisterScreen';
 import { UserStatusScreen } from './screens/UserStatusScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
@@ -476,7 +477,7 @@ const App: React.FC = () => {
     return (
       <Routes>
         <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
-        <Route path="/register" element={<LoginScreen onLogin={handleLogin} initialMode="register" />} />
+        <Route path="/register" element={<RegisterScreen onLogin={handleLogin} />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );

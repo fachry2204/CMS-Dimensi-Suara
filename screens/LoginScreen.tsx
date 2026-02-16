@@ -513,25 +513,29 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         if (nik) payload.nik = String(nik).trim();
         if (accountType === 'COMPANY' && companyName) payload.companyName = String(companyName).trim();
         if (Object.keys(payload).length > 0) {
-          let res = await api.checkRegisterDuplicates(payload);
-          const dup = res?.duplicate || [];
-          if (Array.isArray(dup) && dup.length > 0) {
-            const mapLabel: Record<string, string> = { NIK: 'NIK', COMPANY: 'Nama Perusahaan' };
-            const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
-            setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
-            setRegErrorModalOpen(true);
-            return;
-          }
-          // fallback GET if server not supports POST
-          if (dup.length === 0 && (res?.status === 404 || !res)) {
-            res = await api.checkRegisterDuplicatesGet(payload);
-            const dup2 = res?.duplicate || [];
-            if (Array.isArray(dup2) && dup2.length > 0) {
+          try {
+            const res = await api.checkRegisterDuplicates(payload);
+            const dup = res?.duplicate || [];
+            if (Array.isArray(dup) && dup.length > 0) {
               const mapLabel: Record<string, string> = { NIK: 'NIK', COMPANY: 'Nama Perusahaan' };
-              const labels = dup2.map((d: string) => mapLabel[d] || d).join(', ');
+              const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
               setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
               setRegErrorModalOpen(true);
               return;
+            }
+          } catch (e: any) {
+            if (e?.status === 404) {
+              const res2 = await api.checkRegisterDuplicatesGet(payload);
+              const dup2 = res2?.duplicate || [];
+              if (Array.isArray(dup2) && dup2.length > 0) {
+                const mapLabel: Record<string, string> = { NIK: 'NIK', COMPANY: 'Nama Perusahaan' };
+                const labels = dup2.map((d: string) => mapLabel[d] || d).join(', ');
+                setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
+                setRegErrorModalOpen(true);
+                return;
+              }
+            } else {
+              // jaringan/error lain: jangan blokir step
             }
           }
         }
@@ -543,24 +547,29 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         if (regEmail) payload.email = regEmail.trim().toLowerCase();
         if (phone) payload.phone = phone;
         if (Object.keys(payload).length > 0) {
-          let res = await api.checkRegisterDuplicates(payload);
-          const dup = res?.duplicate || [];
-          if (Array.isArray(dup) && dup.length > 0) {
-            const mapLabel: Record<string, string> = { EMAIL: 'Email', PHONE: 'No Handphone' };
-            const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
-            setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
-            setRegErrorModalOpen(true);
-            return;
-          }
-          if (dup.length === 0 && (res?.status === 404 || !res)) {
-            res = await api.checkRegisterDuplicatesGet(payload);
-            const dup2 = res?.duplicate || [];
-            if (Array.isArray(dup2) && dup2.length > 0) {
+          try {
+            const res = await api.checkRegisterDuplicates(payload);
+            const dup = res?.duplicate || [];
+            if (Array.isArray(dup) && dup.length > 0) {
               const mapLabel: Record<string, string> = { EMAIL: 'Email', PHONE: 'No Handphone' };
-              const labels = dup2.map((d: string) => mapLabel[d] || d).join(', ');
+              const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
               setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
               setRegErrorModalOpen(true);
               return;
+            }
+          } catch (e: any) {
+            if (e?.status === 404) {
+              const res2 = await api.checkRegisterDuplicatesGet(payload);
+              const dup2 = res2?.duplicate || [];
+              if (Array.isArray(dup2) && dup2.length > 0) {
+                const mapLabel: Record<string, string> = { EMAIL: 'Email', PHONE: 'No Handphone' };
+                const labels = dup2.map((d: string) => mapLabel[d] || d).join(', ');
+                setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
+                setRegErrorModalOpen(true);
+                return;
+              }
+            } else {
+              // jaringan/error lain: jangan blokir step
             }
           }
         }
