@@ -256,7 +256,11 @@ export const api = {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) throw new Error('Failed to fetch users');
-        return res.json();
+        const json = await res.json();
+        if (Array.isArray(json)) return json;
+        if (Array.isArray((json as any).users)) return (json as any).users;
+        if (Array.isArray((json as any).data)) return (json as any).data;
+        return [];
     },
 
     createUser: async (token, userData) => {

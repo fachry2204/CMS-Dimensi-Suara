@@ -26,10 +26,11 @@ export const UserManagement: React.FC = () => {
   // Add User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addUserContext, setAddUserContext] = useState<'INTERNAL' | 'REGISTERED'>('INTERNAL');
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    role: 'Operator' as 'Admin' | 'Operator',
+    role: 'Operator' as 'Admin' | 'Operator' | 'User',
     password: ''
   });
 
@@ -56,7 +57,11 @@ export const UserManagement: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-        const response = await api.createUser(token, newUser);
+        const payload = {
+            ...newUser,
+            role: addUserContext === 'REGISTERED' ? 'User' : newUser.role
+        };
+        const response = await api.createUser(token, payload);
         setUsers(prev => [response.user, ...prev]);
         setShowAddUserModal(false);
         setNewUser({ name: '', email: '', role: 'Operator', password: '' });
@@ -114,9 +119,18 @@ export const UserManagement: React.FC = () => {
                     </div>
                 </div>
                 
-                {userTab === 'INTERNAL' && (
+                {(userTab === 'INTERNAL' || userTab === 'REGISTERED') && (
                     <button 
-                        onClick={() => setShowAddUserModal(true)}
+                        onClick={() => {
+                            setAddUserContext(userTab === 'REGISTERED' ? 'REGISTERED' : 'INTERNAL');
+                            setNewUser({
+                                name: '',
+                                email: '',
+                                role: userTab === 'REGISTERED' ? 'User' : 'Operator',
+                                password: ''
+                            });
+                            setShowAddUserModal(true);
+                        }}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium"
                     >
                         <Plus size={18} />
@@ -251,7 +265,9 @@ export const UserManagement: React.FC = () => {
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
-                        <h3 className="text-lg font-bold text-slate-800">Add Internal User</h3>
+                        <h3 className="text-lg font-bold text-slate-800">
+                            {addUserContext === 'INTERNAL' ? 'Add Internal User' : 'Add Registered User'}
+                        </h3>
                         <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-slate-600">
                             <XCircle size={24} />
                         </button>
@@ -283,20 +299,29 @@ export const UserManagement: React.FC = () => {
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                            <div className="relative">
-                                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                <select 
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none appearance-none bg-white"
-                                    value={newUser.role}
-                                    onChange={e => setNewUser({...newUser, role: e.target.value as 'Admin' | 'Operator'})}
-                                >
-                                    <option value="Operator">Operator</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
+                        {addUserContext === 'INTERNAL' ? (
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                                <div className="relative">
+                                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <select 
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none appearance-none bg-white"
+                                        value={newUser.role}
+                                        onChange={e => setNewUser({...newUser, role: e.target.value as 'Admin' | 'Operator' | 'User'})}
+                                    >
+                                        <option value="Operator">Operator</option>
+                                        <option value="Admin">Admin</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                                <div className="px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-sm text-slate-700">
+                                    User
+                                </div>
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
                             <div className="relative">
