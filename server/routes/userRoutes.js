@@ -99,7 +99,25 @@ router.get('/', authenticateToken, async (req, res) => {
         if (req.user.role === 'User') {
             return res.status(403).json({ error: 'Access denied' });
         }
-        const [rows] = await db.query('SELECT id, username as name, email, role, status, DATE_FORMAT(created_at, "%Y-%m-%d") as joinedDate FROM users ORDER BY created_at DESC');
+
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        const hasStatus = colNames.includes('status');
+        const hasCreatedAt = colNames.includes('created_at');
+
+        const selectParts = [
+            'id',
+            'username as name',
+            'email',
+            'role',
+            hasStatus ? 'status' : `'Active' as status`,
+            hasCreatedAt ? 'DATE_FORMAT(created_at, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
+        ];
+
+        const orderBy = hasCreatedAt ? 'created_at DESC' : 'id DESC';
+        const sql = `SELECT ${selectParts.join(', ')} FROM users ORDER BY ${orderBy}`;
+
+        const [rows] = await db.query(sql);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });

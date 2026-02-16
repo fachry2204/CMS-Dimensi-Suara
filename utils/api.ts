@@ -33,11 +33,19 @@ export const api = {
             body: JSON.stringify({ username, password }),
             credentials: 'include'
         });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || 'Login failed');
+        let json: any = null;
+        try {
+            json = await res.json();
+        } catch {
+            if (!res.ok) {
+                throw new Error('Login failed: server returned an invalid response');
+            }
+            throw new Error('Login failed: empty response from server');
         }
-        return res.json();
+        if (!res.ok) {
+            throw new Error(json?.error || 'Login failed');
+        }
+        return json;
     },
     
     logout: async () => {
