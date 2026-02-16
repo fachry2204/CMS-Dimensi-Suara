@@ -72,6 +72,15 @@ export const api = {
         });
         return parseResponse(res);
     },
+    checkRegisterDuplicates: async (payload) => {
+        const res = await fetch(`${API_BASE_URL}/auth/check-duplicate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     // Releases
     getReleases: async (token) => {

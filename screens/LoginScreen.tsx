@@ -325,8 +325,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         setRegErrorModalOpen(true);
         return false;
       }
-      if (!/^\d+$/.test(nik)) {
-        setRegError('NIK harus berupa angka.');
+      if (!/^\d{16}$/.test(nik)) {
+        setRegError('NIK wajib 16 digit angka.');
         setRegErrorModalOpen(true);
         return false;
       }
@@ -383,10 +383,49 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     return true;
   };
 
-  const goNextStep = () => {
+  const goNextStep = async () => {
     setRegError('');
     if (!validateStep(step)) return;
-    if (step < 4) setStep(step + 1);
+    try {
+      if (step === 1) {
+        const payload: any = {};
+        if (nik) payload.nik = nik;
+        if (accountType === 'COMPANY' && companyName) payload.companyName = companyName;
+        if (Object.keys(payload).length > 0) {
+          const res = await api.checkRegisterDuplicates(payload);
+          const dup = res?.duplicate || [];
+          if (Array.isArray(dup) && dup.length > 0) {
+            const mapLabel: Record<string, string> = { NIK: 'NIK', COMPANY: 'Nama Perusahaan' };
+            const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
+            setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
+            setRegErrorModalOpen(true);
+            return;
+          }
+        }
+      }
+      if (step === 2) {
+        const phoneLocalClean = regPhoneLocal.replace(/^0+/, '').trim();
+        const phone = selectedCountryDialCode ? `${selectedCountryDialCode}${phoneLocalClean}` : phoneLocalClean;
+        const payload: any = {};
+        if (regEmail) payload.email = regEmail;
+        if (phone) payload.phone = phone;
+        if (Object.keys(payload).length > 0) {
+          const res = await api.checkRegisterDuplicates(payload);
+          const dup = res?.duplicate || [];
+          if (Array.isArray(dup) && dup.length > 0) {
+            const mapLabel: Record<string, string> = { EMAIL: 'Email', PHONE: 'No Handphone' };
+            const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
+            setRegError(`Data sudah terdaftar: ${labels}. Gunakan data lain.`);
+            setRegErrorModalOpen(true);
+            return;
+          }
+        }
+      }
+      if (step < 4) setStep(step + 1);
+    } catch (e: any) {
+      setRegError(e.message || 'Gagal memeriksa duplikasi');
+      setRegErrorModalOpen(true);
+    }
   };
 
   const goPrevStep = () => {
@@ -611,7 +650,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         <input
           type="text"
           value={nik}
-          onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ''))}
+          onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, '').slice(0, 16))}
+          maxLength={16}
           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
           placeholder="Masukkan NIK"
         />
@@ -978,8 +1018,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     if (!cropFile || !cropImageUrl || !cropField) return;
     const img = new Image();
     img.onload = () => {
-      const CONTAINER_W = 512;
-      const CONTAINER_H = 360;
+      const CONTAINER_W = 720;
+      const CONTAINER_H = 480;
       const previewCanvas = document.createElement('canvas');
       previewCanvas.width = CONTAINER_W;
       previewCanvas.height = CONTAINER_H;
@@ -1347,12 +1387,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
 
       {cropImageUrl && cropField && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-8 space-y-6">
             <p className="text-sm font-semibold text-slate-800">Crop {cropField.toUpperCase()}</p>
             <div className="w-full flex items-center justify-center">
               <div
                 className="relative bg-slate-100 rounded-xl overflow-hidden"
-                style={{ width: 512, height: 360 }}
+                style={{ width: 720, height: 480 }}
                 onMouseDown={(e) => {
                   const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
                   const x = e.clientX - rect.left;
@@ -1380,8 +1420,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
                     const dy = y - cropDragStart.y;
                     setCropRect((prev) => ({
                       ...prev,
-                      x: Math.max(0, Math.min(512 - prev.w, (cropDragStart.rect!.x + dx))),
-                      y: Math.max(0, Math.min(360 - prev.h, (cropDragStart.rect!.y + dy)))
+                      x: Math.max(0, Math.min(720 - prev.w, (cropDragStart.rect!.x + dx))),
+                      y: Math.max(0, Math.min(480 - prev.h, (cropDragStart.rect!.y + dy)))
                     }));
                   } else if (cropDragMode === 'moveImage' && cropDragStart.translate) {
                     const dx = x - cropDragStart.x;
@@ -1395,8 +1435,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
                     let ny = r.y;
                     let nw = r.w;
                     let nh = r.h;
-                    const clampWRight = (val: number) => Math.max(minW, Math.min(512 - r.x, val));
-                    const clampHBottom = (val: number) => Math.max(minH, Math.min(360 - r.y, val));
+                    const clampWRight = (val: number) => Math.max(minW, Math.min(720 - r.x, val));
+                    const clampHBottom = (val: number) => Math.max(minH, Math.min(480 - r.y, val));
                     const clampXLeft = (val: number) => Math.max(0, Math.min(r.x + r.w - minW, val));
                     const clampYTop = (val: number) => Math.max(0, Math.min(r.y + r.h - minH, val));
                     if (cropResizeHandle === 'r') {
@@ -1554,7 +1594,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-6">
               <div className="space-y-1">
                 <p className="text-xs text-slate-600">Zoom</p>
                 <input
@@ -1585,19 +1625,19 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
                   <input
                     type="range"
                     min={64}
-                    max={512}
+                    max={720}
                     step={1}
                     value={cropRect.w}
-                    onChange={(e) => setCropRect((prev) => ({ ...prev, w: Math.min(512 - prev.x, parseInt(e.target.value)) }))}
+                    onChange={(e) => setCropRect((prev) => ({ ...prev, w: Math.min(720 - prev.x, parseInt(e.target.value)) }))}
                     className="flex-1"
                   />
                   <input
                     type="range"
                     min={64}
-                    max={360}
+                    max={480}
                     step={1}
                     value={cropRect.h}
-                    onChange={(e) => setCropRect((prev) => ({ ...prev, h: Math.min(360 - prev.y, parseInt(e.target.value)) }))}
+                    onChange={(e) => setCropRect((prev) => ({ ...prev, h: Math.min(480 - prev.y, parseInt(e.target.value)) }))}
                     className="flex-1"
                   />
                 </div>
