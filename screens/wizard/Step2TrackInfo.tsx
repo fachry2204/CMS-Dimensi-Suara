@@ -209,15 +209,23 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   const addTrack = () => {
     if (releaseType === 'SINGLE' && data.tracks.length >= 1) return;
 
-    const inheritedArtists: TrackArtist[] = data.primaryArtists
-      .filter(name => name.trim() !== "")
-      .map(name => ({ name, role: "MainArtist" }));
+    let initialArtists: TrackArtist[] = [{ name: "", role: "MainArtist" }];
+    let initialTitle = "";
 
-    const initialArtists = inheritedArtists.length > 0 ? inheritedArtists : [{ name: "", role: "MainArtist" }];
+    if (releaseType === 'SINGLE') {
+      const inheritedArtists: TrackArtist[] = data.primaryArtists
+        .filter(name => name.trim() !== "")
+        .map(name => ({ name, role: "MainArtist" }));
+
+      if (inheritedArtists.length > 0) {
+        initialArtists = inheritedArtists;
+      }
+      initialTitle = data.title || "";
+    }
 
     const newTrack: Track = {
       id: Date.now().toString(),
-      title: data.title || "", 
+      title: initialTitle,
       trackNumber: (data.tracks.length + 1).toString(),
       duration: "",
       releaseDate: data.plannedReleaseDate || "",

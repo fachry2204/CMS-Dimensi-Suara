@@ -35,6 +35,7 @@ const INITIAL_DATA: ReleaseData = {
 export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialData }) => {
   const [currentStep, setCurrentStep] = useState<number>(Step.INFO);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showTrackWarning, setShowTrackWarning] = useState(false);
   
   const [data, setData] = useState<ReleaseData>(() => initialData ? initialData : INITIAL_DATA);
 
@@ -50,6 +51,12 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
   };
 
   const handleNext = () => {
+    if (currentStep === Step.TRACKS && type === 'ALBUM') {
+        if (data.tracks.length < 2) {
+            setShowTrackWarning(true);
+            return;
+        }
+    }
     if (currentStep < Step.REVIEW) {
         setCurrentStep(prev => prev + 1);
     }
@@ -166,6 +173,46 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                             className="px-4 py-2 rounded-xl font-bold bg-yellow-500 text-white hover:bg-yellow-600 shadow-lg shadow-yellow-500/30 transition-all"
                         >
                             Ya
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {showTrackWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-red-50 p-6 border-b border-red-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="text-red-600" size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-bold text-red-800">Peringatan</h3>
+                        <p className="text-sm text-red-700">Jumlah track belum mencukupi</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowTrackWarning(false)}
+                        className="text-red-300 hover:text-red-500 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+                
+                <div className="p-6">
+                    <p className="text-slate-600 mb-4 font-medium">
+                        Untuk rilis Album/EP, minimal harus ada 2 track sebelum lanjut ke step berikutnya.
+                    </p>
+                    <p className="text-sm text-slate-500 mb-6 bg-slate-50 p-3 rounded-lg">
+                        Tambahkan setidaknya satu track lagi di daftar Tracklist.
+                    </p>
+                    
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowTrackWarning(false)}
+                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                        >
+                            Mengerti
                         </button>
                     </div>
                 </div>
