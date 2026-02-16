@@ -478,6 +478,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
         <Route path="/register" element={<RegisterScreen onLogin={handleLogin} />} />
+        <Route path="/user-status" element={<UserStatusScreen username={''} status={'Pending'} />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
