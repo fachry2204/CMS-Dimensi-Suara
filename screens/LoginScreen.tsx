@@ -70,10 +70,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
   const [cropRect, setCropRect] = useState<{ x: number; y: number; w: number; h: number }>({ x: 128, y: 64, w: 256, h: 192 });
   const [cropDragMode, setCropDragMode] = useState<null | 'moveRect' | 'moveImage' | 'resize'>(null);
   const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number; rect?: { x: number; y: number; w: number; h: number }; translate?: { x: number; y: number } } | null>(null);
+  const [cropResizeHandle, setCropResizeHandle] = useState<null | 'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r'>(null);
 
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [regErrorModalOpen, setRegErrorModalOpen] = useState(false);
 
   const [countries] = useState(COUNTRIES_WITH_DIAL_CODES);
 
@@ -304,6 +306,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
   const validateStep = (currentStep: number) => {
     if (!accountType) {
       setRegError('Silakan pilih tipe pendaftaran terlebih dahulu.');
+      setRegErrorModalOpen(true);
       return false;
     }
     if (currentStep === 1) {
@@ -319,11 +322,18 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
             ? 'NIK, Nama Direktur, Nama Perusahaan, Alamat, dan Negara wajib diisi.'
             : 'NIK, Nama Lengkap, Alamat, dan Negara wajib diisi.'
         );
+        setRegErrorModalOpen(true);
+        return false;
+      }
+      if (!/^\d+$/.test(nik)) {
+        setRegError('NIK harus berupa angka.');
+        setRegErrorModalOpen(true);
         return false;
       }
       if (country === 'Indonesia') {
         if (!province || !city || !district || !subdistrict || !postalCode) {
           setRegError('Lengkapi Provinsi, Kota, Kecamatan, Kelurahan, dan Kodepos.');
+          setRegErrorModalOpen(true);
           return false;
         }
       }
@@ -332,10 +342,25 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     if (currentStep === 2) {
       if (!regEmail || !regPassword || !regPasswordConfirm || !picName || !picPosition) {
         setRegError('Email, password, dan data PIC wajib diisi.');
+        setRegErrorModalOpen(true);
+        return false;
+      }
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail);
+      if (!emailOk) {
+        setRegError('Format email tidak valid.');
+        setRegErrorModalOpen(true);
+        return false;
+      }
+      const pwd = regPassword || '';
+      const strong = pwd.length >= 8 && /[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
+      if (!strong) {
+        setRegError('Password kurang kuat. Gunakan ≥8 char, huruf besar, kecil, angka, simbol.');
+        setRegErrorModalOpen(true);
         return false;
       }
       if (regPassword !== regPasswordConfirm) {
         setRegError('Password dan konfirmasi tidak sama.');
+        setRegErrorModalOpen(true);
         return false;
       }
       return true;
@@ -343,11 +368,13 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
     if (currentStep === 3) {
       if (!ktpFile || !docPaths.ktpDocPath || !npwpFile || !docPaths.npwpDocPath) {
         setRegError('KTP dan NPWP wajib diupload.');
+        setRegErrorModalOpen(true);
         return false;
       }
       if (accountType === 'COMPANY') {
         if (!nibFile || !docPaths.nibDocPath || !kemenkumhamFile || !docPaths.kemenkumhamDocPath) {
           setRegError('NIB dan dokumen Kemenkumham wajib diupload untuk perusahaan.');
+          setRegErrorModalOpen(true);
           return false;
         }
       }
@@ -424,8 +451,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         };
         const labels = dup.map((d: string) => mapLabel[d] || d).join(', ');
         setRegError(`Data duplikat: ${labels}. Gunakan data yang berbeda.`);
+        setRegErrorModalOpen(true);
       } else {
         setRegError(e.message || 'Pendaftaran gagal');
+        setRegErrorModalOpen(true);
       }
     } finally {
       setIsRegistering(false);
@@ -582,7 +611,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         <input
           type="text"
           value={nik}
-          onChange={(e) => setNik(e.target.value)}
+          onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ''))}
           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
           placeholder="Masukkan NIK"
         />
@@ -856,6 +885,28 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
             placeholder="Password"
           />
+          <div className="mt-1">
+            {(() => {
+              const pwd = regPassword || '';
+              const len = pwd.length >= 8;
+              const upper = /[A-Z]/.test(pwd);
+              const lower = /[a-z]/.test(pwd);
+              const digit = /[0-9]/.test(pwd);
+              const special = /[^A-Za-z0-9]/.test(pwd);
+              const score = [len, upper, lower, digit, special].filter(Boolean).length;
+              const levels = ['Lemah', 'Sedang', 'Kuat'];
+              const level = score <= 2 ? 0 : score <= 4 ? 1 : 2;
+              const colors = ['bg-red-500', 'bg-amber-500', 'bg-green-600'];
+              return (
+                <div className="space-y-1">
+                  <div className="h-2 w-full bg-slate-200 rounded">
+                    <div className={`h-2 rounded ${colors[level]}`} style={{ width: `${(score / 5) * 100}%` }} />
+                  </div>
+                  <p className="text-[11px] text-slate-600">Power security: {levels[level]} (≥8 char, huruf besar, kecil, angka, simbol)</p>
+                </div>
+              );
+            })()}
+          </div>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-semibold text-slate-700">Retype Password</label>
@@ -1271,6 +1322,29 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
         </div>
       )}
 
+      {regErrorModalOpen && regError && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={24} className="text-red-500" />
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Data Tidak Lengkap / Tidak Valid</p>
+                <p className="text-xs text-slate-600 mt-1">{regError}</p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <button
+                type="button"
+                onClick={() => setRegErrorModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {cropImageUrl && cropField && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
@@ -1299,6 +1373,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
                   const rectEl = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
                   const x = e.clientX - rectEl.left;
                   const y = e.clientY - rectEl.top;
+                  const minW = 48;
+                  const minH = 48;
                   if (cropDragMode === 'moveRect' && cropDragStart.rect) {
                     const dx = x - cropDragStart.x;
                     const dy = y - cropDragStart.y;
@@ -1311,15 +1387,57 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
                     const dx = x - cropDragStart.x;
                     const dy = y - cropDragStart.y;
                     setCropTranslate({ x: cropDragStart.translate.x + dx, y: cropDragStart.translate.y + dy });
+                  } else if (cropDragMode === 'resize' && cropDragStart.rect && cropResizeHandle) {
+                    const dx = x - cropDragStart.x;
+                    const dy = y - cropDragStart.y;
+                    const r = cropDragStart.rect;
+                    let nx = r.x;
+                    let ny = r.y;
+                    let nw = r.w;
+                    let nh = r.h;
+                    const clampWRight = (val: number) => Math.max(minW, Math.min(512 - r.x, val));
+                    const clampHBottom = (val: number) => Math.max(minH, Math.min(360 - r.y, val));
+                    const clampXLeft = (val: number) => Math.max(0, Math.min(r.x + r.w - minW, val));
+                    const clampYTop = (val: number) => Math.max(0, Math.min(r.y + r.h - minH, val));
+                    if (cropResizeHandle === 'r') {
+                      nw = clampWRight(r.w + dx);
+                    } else if (cropResizeHandle === 'l') {
+                      nx = clampXLeft(r.x + dx);
+                      nw = r.w - (nx - r.x);
+                    } else if (cropResizeHandle === 'b') {
+                      nh = clampHBottom(r.h + dy);
+                    } else if (cropResizeHandle === 't') {
+                      ny = clampYTop(r.y + dy);
+                      nh = r.h - (ny - r.y);
+                    } else if (cropResizeHandle === 'tr') {
+                      nw = clampWRight(r.w + dx);
+                      ny = clampYTop(r.y + dy);
+                      nh = r.h - (ny - r.y);
+                    } else if (cropResizeHandle === 'tl') {
+                      nx = clampXLeft(r.x + dx);
+                      nw = r.w - (nx - r.x);
+                      ny = clampYTop(r.y + dy);
+                      nh = r.h - (ny - r.y);
+                    } else if (cropResizeHandle === 'br') {
+                      nw = clampWRight(r.w + dx);
+                      nh = clampHBottom(r.h + dy);
+                    } else if (cropResizeHandle === 'bl') {
+                      nx = clampXLeft(r.x + dx);
+                      nw = r.w - (nx - r.x);
+                      nh = clampHBottom(r.h + dy);
+                    }
+                    setCropRect({ x: nx, y: ny, w: nw, h: nh });
                   }
                 }}
                 onMouseUp={() => {
                   setCropDragMode(null);
                   setCropDragStart(null);
+                  setCropResizeHandle(null);
                 }}
                 onMouseLeave={() => {
                   setCropDragMode(null);
                   setCropDragStart(null);
+                  setCropResizeHandle(null);
                 }}
               >
                 <img
@@ -1344,7 +1462,96 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, initialMode = 'login' })
                     boxShadow: '0 0 0 9999px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,0,0,0.3)',
                     borderRadius: 6
                   }}
-                />
+                >
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('tl');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, left: -5, top: -5, cursor: 'nwse-resize', borderRadius: 2 }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('tr');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, right: -5, top: -5, cursor: 'nesw-resize', borderRadius: 2 }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('bl');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, left: -5, bottom: -5, cursor: 'nesw-resize', borderRadius: 2 }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('br');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, right: -5, bottom: -5, cursor: 'nwse-resize', borderRadius: 2 }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('t');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, left: '50%', top: -5, transform: 'translateX(-50%)', cursor: 'ns-resize', borderRadius: 2 }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('b');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, left: '50%', bottom: -5, transform: 'translateX(-50%)', cursor: 'ns-resize', borderRadius: 2 }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('l');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, left: -5, top: '50%', transform: 'translateY(-50%)', cursor: 'ew-resize', borderRadius: 2 }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                      setCropDragMode('resize');
+                      setCropResizeHandle('r');
+                      setCropDragStart({ x: e.clientX - rect.left, y: e.clientY - rect.top, rect: { ...cropRect } });
+                    }}
+                    className="absolute bg-white border border-slate-400"
+                    style={{ width: 10, height: 10, right: -5, top: '50%', transform: 'translateY(-50%)', cursor: 'ew-resize', borderRadius: 2 }}
+                  />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
