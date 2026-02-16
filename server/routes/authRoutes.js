@@ -70,70 +70,50 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(password, salt);
 
-        let sql = '';
-        let params = [];
+        const fields = ['username', 'email', 'password_hash'];
+        const values = [username, email, hash];
 
-        if (hasRole && hasStatus) {
-            sql = 'INSERT INTO users (username, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)';
-            params = [username, email, hash, 'User', 'Pending'];
-        } else if (hasRole) {
-            sql = 'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)';
-            params = [username, email, hash, 'User'];
-        } else {
-            sql = 'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)';
-            params = [username, email, hash];
+        if (hasRole) {
+            fields.push('role');
+            values.push('User');
+        }
+        if (hasStatus) {
+            fields.push('status');
+            values.push('Pending');
         }
 
-        const [result] = await db.query(sql, params);
+        const extendedMap = [
+            ['account_type', accountType || 'PERSONAL'],
+            ['company_name', accountType === 'COMPANY' ? (companyName || null) : null],
+            ['nik', nik || null],
+            ['full_name', fullName || null],
+            ['address', address || null],
+            ['country', country || null],
+            ['province', province || null],
+            ['city', city || null],
+            ['district', district || null],
+            ['subdistrict', subdistrict || null],
+            ['postal_code', postalCode || null],
+            ['phone', phone || null],
+            ['pic_name', picName || null],
+            ['pic_position', picPosition || null],
+            ['pic_phone', picPhone || null],
+            ['nib_doc_path', nibDocPath || null],
+            ['kemenkumham_doc_path', kemenkumhamDocPath || null],
+            ['ktp_doc_path', ktpDocPath || null],
+            ['npwp_doc_path', npwpDocPath || null],
+        ];
 
-        try {
-            await db.query(
-                `UPDATE users SET
-                    account_type = ?,
-                    company_name = ?,
-                    nik = ?,
-                    full_name = ?,
-                    address = ?,
-                    country = ?,
-                    province = ?,
-                    city = ?,
-                    district = ?,
-                    subdistrict = ?,
-                    postal_code = ?,
-                    phone = ?,
-                    pic_name = ?,
-                    pic_position = ?,
-                    pic_phone = ?,
-                    nib_doc_path = ?,
-                    kemenkumham_doc_path = ?,
-                    ktp_doc_path = ?,
-                    npwp_doc_path = ?
-                 WHERE id = ?`,
-                [
-                    accountType || 'PERSONAL',
-                    accountType === 'COMPANY' ? (companyName || '') : '',
-                    nik || '',
-                    fullName || '',
-                    address || '',
-                    country || '',
-                    province || '',
-                    city || '',
-                    district || '',
-                    subdistrict || '',
-                    postalCode || '',
-                    phone || '',
-                    picName || '',
-                    picPosition || '',
-                    picPhone || '',
-                    nibDocPath || '',
-                    kemenkumhamDocPath || '',
-                    ktpDocPath || '',
-                    npwpDocPath || '',
-                    result.insertId
-                ]
-            );
-        } catch (e) {
+        for (const [col, val] of extendedMap) {
+            if (colNames.includes(col)) {
+                fields.push(col);
+                values.push(val);
+            }
         }
+
+        const placeholders = fields.map(() => '?').join(', ');
+        const sql = `INSERT INTO users (${fields.join(', ')}) VALUES (${placeholders})`;
+        const [result] = await db.query(sql, values);
 
         res.status(201).json({ 
             message: 'User registered successfully', 
