@@ -12,6 +12,7 @@ import { SingleReleasePage } from './screens/SingleReleasePage';
 // import { Publishing } from './screens/Publishing';
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
+import { UserDetailPage } from './screens/UserDetailPage';
 import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
@@ -809,6 +810,7 @@ const App: React.FC = () => {
                     token={token}
                 />
             } />
+            <Route path="/users/:id" element={<UserDetailPage />} />
             <Route path="/reports" element={
                 <ReportScreen 
                     mode="view" 

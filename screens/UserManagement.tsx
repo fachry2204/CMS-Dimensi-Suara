@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
     Users, 
     Shield, 
@@ -39,6 +40,7 @@ export const UserManagement: React.FC = () => {
     status: 'Active' as 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved'
   });
 
+  const navigate = useNavigate();
   // Fetch Users
   useEffect(() => {
     fetchUsers();
@@ -261,20 +263,7 @@ export const UserManagement: React.FC = () => {
                                     <td className="py-3 px-4 text-right">
                                         <div className="flex justify-end items-center gap-2">
                                             <button
-                                                onClick={async () => { 
-                                                    try {
-                                                        const detail = await api.getUser(token, user.id);
-                                                        setSelectedUser(detail);
-                                                        setStatusDraft(detail.status);
-                                                        setRejectReason(detail.rejection_reason || '');
-                                                        setShowUserViewModal(true);
-                                                    } catch (err: any) { 
-                                                        setSelectedUser(user);
-                                                        setStatusDraft(user.status);
-                                                        setRejectReason(user.rejection_reason || '');
-                                                        setShowUserViewModal(true);
-                                                    }
-                                                }}
+                                                onClick={() => navigate(`/users/${user.id}`)}
                                                 className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
                                                 title="View User"
                                             >
