@@ -21,6 +21,8 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
   const [uploadLabel, setUploadLabel] = useState<string | null>(null);
   const [uploadStartTs, setUploadStartTs] = useState<number | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
+  const [fileProgress, setFileProgress] = useState<number>(0);
+  const [uploadQueue, setUploadQueue] = useState<{ key: string; label: string; status: 'Queued' | 'Uploading' | 'Done'; progress: number }[]>([]);
 
   React.useEffect(() => {
     if (isSubmitting && uploadTotal > 0) {
@@ -97,21 +99,52 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         setUploadTotal(total);
         setUploadDone(0);
         setUploadStartTs(Date.now());
+        const queueBuild: { key: string; label: string; status: 'Queued' | 'Uploading' | 'Done'; progress: number }[] = [];
+        if (prepped.coverArt instanceof File) {
+          queueBuild.push({ key: 'coverArt', label: 'Cover Art', status: 'Queued', progress: 0 });
+        }
+        for (let i = 0; i < prepped.tracks.length; i++) {
+          const t = prepped.tracks[i] as any;
+          if (t.audioFile instanceof File) {
+            queueBuild.push({ key: `track_${i}_audio`, label: `Track ${i + 1} Audio`, status: 'Queued', progress: 0 });
+          }
+          if (t.audioClip instanceof File) {
+            queueBuild.push({ key: `track_${i}_clip`, label: `Track ${i + 1} Clip`, status: 'Queued', progress: 0 });
+          }
+          if (t.iplFile instanceof File) {
+            queueBuild.push({ key: `track_${i}_ipl`, label: `Track ${i + 1} IPL`, status: 'Queued', progress: 0 });
+          }
+        }
+        setUploadQueue(queueBuild);
+        const setQ = (key: string, status?: 'Queued' | 'Uploading' | 'Done', progress?: number) => {
+          setUploadQueue(prev => prev.map(it => it.key === key ? { ...it, status: status ?? it.status, progress: progress ?? it.progress } : it));
+        };
         if (prepped.coverArt instanceof File) {
           try {
             setUploadLabel('Cover Art');
-            const resp = await api.uploadReleaseFile(
+            setFileProgress(0);
+            setQ('coverArt', 'Uploading', 0);
+            const resp: any = await api.uploadReleaseFileProgress(
               token,
               { title: prepped.title, primaryArtists: prepped.primaryArtists },
               'coverArt',
-              prepped.coverArt
+              prepped.coverArt,
+              (p: number) => setFileProgress(p)
             );
-            if (resp && resp.paths && resp.paths['coverArt']) {
-              prepped.coverArt = resp.paths['coverArt'];
+            const candidate =
+              (resp && resp.paths && resp.paths['coverArt']) ||
+              (resp && resp.paths && resp.paths['file']) ||
+              (resp && resp.path) ||
+              (resp && resp.url) ||
+              '';
+            if (candidate) {
+              prepped.coverArt = candidate;
             }
           } catch {}
           finally {
             setUploadDone(prev => prev + 1);
+            setFileProgress(100);
+            setQ('coverArt', 'Done', 100);
           }
         }
         for (let i = 0; i < prepped.tracks.length; i++) {
@@ -120,11 +153,14 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             const fieldName = `track_${i}_audio`;
             try {
               setUploadLabel(`Track ${i + 1} Audio`);
-              const resp = await api.uploadReleaseFile(
+              setFileProgress(0);
+              setQ(fieldName, 'Uploading', 0);
+              const resp: any = await api.uploadReleaseFileProgress(
                 token,
                 { title: prepped.title, primaryArtists: prepped.primaryArtists },
                 fieldName,
-                t.audioFile
+                t.audioFile,
+                (p: number) => setFileProgress(p)
               );
               const candidate =
                 (resp && resp.paths && resp.paths[fieldName]) ||
@@ -139,17 +175,22 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             } catch {}
             finally {
               setUploadDone(prev => prev + 1);
+              setFileProgress(100);
+              setQ(fieldName, 'Done', 100);
             }
           }
           if (t.audioClip instanceof File) {
             const fieldName = `track_${i}_clip`;
             try {
               setUploadLabel(`Track ${i + 1} Clip`);
-              const resp = await api.uploadReleaseFile(
+              setFileProgress(0);
+              setQ(fieldName, 'Uploading', 0);
+              const resp: any = await api.uploadReleaseFileProgress(
                 token,
                 { title: prepped.title, primaryArtists: prepped.primaryArtists },
                 fieldName,
-                t.audioClip
+                t.audioClip,
+                (p: number) => setFileProgress(p)
               );
               const candidate =
                 (resp && resp.paths && resp.paths[fieldName]) ||
@@ -164,17 +205,22 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             } catch {}
             finally {
               setUploadDone(prev => prev + 1);
+              setFileProgress(100);
+              setQ(fieldName, 'Done', 100);
             }
           }
           if (t.iplFile instanceof File) {
             const fieldName = `track_${i}_ipl`;
             try {
               setUploadLabel(`Track ${i + 1} IPL`);
-              const resp = await api.uploadReleaseFile(
+              setFileProgress(0);
+              setQ(fieldName, 'Uploading', 0);
+              const resp: any = await api.uploadReleaseFileProgress(
                 token,
                 { title: prepped.title, primaryArtists: prepped.primaryArtists },
                 fieldName,
-                t.iplFile
+                t.iplFile,
+                (p: number) => setFileProgress(p)
               );
               const candidate =
                 (resp && resp.paths && resp.paths[fieldName]) ||
@@ -189,6 +235,8 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             } catch {}
             finally {
               setUploadDone(prev => prev + 1);
+              setFileProgress(100);
+              setQ(fieldName, 'Done', 100);
             }
           }
         }
@@ -446,6 +494,34 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             </div>
             {uploadLabel && (
               <div className="mt-2 text-[12px] text-slate-500">Current: {uploadLabel}</div>
+            )}
+            <div className="mt-2">
+              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all bg-gradient-to-r from-orange-500 to-yellow-400"
+                  style={{ width: `${Math.max(0, Math.min(100, Math.round(fileProgress)))}%` }}
+                ></div>
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">{Math.round(fileProgress)}%</div>
+            </div>
+            {uploadQueue.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {uploadQueue.map(item => (
+                  <div key={item.key} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-700">{item.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full border text-[11px] ${
+                        item.status === 'Done' ? 'bg-green-50 text-green-700 border-green-200' :
+                        item.status === 'Uploading' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        'bg-slate-50 text-slate-600 border-slate-200'
+                      }`}>{item.status}</span>
+                      <span className="text-slate-400">{Math.round(item.progress)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
             <div className="mt-1 text-[11px] text-slate-400">
               {(() => {

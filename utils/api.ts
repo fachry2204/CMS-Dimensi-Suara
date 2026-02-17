@@ -187,6 +187,73 @@ export const api = {
         return parseResponse(res);
     },
 
+    uploadReleaseFileProgress: (token: string, releaseMeta: any, fieldName: string, file: File, onProgress?: (p: number) => void) => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const formData = new FormData();
+                formData.append('data', JSON.stringify({
+                    title: releaseMeta.title,
+                    primaryArtists: releaseMeta.primaryArtists || [],
+                    field: fieldName
+                }));
+                formData.append('file', file);
+                formData.append(fieldName, file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `${API_BASE_URL}/releases/upload`, true);
+                if (token) {
+                    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                }
+                xhr.withCredentials = true;
+                xhr.upload.onprogress = (evt) => {
+                    if (evt.lengthComputable && typeof onProgress === 'function') {
+                        const percent = Math.round((evt.loaded / evt.total) * 100);
+                        onProgress(percent);
+                    }
+                };
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 401 || xhr.status === 403) {
+                            const err: any = new Error('AUTH');
+                            (err as any).status = xhr.status;
+                            reject(err);
+                            return;
+                        }
+                        if (xhr.status === 413) {
+                            const err: any = new Error('UPLOAD_TOO_LARGE');
+                            (err as any).status = 413;
+                            reject(err);
+                            return;
+                        }
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                const json = JSON.parse(xhr.responseText || '{}');
+                                resolve(json);
+                            } catch {
+                                reject(new Error('Invalid JSON response'));
+                            }
+                        } else {
+                            try {
+                                const j = JSON.parse(xhr.responseText || '{}');
+                                const msg = j.error || 'Request failed';
+                                const err: any = new Error(msg);
+                                (err as any).status = xhr.status;
+                                err.payload = j;
+                                reject(err);
+                            } catch {
+                                reject(new Error(xhr.responseText || 'Request failed'));
+                            }
+                        }
+                    }
+                };
+                xhr.onerror = () => reject(new Error('Network error'));
+                xhr.send(formData);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    },
+
     // Reports
     getReports: async (token) => {
         const res = await fetch(`${API_BASE_URL}/reports`, {
