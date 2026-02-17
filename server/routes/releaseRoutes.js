@@ -431,11 +431,17 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                 // Convert & move from TMP if provided
                 let audioPath = pathMap[audioField] || t.audioFile || null;
                 let clipPath = pathMap[clipField] || t.audioClip || null;
+                const tmpAudioSource =
+                    (typeof t.tempAudioPath === 'string' && t.tempAudioPath) ||
+                    (typeof t.audioFile === 'string' && /\/uploads\/tmp\//.test(t.audioFile) ? t.audioFile : null);
+                const tmpClipSource =
+                    (typeof t.tempClipPath === 'string' && t.tempClipPath) ||
+                    (typeof t.audioClip === 'string' && /\/uploads\/tmp\//.test(t.audioClip) ? t.audioClip : null);
                 try {
                     const baseName = `${artistDirName} - ${releaseDirName}`;
                     const trackIdx = idx + 1;
-                    if (t.tempAudioPath && typeof t.tempAudioPath === 'string') {
-                        const absTmp = resolveTmpAbs(t.tempAudioPath);
+                    if (tmpAudioSource) {
+                        const absTmp = resolveTmpAbs(tmpAudioSource);
                         if (absTmp && fs.existsSync(absTmp)) {
                             const outName = `${baseName}-track${trackIdx}.wav`;
                             const outAbs = path.join(targetDir, outName);
@@ -448,8 +454,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                             audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                         }
                     }
-                    if (t.tempClipPath && typeof t.tempClipPath === 'string') {
-                        const absTmp = resolveTmpAbs(t.tempClipPath);
+                    if (tmpClipSource) {
+                        const absTmp = resolveTmpAbs(tmpClipSource);
                         if (absTmp && fs.existsSync(absTmp)) {
                             const outName = `${baseName}-track${trackIdx}-clip.wav`;
                             const outAbs = path.join(targetDir, outName);
