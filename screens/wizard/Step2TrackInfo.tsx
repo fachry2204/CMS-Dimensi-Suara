@@ -368,6 +368,48 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     else if (field === 'audioClip') {
         try {
             const duration = await getAudioDuration(file);
+            // If user uploads a ready 60s clip, accept it directly and upload to TMP
+            if (duration >= 58 && duration <= 62) {
+                const token = localStorage.getItem('cms_token') || '';
+                if (token) {
+                    const trackIndex = data.tracks.findIndex(t => t.id === trackId);
+                    if (trackIndex >= 0) {
+                        const fieldName = `track_${trackIndex}_clip`;
+                        try {
+                            const useChunk = (file?.size || 0) > (90 * 1024 * 1024);
+                            const resp = useChunk
+                              ? await api.uploadTmpReleaseFileChunked(
+                                  token,
+                                  { title: data.title, primaryArtists: data.primaryArtists },
+                                  fieldName,
+                                  file,
+                                  8 * 1024 * 1024
+                                )
+                              : await api.uploadTmpReleaseFile(
+                                  token,
+                                  { title: data.title, primaryArtists: data.primaryArtists },
+                                  fieldName,
+                                  file
+                                );
+                            const candidate =
+                              (resp && resp.paths && resp.paths[fieldName]) ||
+                              (resp && resp.paths && resp.paths['file']) ||
+                              (resp && resp.path) ||
+                              (resp && resp.url) ||
+                              (resp && resp[fieldName]) ||
+                              '';
+                            if (candidate) {
+                                updateTrack(trackId, { tempClipPath: candidate, audioClip: candidate, previewStart: 0 });
+                                return;
+                            }
+                        } catch (e) {
+                            console.error('Upload tmp 60s clip failed:', e);
+                            // Fallback to trimmer UI below
+                        }
+                    }
+                }
+            }
+            // Otherwise, open trimmer to produce a 60s clip
             setTrimmerState({
                 isOpen: true,
                 trackId: trackId,
@@ -376,7 +418,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 startTime: 0,
                 isPlaying: false
             });
-            // We do NOT update track.audioClip yet. We wait for user to save in Trimmer.
         } catch (e) {
             alert("Could not read audio file for clipping.");
         }
