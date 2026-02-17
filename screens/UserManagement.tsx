@@ -488,6 +488,8 @@ export const UserManagement: React.FC = () => {
                                     setSelectedUser(res.user);
                                     setStatusDraft(res.user.status);
                                     if (s !== 'Rejected') setRejectReason('');
+                                    alert('Perubahan status berhasil');
+                                    setShowUserViewModal(false);
                                 } catch (err: any) { alert(err.message); }
                             }}
                             className={`px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 ${statusDraft === 'Rejected' && !rejectReason?.trim() ? 'opacity-60 cursor-not-allowed' : ''}`}
