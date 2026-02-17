@@ -45,6 +45,8 @@ export interface Track {
   tempAudioPath?: string;
   tempClipPath?: string;
   previewStart?: number;
+  processingAudio?: boolean;
+  processingClip?: boolean;
   
   // Metadata
   trackNumber: string;

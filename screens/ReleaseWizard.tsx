@@ -38,6 +38,8 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
   const [showExitModal, setShowExitModal] = useState(false);
   const [showTrackWarning, setShowTrackWarning] = useState(false);
   const [showArtistWarning, setShowArtistWarning] = useState(false);
+  const [showAudioProcessingWarning, setShowAudioProcessingWarning] = useState(false);
+  const [showAudioMissingWarning, setShowAudioMissingWarning] = useState<string[] | false>(false);
   
   const [data, setData] = useState<ReleaseData>(() => initialData ? initialData : INITIAL_DATA);
 
@@ -57,6 +59,26 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         const artists = (data.primaryArtists || []).map(a => (a || '').trim()).filter(a => a.length > 0);
         if (artists.length === 0) {
             setShowArtistWarning(true);
+            return;
+        }
+    }
+    if (currentStep === Step.TRACKS) {
+        const processing = (data.tracks || []).some(t => (t.processingAudio === true) || (t.processingClip === true));
+        if (processing) {
+            setShowAudioProcessingWarning(true);
+            return;
+        }
+        const missingIssues: string[] = [];
+        (data.tracks || []).forEach((t, idx) => {
+            const audioOk = (typeof (t as any).audioFile === 'string' && (t as any).audioFile.trim().length > 0)
+              || (typeof (t as any).tempAudioPath === 'string' && (t as any).tempAudioPath.trim().length > 0);
+            if (!audioOk) missingIssues.push(`Track ${idx + 1}: Full Audio belum diupload ke server.`);
+            const clipOk = (typeof (t as any).audioClip === 'string' && (t as any).audioClip.trim().length > 0)
+              || (typeof (t as any).tempClipPath === 'string' && (t as any).tempClipPath.trim().length > 0);
+            if (!clipOk) missingIssues.push(`Track ${idx + 1}: Audio Clip 60s belum diupload ke server.`);
+        });
+        if (missingIssues.length > 0) {
+            setShowAudioMissingWarning(missingIssues);
             return;
         }
     }
@@ -194,6 +216,71 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                             className="px-4 py-2 rounded-xl font-bold bg-yellow-500 text-white hover:bg-yellow-600 shadow-lg shadow-yellow-500/30 transition-all"
                         >
                             Ya
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+      {showAudioProcessingWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-red-50 p-6 border-b border-red-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="text-red-600" size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-bold text-red-800">Proses Belum Selesai</h3>
+                        <p className="text-sm text-red-700">Audio sedang diproses/diunggah. Tunggu selesai sebelum lanjut.</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowAudioProcessingWarning(false)}
+                        className="text-red-300 hover:text-red-500 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+                <div className="p-6">
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowAudioProcessingWarning(false)}
+                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                        >
+                            Mengerti
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+      {Array.isArray(showAudioMissingWarning) && showAudioMissingWarning.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-red-50 p-6 border-b border-red-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="text-red-600" size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-bold text-red-800">Data Audio Belum Lengkap</h3>
+                        <p className="text-sm text-red-700">Perbaiki masalah berikut sebelum lanjut:</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowAudioMissingWarning(false)}
+                        className="text-red-300 hover:text-red-500 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+                <div className="p-6">
+                    <ul className="text-sm text-slate-700 list-disc pl-5 space-y-2">
+                        {showAudioMissingWarning.map((msg, i) => (<li key={i}>{msg}</li>))}
+                    </ul>
+                    <div className="flex justify-end mt-6">
+                        <button
+                            onClick={() => setShowAudioMissingWarning(false)}
+                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                        >
+                            Mengerti
                         </button>
                     </div>
                 </div>

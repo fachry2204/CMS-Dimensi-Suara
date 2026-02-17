@@ -330,15 +330,19 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             if (!pubPath || typeof pubPath !== 'string') return null;
             const normalized = String(pubPath).replace(/^[\\/]+/, '');
             let relPath = normalized;
-            if (relPath.startsWith('uploads/')) {
-                relPath = relPath.replace(/^uploads[\\/]/, '');
-            } else if (relPath.startsWith('/uploads/')) {
-                relPath = relPath.replace(/^\/uploads[\\/]/, '');
+            // Ensure we keep the 'uploads/' prefix so absolute path lands under UPLOADS_ROOT
+            if (relPath.startsWith('/uploads/')) {
+                relPath = relPath.replace(/^\/uploads[\\/]/, 'uploads/');
             }
+            // If missing 'uploads/' explicitly, add it
+            if (!relPath.startsWith('uploads/')) {
+                relPath = 'uploads/' + relPath;
+            }
+            // Must be under uploads/tmp/
+            if (!/^uploads[\\/]+tmp[\\/]+/i.test(relPath)) return null;
             const segs = relPath.split(/[\\/]/);
-            if (segs[0] !== 'tmp') return null;
-            // expected: tmp/<userId>/<artist>/<title>/<file>
-            if (segs.length < 5) return null;
+            // expected: uploads/tmp/<userId>/<artist>/<title>/<file>
+            if (segs.length < 6) return null;
             const abs = path.join(__dirname, '../../', relPath);
             if (!abs.startsWith(TMP_DIR)) return null;
             return abs;

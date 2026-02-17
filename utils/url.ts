@@ -1,8 +1,15 @@
 export const assetUrl = (p?: string | null): string => {
   if (!p) return '';
   if (/^https?:\/\//i.test(p)) return p;
-  const base = (import.meta.env.VITE_API_URL || '/api').replace(/\/api$/, '');
   const normalized = p.startsWith('/') ? p : `/${p}`;
+  // Serve uploads from site origin rather than API base
+  if (/^\/uploads\//.test(normalized)) {
+    try {
+      const origin = (globalThis as any)?.location?.origin || '';
+      if (origin) return `${origin}${normalized}`;
+    } catch {}
+  }
+  const base = (import.meta.env.VITE_API_URL || (globalThis as any)?.location?.origin || '/api').replace(/\/api$/, '');
   return `${base}${normalized}`;
 };
 

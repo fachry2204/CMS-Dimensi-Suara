@@ -181,6 +181,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       const processKey = `${trimmerState.trackId}-audioClip`;
 
       setProcessingState(prev => ({ ...prev, [processKey]: true }));
+      updateTrack(trimmerState.trackId, { processingClip: true });
       closeTrimmer(); // Close inline trimmer
 
       try {
@@ -223,6 +224,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             delete newState[processKey];
             return newState;
         });
+        updateTrack(trimmerState.trackId, { processingClip: false });
       }
   };
 
@@ -314,6 +316,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     // 1. Handle Full Audio (WAV Force Convert & Rename)
     if (field === 'audioFile') {
         setProcessingState(prev => ({ ...prev, [processKey]: true }));
+        updateTrack(trackId, { processingAudio: true });
             try {
             const token = localStorage.getItem('cms_token') || '';
             if (token) {
@@ -361,6 +364,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 delete newState[processKey];
                 return newState;
             });
+            updateTrack(trackId, { processingAudio: false });
         }
     } 
     
@@ -376,6 +380,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                     if (trackIndex >= 0) {
                         const fieldName = `track_${trackIndex}_clip`;
                         try {
+                            setProcessingState(prev => ({ ...prev, [`${trackId}-audioClip`]: true }));
+                            updateTrack(trackId, { processingClip: true });
                             const useChunk = (file?.size || 0) > (90 * 1024 * 1024);
                             const resp = useChunk
                               ? await api.uploadTmpReleaseFileChunked(
@@ -405,6 +411,13 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         } catch (e) {
                             console.error('Upload tmp 60s clip failed:', e);
                             // Fallback to trimmer UI below
+                        } finally {
+                            setProcessingState(prev => {
+                                const p = { ...prev };
+                                delete p[`${trackId}-audioClip`];
+                                return p;
+                            });
+                            updateTrack(trackId, { processingClip: false });
                         }
                     }
                 }
