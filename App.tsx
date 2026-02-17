@@ -342,6 +342,8 @@ const App: React.FC = () => {
       try {
           await api.deleteRelease(token, releaseToDelete.id);
           setAllReleases(prev => prev.filter(r => r.id !== releaseToDelete.id));
+          setViewingRelease(prev => (prev && prev.id === releaseToDelete.id ? null : prev));
+          navigate('/releases');
       } catch (err: any) {
           alert(err?.message || 'Gagal menghapus release');
       } finally {
