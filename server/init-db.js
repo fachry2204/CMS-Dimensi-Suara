@@ -145,7 +145,7 @@ const initDb = async () => {
         } catch (err) {
             if (err.code === 'ER_BAD_FIELD_ERROR') {
                 console.log('⚠️ Adding missing column: registered_at to users table');
-                await connection.query('ALTER TABLE users ADD COLUMN registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+                await connection.query('ALTER TABLE users ADD COLUMN registered_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP');
             }
         }
         try {
@@ -161,6 +161,24 @@ const initDb = async () => {
             await connection.query('ALTER TABLE users MODIFY COLUMN joined_date DATETIME NULL DEFAULT NULL');
         } catch (err) {
             console.warn('Joined_date alteration warning:', err.message);
+        }
+
+        // 3d. Backfill registered_at for existing rows and enforce NOT NULL
+        try {
+            const [cols] = await connection.query('SHOW COLUMNS FROM users');
+            const colNames = cols.map(c => c.Field);
+            const hasCreatedAt = colNames.includes('created_at');
+            if (hasCreatedAt) {
+                console.log('🔧 Backfilling registered_at from created_at where NULL');
+                await connection.query('UPDATE users SET registered_at = created_at WHERE registered_at IS NULL');
+            } else {
+                console.log('🔧 Backfilling registered_at with NOW() where NULL');
+                await connection.query('UPDATE users SET registered_at = NOW() WHERE registered_at IS NULL');
+            }
+            console.log('🔧 Enforcing registered_at NOT NULL');
+            await connection.query('ALTER TABLE users MODIFY COLUMN registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+        } catch (err) {
+            console.warn('Registered_at backfill/constraint warning:', err.message);
         }
 
         // 4. Check 'cover_art' in 'releases'

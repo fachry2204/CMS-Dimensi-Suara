@@ -179,6 +179,11 @@ router.post('/', authenticateToken, async (req, res) => {
 
         const [result] = await db.query(sql, params);
 
+        // Ensure registered_at set explicitly for the new user
+        if (hasRegisteredAt) {
+            await db.query('UPDATE users SET registered_at = COALESCE(registered_at, NOW()) WHERE id = ?', [result.insertId]);
+        }
+
         // Fetch created user with dates
         const selectParts = [
             'id',
