@@ -47,7 +47,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
           } else {
             reject(new Error("Blob creation failed"));
           }
-        }, "image/jpeg", 0.95); // High quality JPG
+        }, "image/jpeg", 0.9);
       };
       img.onerror = (err) => reject(err);
     });
@@ -64,7 +64,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
           try {
             const resp = await api.uploadReleaseFile(
               token,
-              { title: data.title, primaryArtists: data.primaryArtists },
+              { title: (data.title && data.title.trim()) || `Cover-${Date.now()}`, primaryArtists: (data.primaryArtists || []).filter(a => a && a.trim() !== '') },
               'coverArt',
               processedFile
             );
@@ -73,7 +73,6 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
             }
           } catch (err) {
             console.error('Upload cover art failed:', err);
-            alert('Upload cover art ke server gagal. Gambar belum tersimpan di server.');
           }
         }
         updateData({ coverArt: storedCover });
