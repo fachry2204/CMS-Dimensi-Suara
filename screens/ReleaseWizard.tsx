@@ -68,25 +68,8 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
             setShowAudioProcessingWarning(true);
             return;
         }
-        const missingIssues: string[] = [];
-        (data.tracks || []).forEach((t, idx) => {
-            const hasAudioFile = (t as any).audioFile != null;
-            const hasTempAudio = typeof (t as any).tempAudioPath === 'string' && (t as any).tempAudioPath.trim().length > 0;
-            const audioOk = hasAudioFile || hasTempAudio;
-            if (!audioOk) {
-                missingIssues.push(`Track ${idx + 1}: Full Audio belum diupload ke server.`);
-            }
-            const hasClipFile = (t as any).audioClip != null;
-            const hasTempClip = typeof (t as any).tempClipPath === 'string' && (t as any).tempClipPath.trim().length > 0;
-            const clipOk = hasClipFile || hasTempClip;
-            if (!clipOk) {
-                missingIssues.push(`Track ${idx + 1}: Audio Clip 60s belum diupload ke server.`);
-            }
-        });
-        if (missingIssues.length > 0) {
-            setShowAudioMissingWarning(missingIssues);
-            return;
-        }
+        // Tidak lagi memblokir di Step 2 berdasarkan cek "sudah diupload ke server".
+        // Cukup pastikan proses belum berjalan; validasi audio/clip penuh dilakukan di Step 4.
     }
     if (currentStep === Step.TRACKS && type === 'ALBUM') {
         if (data.tracks.length < 2) {
