@@ -16,6 +16,18 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadDone, setUploadDone] = useState(0);
+  const [uploadLabel, setUploadLabel] = useState<string | null>(null);
+  const [uploadStartTs, setUploadStartTs] = useState<number | null>(null);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
+
+  React.useEffect(() => {
+    if (isSubmitting && uploadTotal > 0) {
+      const id = setInterval(() => setNowTs(Date.now()), 1000);
+      return () => clearInterval(id);
+    }
+  }, [isSubmitting, uploadTotal]);
 
   const handleSubmit = async () => {
     // --- VALIDATION START ---
@@ -73,8 +85,20 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
           ...data,
           tracks: (data.tracks || []).map(t => ({ ...t }))
         };
+        let total = 0;
+        if (prepped.coverArt instanceof File) total += 1;
+        prepped.tracks.forEach(t => {
+          const anyT = t as any;
+          if (anyT.audioFile instanceof File) total += 1;
+          if (anyT.audioClip instanceof File) total += 1;
+          if (anyT.iplFile instanceof File) total += 1;
+        });
+        setUploadTotal(total);
+        setUploadDone(0);
+        setUploadStartTs(Date.now());
         if (prepped.coverArt instanceof File) {
           try {
+            setUploadLabel('Cover Art');
             const resp = await api.uploadReleaseFile(
               token,
               { title: prepped.title, primaryArtists: prepped.primaryArtists },
@@ -85,12 +109,16 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               prepped.coverArt = resp.paths['coverArt'];
             }
           } catch {}
+          finally {
+            setUploadDone(prev => prev + 1);
+          }
         }
         for (let i = 0; i < prepped.tracks.length; i++) {
           const t = prepped.tracks[i] as any;
           if (t.audioFile instanceof File) {
             const fieldName = `track_${i}_audio`;
             try {
+              setUploadLabel(`Track ${i + 1} Audio`);
               const resp = await api.uploadReleaseFile(
                 token,
                 { title: prepped.title, primaryArtists: prepped.primaryArtists },
@@ -101,10 +129,14 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 prepped.tracks[i].audioFile = resp.paths[fieldName];
               }
             } catch {}
+            finally {
+              setUploadDone(prev => prev + 1);
+            }
           }
           if (t.audioClip instanceof File) {
             const fieldName = `track_${i}_clip`;
             try {
+              setUploadLabel(`Track ${i + 1} Clip`);
               const resp = await api.uploadReleaseFile(
                 token,
                 { title: prepped.title, primaryArtists: prepped.primaryArtists },
@@ -115,10 +147,14 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 prepped.tracks[i].audioClip = resp.paths[fieldName];
               }
             } catch {}
+            finally {
+              setUploadDone(prev => prev + 1);
+            }
           }
           if (t.iplFile instanceof File) {
             const fieldName = `track_${i}_ipl`;
             try {
+              setUploadLabel(`Track ${i + 1} IPL`);
               const resp = await api.uploadReleaseFile(
                 token,
                 { title: prepped.title, primaryArtists: prepped.primaryArtists },
@@ -129,8 +165,21 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 prepped.tracks[i].iplFile = resp.paths[fieldName];
               }
             } catch {}
+            finally {
+              setUploadDone(prev => prev + 1);
+            }
           }
         }
+        // Sanitize: ensure no File objects remain in payload
+        if (prepped.coverArt instanceof File) {
+          prepped.coverArt = null;
+        }
+        prepped.tracks = prepped.tracks.map((t: any) => ({
+          ...t,
+          audioFile: t.audioFile instanceof File ? "" : t.audioFile,
+          audioClip: t.audioClip instanceof File ? "" : t.audioClip,
+          iplFile: t.iplFile instanceof File ? "" : t.iplFile
+        }));
         const result = await api.createRelease(token, prepped);
 
         const normalizedId = String(result.id ?? data.id ?? Date.now());
@@ -345,6 +394,39 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
       </div>
 
       <div className="mt-12 flex flex-col items-end border-t border-gray-100 pt-8 pb-12">
+        {isSubmitting && uploadTotal > 0 && (
+          <div className="w-full md:w-[480px] mb-6 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-semibold text-slate-700">Uploading Files</div>
+              <div className="text-xs text-slate-500">{uploadDone}/{uploadTotal}</div>
+            </div>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500"
+                style={{ width: `${Math.round((uploadDone / uploadTotal) * 100)}%` }}
+              ></div>
+            </div>
+            {uploadLabel && (
+              <div className="mt-2 text-[12px] text-slate-500">Current: {uploadLabel}</div>
+            )}
+            <div className="mt-1 text-[11px] text-slate-400">
+              {(() => {
+                const elapsed = uploadStartTs ? Math.max(0, Math.floor((nowTs - uploadStartTs) / 1000)) : 0;
+                const fmt = (s: number) => {
+                  const m = Math.floor(s / 60);
+                  const sec = s % 60;
+                  return `${m}m ${sec}s`;
+                };
+                if (uploadDone > 0) {
+                  const avg = elapsed / uploadDone;
+                  const remaining = Math.max(0, Math.round(avg * (uploadTotal - uploadDone)));
+                  return `Elapsed: ${fmt(elapsed)} · ETA: ${fmt(remaining)}`;
+                }
+                return `Elapsed: ${fmt(elapsed)} · ETA: estimating...`;
+              })()}
+            </div>
+          </div>
+        )}
         <div className="flex gap-4 w-full md:w-auto">
             <button 
                 onClick={onBack}

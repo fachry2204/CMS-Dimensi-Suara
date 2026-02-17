@@ -149,24 +149,6 @@ export const api = {
 
     createRelease: async (token, data) => {
         const formData = new FormData();
-        
-        if (data.coverArt instanceof File) {
-            formData.append('coverArt', data.coverArt);
-        }
-        
-        if (data.tracks && Array.isArray(data.tracks)) {
-            data.tracks.forEach((track, index) => {
-                if (track.audioFile instanceof File) {
-                    formData.append(`track_${index}_audio`, track.audioFile);
-                }
-                if (track.audioClip instanceof File) {
-                    formData.append(`track_${index}_clip`, track.audioClip);
-                }
-                if (track.iplFile instanceof File) {
-                    formData.append(`track_${index}_ipl`, track.iplFile);
-                }
-            });
-        }
 
         // Append JSON data
         formData.append('data', JSON.stringify(data));
