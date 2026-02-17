@@ -16,15 +16,9 @@ export const NewReleaseFlow: React.FC<NewReleaseFlowProps> = ({
 }) => {
     const navigate = useNavigate();
 
-    // Jika sedang edit release, langsung arahkan ke halaman wizard sesuai type
     useEffect(() => {
-        if (editingRelease) {
-            const targetPath = editingRelease.type === 'SINGLE' 
-                ? '/new-release/single' 
-                : '/new-release/album';
-            navigate(targetPath);
-        }
-    }, [editingRelease, navigate]);
+        setEditingRelease(null);
+    }, [setEditingRelease]);
 
     const handleSelectType = (type: ReleaseType) => {
         const targetPath = type === 'SINGLE' 
