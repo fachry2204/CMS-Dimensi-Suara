@@ -123,6 +123,8 @@ export interface User {
   role: 'Admin' | 'Operator' | 'User'; // User = Registered User
   status: 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved' | 'Rejected';
   joinedDate: string;
+  registeredDate?: string;
+  rejectedDate?: string;
   password?: string; // Optional for UI display
   profilePicture?: string;
   rejection_reason?: string;

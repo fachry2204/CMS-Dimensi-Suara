@@ -118,6 +118,8 @@ router.get('/', authenticateToken, async (req, res) => {
         const colNames = cols.map(c => c.Field);
         const hasStatus = colNames.includes('status');
         const hasJoinedDate = colNames.includes('joined_date');
+        const hasRegisteredAt = colNames.includes('registered_at');
+        const hasRejectedDate = colNames.includes('rejected_date');
 
         const selectParts = [
             'id',
@@ -125,7 +127,9 @@ router.get('/', authenticateToken, async (req, res) => {
             'email',
             'role',
             hasStatus ? 'status' : `'Active' as status`,
-            hasJoinedDate ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
+            hasJoinedDate ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate',
+            hasRegisteredAt ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
+            hasRejectedDate ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate'
         ];
 
         const orderBy = hasCreatedAt ? 'created_at DESC' : 'id DESC';
@@ -216,15 +220,23 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         if (!allowed.includes(String(status))) {
             return res.status(400).json({ error: 'Invalid status value' });
         }
+        if (status === 'Rejected' && (!reason || String(reason).trim().length === 0)) {
+            return res.status(400).json({ error: 'Rejection reason is required' });
+        }
         const [cols] = await db.query('SHOW COLUMNS FROM users');
         const colNames = cols.map(c => c.Field);
         if (!colNames.includes('status')) {
             return res.status(400).json({ error: 'Status column not available' });
         }
-        if (status === 'Rejected' && colNames.includes('rejection_reason')) {
-            await db.query('UPDATE users SET status = ?, rejection_reason = ? WHERE id = ?', [status, reason || null, userId]);
+        if (status === 'Approved') {
+            // Set joined_date now, clear rejection fields
+            await db.query('UPDATE users SET status = ?, joined_date = NOW(), rejected_date = NULL, rejection_reason = NULL WHERE id = ?', [status, userId]);
+        } else if (status === 'Rejected') {
+            // Set rejected_date and reason, clear joined_date
+            await db.query('UPDATE users SET status = ?, rejected_date = NOW(), rejection_reason = ?, joined_date = NULL WHERE id = ?', [status, reason || null, userId]);
         } else {
-            await db.query('UPDATE users SET status = ? WHERE id = ?', [status, userId]);
+            // Other statuses: clear joined/rejected dates
+            await db.query('UPDATE users SET status = ?, joined_date = NULL, rejected_date = NULL WHERE id = ?', [status, userId]);
         }
         const [rows] = await db.query('SELECT id, username as name, email, role, status, DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate, rejection_reason FROM users WHERE id = ?', [userId]);
         if (rows.length === 0) {

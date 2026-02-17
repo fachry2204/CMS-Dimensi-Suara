@@ -139,6 +139,30 @@ const initDb = async () => {
             }
         }
 
+        // 3c. Ensure registered_at and rejected_date, and make joined_date nullable
+        try {
+            await connection.query('SELECT registered_at FROM users LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: registered_at to users table');
+                await connection.query('ALTER TABLE users ADD COLUMN registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+            }
+        }
+        try {
+            await connection.query('SELECT rejected_date FROM users LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: rejected_date to users table');
+                await connection.query('ALTER TABLE users ADD COLUMN rejected_date DATETIME NULL DEFAULT NULL');
+            }
+        }
+        try {
+            console.log('🔧 Making joined_date nullable for approval date');
+            await connection.query('ALTER TABLE users MODIFY COLUMN joined_date DATETIME NULL DEFAULT NULL');
+        } catch (err) {
+            console.warn('Joined_date alteration warning:', err.message);
+        }
+
         // 4. Check 'cover_art' in 'releases'
         try {
             await connection.query('SELECT cover_art FROM releases LIMIT 1');

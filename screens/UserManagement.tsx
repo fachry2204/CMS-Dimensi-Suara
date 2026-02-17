@@ -17,7 +17,7 @@ import { api } from '../utils/api';
 
 export const UserManagement: React.FC = () => {
   // --- USER MANAGEMENT LOGIC ---
-  const [userTab, setUserTab] = useState<'ALL' | 'INTERNAL' | 'REGISTERED'>('ALL');
+  const [userTab, setUserTab] = useState<'REGISTERED' | 'INTERNAL' | 'ALL'>('REGISTERED');
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -25,6 +25,7 @@ export const UserManagement: React.FC = () => {
   const [showUserViewModal, setShowUserViewModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [statusDraft, setStatusDraft] = useState<User['status'] | null>(null);
   
   // Add User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -147,17 +148,6 @@ export const UserManagement: React.FC = () => {
             {/* Tabs */}
             <div className="flex border-b border-gray-200 mb-6">
                 <button
-                    onClick={() => setUserTab('ALL')}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                        userTab === 'ALL' 
-                        ? 'border-blue-600 text-blue-600' 
-                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                    }`}
-                >
-                    <Users size={16} />
-                    All Users
-                </button>
-                <button
                     onClick={() => setUserTab('INTERNAL')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                         userTab === 'INTERNAL' 
@@ -179,6 +169,17 @@ export const UserManagement: React.FC = () => {
                     <UserIcon size={16} />
                     Registered Users
                 </button>
+                <button
+                    onClick={() => setUserTab('ALL')}
+                    className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                        userTab === 'ALL' 
+                        ? 'border-blue-600 text-blue-600' 
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    <Users size={16} />
+                    All Users
+                </button>
             </div>
 
             {/* Search */}
@@ -199,9 +200,13 @@ export const UserManagement: React.FC = () => {
                     <thead>
                         <tr className="border-b border-gray-200">
                             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                            {userTab !== 'REGISTERED' && (
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                            )}
                             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Submit Date</th>
                             <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Joined Date</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reject Date</th>
                             <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
@@ -220,15 +225,17 @@ export const UserManagement: React.FC = () => {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            user.role === 'Admin' ? 'bg-purple-100 text-purple-800' :
-                                            user.role === 'Operator' ? 'bg-blue-100 text-blue-800' :
-                                            'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {user.role}
-                                        </span>
-                                    </td>
+                                    {userTab !== 'REGISTERED' && (
+                                      <td className="py-3 px-4">
+                                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                              user.role === 'Admin' ? 'bg-purple-100 text-purple-800' :
+                                              user.role === 'Operator' ? 'bg-blue-100 text-blue-800' :
+                                              'bg-gray-100 text-gray-800'
+                                          }`}>
+                                              {user.role}
+                                          </span>
+                                      </td>
+                                    )}
                                     <td className="py-3 px-4">
                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                             user.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
@@ -243,12 +250,18 @@ export const UserManagement: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="py-3 px-4 text-sm text-slate-600">
-                                        {user.joinedDate}
+                                        {user.registeredDate || '-'}
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-slate-600">
+                                        {user.joinedDate || '-'}
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-slate-600">
+                                        {user.rejectedDate || '-'}
                                     </td>
                                     <td className="py-3 px-4 text-right">
                                         <div className="flex justify-end items-center gap-2">
                                             <button
-                                                onClick={() => { setSelectedUser(user); setShowUserViewModal(true); }}
+                                                onClick={() => { setSelectedUser(user); setShowUserViewModal(true); setStatusDraft(user.status); setRejectReason(user.rejection_reason || ''); }}
                                                 className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
                                                 title="View User"
                                             >
@@ -267,7 +280,7 @@ export const UserManagement: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={5} className="py-8 text-center text-slate-500 text-sm">
+                                <td colSpan={userTab !== 'REGISTERED' ? 6 : 5} className="py-8 text-center text-slate-500 text-sm">
                                     No users found matching your criteria.
                                 </td>
                             </tr>
@@ -397,11 +410,12 @@ export const UserManagement: React.FC = () => {
                                             const res = await api.updateUserStatus(token, selectedUser.id, 'Pending');
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setStatusDraft(res.user.status);
                                             setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
-                                        selectedUser.status === 'Pending' ? 'bg-yellow-100 border-yellow-200 text-yellow-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                        statusDraft === 'Pending' ? 'bg-yellow-100 border-yellow-200 text-yellow-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
                                     }`}
                                 >
                                     Pending
@@ -412,11 +426,12 @@ export const UserManagement: React.FC = () => {
                                             const res = await api.updateUserStatus(token, selectedUser.id, 'Review');
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setStatusDraft(res.user.status);
                                             setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
-                                        selectedUser.status === 'Review' ? 'bg-blue-100 border-blue-200 text-blue-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                        statusDraft === 'Review' ? 'bg-blue-100 border-blue-200 text-blue-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
                                     }`}
                                 >
                                     Di Riview
@@ -427,11 +442,12 @@ export const UserManagement: React.FC = () => {
                                             const res = await api.updateUserStatus(token, selectedUser.id, 'Approved');
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setStatusDraft(res.user.status);
                                             setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
-                                        selectedUser.status === 'Approved' ? 'bg-green-100 border-green-200 text-green-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                        statusDraft === 'Approved' ? 'bg-green-100 border-green-200 text-green-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
                                     }`}
                                 >
                                     Di Approved
@@ -439,30 +455,37 @@ export const UserManagement: React.FC = () => {
                                 <button
                                     onClick={async () => {
                                         try {
-                                            const reason = rejectReason || window.prompt('Alasan penolakan pengguna?') || '';
-                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Rejected', reason.trim() || undefined);
+                                            if (!rejectReason || rejectReason.trim().length === 0) {
+                                                setStatusDraft('Rejected');
+                                                return;
+                                            }
+                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Rejected', rejectReason.trim());
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setStatusDraft(res.user.status);
                                             setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
-                                        selectedUser.status === 'Rejected' ? 'bg-red-100 border-red-200 text-red-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                        statusDraft === 'Rejected' ? 'bg-red-100 border-red-200 text-red-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
                                     }`}
                                 >
                                     Di Tolak
                                 </button>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <p className="text-sm text-slate-600">Alasan penolakan (opsional, hanya saat Di Tolak)</p>
-                            <textarea
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                                placeholder="Tulis alasan penolakan di sini..."
-                                className="w-full min-h-20 p-2 border border-slate-200 rounded-xl text-sm"
-                            />
-                        </div>
+                        {statusDraft === 'Rejected' && (
+                            <div className="space-y-2">
+                                <p className="text-sm text-slate-800 font-semibold">Alasan penolakan (wajib diisi)</p>
+                                <textarea
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    placeholder="Tulis alasan penolakan di sini..."
+                                    className={`w-full min-h-20 p-2 border rounded-xl text-sm ${!rejectReason?.trim() ? 'border-red-300' : 'border-slate-200'}`}
+                                />
+                                {!rejectReason?.trim() && <p className="text-xs text-red-500">Alasan penolakan wajib diisi.</p>}
+                            </div>
+                        )}
                     </div>
                     <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-slate-50">
                         <button 
