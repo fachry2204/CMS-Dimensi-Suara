@@ -69,6 +69,8 @@ const App: React.FC = () => {
   const [reportData, setReportData] = useState<ReportData[]>([]);
 
   const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn"]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   
   const belongsToCurrentUser = (r: any) => {
     const uid = (currentUserData as any)?.id;
@@ -86,6 +88,24 @@ const App: React.FC = () => {
     );
   };
   const myReleases = allReleases.filter(r => belongsToCurrentUser(r));
+  const resolveOwnerName = (r: any) => {
+    const byId = r.user_id || r.ownerId || r.userId;
+    let u: any = null;
+    if (byId && usersMap[String(byId)]) {
+      u = usersMap[String(byId)];
+    } else {
+      const cand = (r.user_name || r.uploaderName || r.uploader || '').toLowerCase();
+      if (cand) {
+        u = allUsers.find(x => (x.username || '').toLowerCase() === cand || (x.full_name || '').toLowerCase() === cand);
+      }
+    }
+    if (!u && belongsToCurrentUser(r)) {
+      u = currentUserData;
+    }
+    if (!u) return r.ownerName || r.uploaderName || r.uploader || r.user_name || '';
+    if ((u.account_type || '').toUpperCase() === 'COMPANY' && u.company_name) return u.company_name;
+    return u.full_name || u.name || u.username || u.email || '';
+  };
   
   // Initialize Data
   useEffect(() => {
@@ -131,6 +151,18 @@ const App: React.FC = () => {
             .catch((err: any) => {
                 if (err?.message === 'AUTH') return handleAuthExpired();
                 console.warn('Failed to fetch aggregators, using defaults', err);
+            });
+        const p3 = api.getUsers(token)
+            .then(users => {
+                setAllUsers(users || []);
+                const map: Record<string, any> = {};
+                (users || []).forEach((u: any) => { if (u.id !== undefined) map[String(u.id)] = u; });
+                setUsersMap(map);
+                setAllReleases(prev => prev.map((r: any) => ({ ...r, ownerDisplayName: resolveOwnerName(r) })));
+            })
+            .catch((err: any) => {
+                if (err?.message === 'AUTH') return handleAuthExpired();
+                console.warn('Failed to fetch users for owner names', err);
             });
 
         await Promise.allSettled([p1, p2, p4]);

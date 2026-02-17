@@ -331,6 +331,9 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                     )}
                 </div>
                 <div className="flex-1">
+                    <div className="text-sm text-slate-500 mb-1">
+                        {(release as any).ownerDisplayName || (release as any).ownerName || (release as any).uploaderName || (release as any).uploader || (release as any).user_name || 'Unknown User'}
+                    </div>
                     <h1 className="text-3xl font-bold text-slate-800 mb-2">{release.title}</h1>
                     <p className="text-slate-500 font-medium text-xl mb-4">{release.primaryArtists.join(", ")}</p>
                     

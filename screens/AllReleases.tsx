@@ -319,6 +319,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             // Date priority: Planned > Original > Submission
                             const displayDateRaw = release.plannedReleaseDate || release.originalReleaseDate || release.submissionDate || "N/A";
                             const status = release.status || "Pending";
+                            const ownerName = (release as any).ownerDisplayName || (release as any).ownerName || (release as any).uploaderName || (release as any).uploader || (release as any).user_name || "";
 
                             // Determine color based on status
                             let statusClass = "bg-gray-100 text-gray-600 border-gray-200";
@@ -361,6 +362,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                 )}
                                             </div>
                                             <div className="min-w-[150px]">
+                                                <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{ownerName || "Unknown User"}</div>
                                                 <div className="font-bold text-slate-800 truncate max-w-[200px] text-[13px]" title={release.title}>{release.title || "Untitled Release"}</div>
                                                 <div className="text-[11px] text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
                                             </div>
