@@ -1,3 +1,4 @@
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -22,7 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// dotenv loaded via ./config/env.js at top
 
 // Fix for some environments where process.env might be undefined for some keys
 const PORT = process.env.PORT || 3000;
@@ -210,6 +211,30 @@ app.get('/api/health', async (req, res) => {
         console.error('Database Health Check Failed:', err);
         res.status(500).json({ status: 'Error', error: err.message });
     }
+});
+
+// Global Error Handling Middleware
+app.use((err, req, res, next) => {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ 
+            error: 'File too large', 
+            details: `Maximum file size is ${process.env.UPLOAD_MAX_BYTES || '8GB'}` 
+        });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ 
+            error: 'Unexpected file upload', 
+            details: err.message 
+        });
+    }
+    
+    // Pass to default handler if headers sent
+    if (res.headersSent) {
+        return next(err);
+    }
+
+    console.error('Unhandled Error:', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
 
 // API 404 Handler (Must be after all API routes)
