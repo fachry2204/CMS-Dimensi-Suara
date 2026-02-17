@@ -68,8 +68,70 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
     try {
         const token = localStorage.getItem('cms_token');
         if (!token) throw new Error("No auth token found. Please login again.");
-
-        const result = await api.createRelease(token, data);
+        
+        const prepped: ReleaseData = {
+          ...data,
+          tracks: (data.tracks || []).map(t => ({ ...t }))
+        };
+        if (prepped.coverArt instanceof File) {
+          try {
+            const resp = await api.uploadReleaseFile(
+              token,
+              { title: prepped.title, primaryArtists: prepped.primaryArtists },
+              'coverArt',
+              prepped.coverArt
+            );
+            if (resp && resp.paths && resp.paths['coverArt']) {
+              prepped.coverArt = resp.paths['coverArt'];
+            }
+          } catch {}
+        }
+        for (let i = 0; i < prepped.tracks.length; i++) {
+          const t = prepped.tracks[i] as any;
+          if (t.audioFile instanceof File) {
+            const fieldName = `track_${i}_audio`;
+            try {
+              const resp = await api.uploadReleaseFile(
+                token,
+                { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                fieldName,
+                t.audioFile
+              );
+              if (resp && resp.paths && resp.paths[fieldName]) {
+                prepped.tracks[i].audioFile = resp.paths[fieldName];
+              }
+            } catch {}
+          }
+          if (t.audioClip instanceof File) {
+            const fieldName = `track_${i}_clip`;
+            try {
+              const resp = await api.uploadReleaseFile(
+                token,
+                { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                fieldName,
+                t.audioClip
+              );
+              if (resp && resp.paths && resp.paths[fieldName]) {
+                prepped.tracks[i].audioClip = resp.paths[fieldName];
+              }
+            } catch {}
+          }
+          if (t.iplFile instanceof File) {
+            const fieldName = `track_${i}_ipl`;
+            try {
+              const resp = await api.uploadReleaseFile(
+                token,
+                { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                fieldName,
+                t.iplFile
+              );
+              if (resp && resp.paths && resp.paths[fieldName]) {
+                prepped.tracks[i].iplFile = resp.paths[fieldName];
+              }
+            } catch {}
+          }
+        }
+        const result = await api.createRelease(token, prepped);
 
         const normalizedId = String(result.id ?? data.id ?? Date.now());
         const finalizedData: ReleaseData = {
