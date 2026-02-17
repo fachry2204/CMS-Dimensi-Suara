@@ -87,13 +87,48 @@ const storageTmp = multer.diskStorage({
     }
 });
 
+const DEFAULT_MAX = 8 * 1024 * 1024 * 1024;
+const parseSize = (raw) => {
+    if (!raw) return DEFAULT_MAX;
+    const s = String(raw).trim().toUpperCase();
+    const m = s.match(/^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)?$/);
+    if (!m) {
+        const n = Number(s);
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_MAX;
+    }
+    const n = parseFloat(m[1]);
+    const unit = m[2] || 'B';
+    const mul = unit === 'TB' ? 1024 ** 4 :
+                unit === 'GB' ? 1024 ** 3 :
+                unit === 'MB' ? 1024 ** 2 :
+                unit === 'KB' ? 1024 : 1;
+    const val = Math.floor(n * mul);
+    return val > 0 ? val : DEFAULT_MAX;
+};
+const MAX_BYTES = parseSize(process.env.UPLOAD_MAX_BYTES);
+
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 100 * 1024 * 1024 }
+    limits: { fileSize: MAX_BYTES }
 });
 const uploadTmp = multer({
     storage: storageTmp,
-    limits: { fileSize: 100 * 1024 * 1024 }
+    limits: { fileSize: MAX_BYTES }
+});
+
+// Chunk upload (store small parts then assemble)
+const chunkStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, TMP_DIR);
+    },
+    filename: (req, file, cb) => {
+        const name = `chunk-${Date.now()}-${Math.random().toString(36).slice(2)}.part`;
+        cb(null, name);
+    }
+});
+const uploadTmpChunk = multer({
+    storage: chunkStorage,
+    limits: { fileSize: Math.min(MAX_BYTES, 16 * 1024 * 1024) }
 });
 
 router.post('/upload', authenticateToken, upload.any(), async (req, res) => {
@@ -150,6 +185,49 @@ router.post('/upload-tmp', authenticateToken, uploadTmp.any(), async (req, res) 
         res.json({ paths });
     } catch (err) {
         console.error('Upload TMP File Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Chunked TMP upload (append chunks sequentially)
+router.post('/upload-tmp-chunk', authenticateToken, uploadTmpChunk.single('chunk'), async (req, res) => {
+    try {
+        const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
+        const userId = req.user.id;
+        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
+        const targetDir = path.join(TMP_DIR, String(userId), artistDirName, releaseDirName);
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        const { fileId, chunkIndex, totalChunks, filename, field } = releaseData;
+        if (fileId === undefined || chunkIndex === undefined || totalChunks === undefined || !filename || !field) {
+            return res.status(400).json({ error: 'Missing chunk metadata' });
+        }
+
+        const assemblingPath = path.join(targetDir, `${fileId}.assembling`);
+        const chunkPath = req.file?.path;
+        if (!chunkPath || !fs.existsSync(chunkPath)) {
+            return res.status(400).json({ error: 'Chunk file missing' });
+        }
+        // Append chunk
+        const data = fs.readFileSync(chunkPath);
+        fs.appendFileSync(assemblingPath, data);
+        try { fs.unlinkSync(chunkPath); } catch {}
+
+        const isLast = Number(chunkIndex) + 1 >= Number(totalChunks);
+        if (!isLast) {
+            return res.json({ received: true, index: Number(chunkIndex) });
+        }
+        // Finalize
+        const ext = path.extname(filename) || '';
+        const finalName = `${artistDirName} - ${releaseDirName}-${field}${ext || ''}`;
+        const finalAbs = path.join(targetDir, finalName);
+        fs.renameSync(assemblingPath, finalAbs);
+        const publicPath = `/uploads/tmp/${userId}/${artistDirName}/${releaseDirName}/${finalName}`;
+        return res.json({ done: true, path: publicPath, field });
+    } catch (err) {
+        console.error('Upload TMP Chunk Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

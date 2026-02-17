@@ -323,13 +323,21 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 if (trackIndex >= 0) {
                     const fieldName = `track_${trackIndex}_audio`;
                     try {
-                        // Store original file to TMP, not release
-                        const resp = await api.uploadTmpReleaseFile(
-                            token,
-                            { title: data.title, primaryArtists: data.primaryArtists },
-                            fieldName,
-                            file
-                        );
+                        const useChunk = (file?.size || 0) > (90 * 1024 * 1024);
+                        const resp = useChunk
+                          ? await api.uploadTmpReleaseFileChunked(
+                              token,
+                              { title: data.title, primaryArtists: data.primaryArtists },
+                              fieldName,
+                              file,
+                              8 * 1024 * 1024
+                            )
+                          : await api.uploadTmpReleaseFile(
+                              token,
+                              { title: data.title, primaryArtists: data.primaryArtists },
+                              fieldName,
+                              file
+                            );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
                       (resp && resp.paths && resp.paths['file']) ||

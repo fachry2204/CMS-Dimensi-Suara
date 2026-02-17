@@ -203,6 +203,37 @@ export const api = {
         });
         return parseResponse(res);
     },
+    uploadTmpReleaseFileChunked: async (token, releaseMeta, fieldName, file: File, chunkSize = 8 * 1024 * 1024) => {
+        const total = Math.ceil(file.size / chunkSize);
+        const fileId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        for (let i = 0; i < total; i++) {
+            const start = i * chunkSize;
+            const end = Math.min(file.size, start + chunkSize);
+            const blob = file.slice(start, end);
+            const formData = new FormData();
+            formData.append('data', JSON.stringify({
+                title: releaseMeta.title,
+                primaryArtists: releaseMeta.primaryArtists || [],
+                field: fieldName,
+                fileId,
+                chunkIndex: i,
+                totalChunks: total,
+                filename: file.name
+            }));
+            formData.append('chunk', blob);
+            const res = await fetch(`${API_BASE_URL}/releases/upload-tmp-chunk`, {
+                method: 'POST',
+                headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                body: formData,
+                credentials: 'include'
+            });
+            const json = await parseResponse(res);
+            if (json && json.done) {
+                return json;
+            }
+        }
+        throw new Error('Chunked upload incomplete');
+    },
 
     uploadReleaseFileProgress: (token: string, releaseMeta: any, fieldName: string, file: File, onProgress?: (p: number) => void) => {
         return new Promise(async (resolve, reject) => {
