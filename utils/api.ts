@@ -336,6 +336,13 @@ export const api = {
         if (Array.isArray((json as any).data)) return (json as any).data;
         return [];
     },
+    getUser: async (token, id) => {
+        const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     createUser: async (token, userData) => {
         const res = await fetch(`${API_BASE_URL}/users`, {

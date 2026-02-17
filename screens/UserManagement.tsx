@@ -261,7 +261,20 @@ export const UserManagement: React.FC = () => {
                                     <td className="py-3 px-4 text-right">
                                         <div className="flex justify-end items-center gap-2">
                                             <button
-                                                onClick={() => { setSelectedUser(user); setShowUserViewModal(true); setStatusDraft(user.status); setRejectReason(user.rejection_reason || ''); }}
+                                                onClick={async () => { 
+                                                    try {
+                                                        const detail = await api.getUser(token, user.id);
+                                                        setSelectedUser(detail);
+                                                        setStatusDraft(detail.status);
+                                                        setRejectReason(detail.rejection_reason || '');
+                                                        setShowUserViewModal(true);
+                                                    } catch (err: any) { 
+                                                        setSelectedUser(user);
+                                                        setStatusDraft(user.status);
+                                                        setRejectReason(user.rejection_reason || '');
+                                                        setShowUserViewModal(true);
+                                                    }
+                                                }}
                                                 className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
                                                 title="View User"
                                             >
@@ -399,7 +412,33 @@ export const UserManagement: React.FC = () => {
                             <div className="font-medium text-slate-800">{selectedUser.name}</div>
                             <div className="text-xs text-slate-500">{selectedUser.email}</div>
                             <div className="text-xs text-slate-500">Role: {selectedUser.role}</div>
-                            <div className="text-xs text-slate-500">Joined: {selectedUser.joinedDate}</div>
+                            <div className="text-xs text-slate-500">Joined: {selectedUser.registeredDate}</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs text-slate-700">
+                            <div>Account Type: <span className="font-medium">{selectedUser.account_type || '-'}</span></div>
+                            <div>Company: <span className="font-medium">{selectedUser.company_name || '-'}</span></div>
+                            <div>NIK: <span className="font-medium">{selectedUser.nik || '-'}</span></div>
+                            <div>Full Name: <span className="font-medium">{selectedUser.full_name || '-'}</span></div>
+                            <div>Phone: <span className="font-medium">{selectedUser.phone || '-'}</span></div>
+                            <div>Address: <span className="font-medium">{selectedUser.address || '-'}</span></div>
+                            <div>Country: <span className="font-medium">{selectedUser.country || '-'}</span></div>
+                            <div>Province: <span className="font-medium">{selectedUser.province || '-'}</span></div>
+                            <div>City: <span className="font-medium">{selectedUser.city || '-'}</span></div>
+                            <div>District: <span className="font-medium">{selectedUser.district || '-'}</span></div>
+                            <div>Subdistrict: <span className="font-medium">{selectedUser.subdistrict || '-'}</span></div>
+                            <div>Postal Code: <span className="font-medium">{selectedUser.postal_code || '-'}</span></div>
+                            <div>PIC Name: <span className="font-medium">{selectedUser.pic_name || '-'}</span></div>
+                            <div>PIC Position: <span className="font-medium">{selectedUser.pic_position || '-'}</span></div>
+                            <div>PIC Phone: <span className="font-medium">{selectedUser.pic_phone || '-'}</span></div>
+                            <div>Approved: <span className="font-medium">{selectedUser.joinedDate || '-'}</span></div>
+                            <div>Reject Date: <span className="font-medium">{selectedUser.rejectedDate || '-'}</span></div>
+                            <div className="col-span-2">Rejection Reason: <span className="font-medium">{selectedUser.rejection_reason || '-'}</span></div>
+                            <div className="col-span-2 flex gap-3">
+                                {selectedUser.ktp_doc_path && <a href={selectedUser.ktp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">KTP</a>}
+                                {selectedUser.npwp_doc_path && <a href={selectedUser.npwp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">NPWP</a>}
+                                {selectedUser.nib_doc_path && <a href={selectedUser.nib_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">NIB</a>}
+                                {selectedUser.kemenkumham_doc_path && <a href={selectedUser.kemenkumham_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Kemenkumham</a>}
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <p className="text-sm font-semibold text-slate-800">Status</p>
@@ -484,8 +523,28 @@ export const UserManagement: React.FC = () => {
                                         s,
                                         s === 'Rejected' ? rejectReason.trim() : undefined
                                     );
-                                    setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
-                                    setSelectedUser(res.user);
+                                    setUsers(prev => prev.map(u => {
+                                        if (u.id !== selectedUser.id) return u;
+                                        return {
+                                            ...u,
+                                            ...res.user,
+                                            registeredDate: (res.user as any).registeredDate ?? u.registeredDate,
+                                            joinedDate: (res.user as any).joinedDate ?? u.joinedDate,
+                                            rejectedDate: (res.user as any).rejectedDate ?? u.rejectedDate,
+                                            rejection_reason: (res.user as any).rejection_reason ?? u.rejection_reason
+                                        } as User;
+                                    }));
+                                    setSelectedUser(prev => {
+                                        const merged = {
+                                            ...(prev as User),
+                                            ...res.user,
+                                            registeredDate: (res.user as any).registeredDate ?? (prev as User).registeredDate,
+                                            joinedDate: (res.user as any).joinedDate ?? (prev as User).joinedDate,
+                                            rejectedDate: (res.user as any).rejectedDate ?? (prev as User).rejectedDate,
+                                            rejection_reason: (res.user as any).rejection_reason ?? (prev as User).rejection_reason
+                                        } as User;
+                                        return merged;
+                                    });
                                     setStatusDraft(res.user.status);
                                     if (s !== 'Rejected') setRejectReason('');
                                     alert('Perubahan status berhasil');

@@ -262,4 +262,53 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
     }
 });
 
+// GET USER DETAIL (Admin/Operator)
+router.get('/:id', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role === 'User') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const userId = req.params.id;
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        const parts = [
+            'id',
+            'username as name',
+            'email',
+            'role',
+            colNames.includes('status') ? 'status' : `'Active' as status`,
+            colNames.includes('registered_at') ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
+            colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate',
+            colNames.includes('rejected_date') ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate',
+            colNames.includes('rejection_reason') ? 'rejection_reason' : 'NULL as rejection_reason',
+            colNames.includes('account_type') ? 'account_type' : 'NULL as account_type',
+            colNames.includes('company_name') ? 'company_name' : 'NULL as company_name',
+            colNames.includes('nik') ? 'nik' : 'NULL as nik',
+            colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
+            colNames.includes('address') ? 'address' : 'NULL as address',
+            colNames.includes('country') ? 'country' : 'NULL as country',
+            colNames.includes('province') ? 'province' : 'NULL as province',
+            colNames.includes('city') ? 'city' : 'NULL as city',
+            colNames.includes('district') ? 'district' : 'NULL as district',
+            colNames.includes('subdistrict') ? 'subdistrict' : 'NULL as subdistrict',
+            colNames.includes('postal_code') ? 'postal_code' : 'NULL as postal_code',
+            colNames.includes('phone') ? 'phone' : 'NULL as phone',
+            colNames.includes('pic_name') ? 'pic_name' : 'NULL as pic_name',
+            colNames.includes('pic_position') ? 'pic_position' : 'NULL as pic_position',
+            colNames.includes('pic_phone') ? 'pic_phone' : 'NULL as pic_phone',
+            colNames.includes('nib_doc_path') ? 'nib_doc_path' : 'NULL as nib_doc_path',
+            colNames.includes('kemenkumham_doc_path') ? 'kemenkumham_doc_path' : 'NULL as kemenkumham_doc_path',
+            colNames.includes('ktp_doc_path') ? 'ktp_doc_path' : 'NULL as ktp_doc_path',
+            colNames.includes('npwp_doc_path') ? 'npwp_doc_path' : 'NULL as npwp_doc_path',
+            colNames.includes('profile_picture') ? 'profile_picture' : 'NULL as profile_picture'
+        ];
+        const sql = `SELECT ${parts.join(', ')} FROM users WHERE id = ?`;
+        const [rows] = await db.query(sql, [userId]);
+        if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json(rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;

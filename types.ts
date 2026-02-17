@@ -128,6 +128,25 @@ export interface User {
   password?: string; // Optional for UI display
   profilePicture?: string;
   rejection_reason?: string;
+  account_type?: 'PERSONAL' | 'COMPANY';
+  company_name?: string;
+  nik?: string;
+  full_name?: string;
+  address?: string;
+  country?: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  subdistrict?: string;
+  postal_code?: string;
+  phone?: string;
+  pic_name?: string;
+  pic_position?: string;
+  pic_phone?: string;
+  nib_doc_path?: string;
+  kemenkumham_doc_path?: string;
+  ktp_doc_path?: string;
+  npwp_doc_path?: string;
 }
 
 export interface Notification {
