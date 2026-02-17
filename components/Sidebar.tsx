@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users, Shield, User } from 'lucide-react';
 
 interface SidebarProps {
   currentUser: string;
@@ -48,11 +48,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/releases" className={({ isActive }) => getLinkClass(isActive)}>
+              <NavLink to={userRole === 'User' ? "/my-releases" : "/releases"} className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
                   <>
                     <ListMusic size={20} className={getIconClass(isActive)} />
-                    All Release
+                    {userRole === 'User' ? 'My Releases' : 'All Release'}
                   </>
                 )}
               </NavLink>
@@ -61,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         </div>
 
         {/* Report Section */}
+        {userRole !== 'User' && (
         <div>
           <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
             Report
@@ -108,6 +109,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
             </li>
           </ul>
         </div>
+        )}
+        {userRole === 'User' && (
+        <div>
+          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Report User
+          </h3>
+          <ul className="space-y-2">
+            <li>
+              <NavLink to="/user/reports/analytics" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <BarChart3 size={20} className={getIconClass(isActive)} />
+                    Analitik
+                  </>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/user/reports/payments" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <DollarSign size={20} className={getIconClass(isActive)} />
+                    Pembayaran
+                  </>
+                )}
+              </NavLink>
+            </li>
+          </ul>
+        </div>
+        )}
 
         {/* Publishing Category - ONLY FOR 'fachry' */}
         {/* {currentUser === 'fachry' && (
@@ -161,6 +192,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         )} */}
 
         {/* System / Settings Section */}
+        {userRole !== 'User' && (
         <div>
             <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
               System
@@ -188,8 +220,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
             )}
+            {(userRole === 'Admin' || userRole === 'Operator') && (
+            <li>
+              <NavLink to="/roles/user" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <Shield size={20} className={getIconClass(isActive)} />
+                    Role User
+                  </>
+                )}
+              </NavLink>
+            </li>
+            )}
           </ul>
         </div>
+        )}
+        {userRole === 'User' && (
+        <div>
+            <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+              Data Saya
+            </h3>
+            <ul className="space-y-2">
+            <li>
+              <NavLink to="/me/profile" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <User size={20} className={getIconClass(isActive)} />
+                    Profile
+                  </>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/me/contracts" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <FileText size={20} className={getIconClass(isActive)} />
+                    Kontrak
+                  </>
+                )}
+              </NavLink>
+            </li>
+            </ul>
+        </div>
+        )}
       </nav>
     </aside>
   );

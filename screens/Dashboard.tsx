@@ -31,13 +31,19 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
     rejected: releases.filter(r => r.status === 'Rejected').length,
   };
 
+  const metaStats = {
+    singles: releases.filter(r => r.type === 'SINGLE').length,
+    albums: releases.filter(r => r.type === 'ALBUM').length,
+    tracks: releases.reduce((sum, r) => sum + (r.tracks?.length || 0), 0)
+  };
+
   // Filter Recent Activity: Only Pending & Processing
   const recentActivity = releases
     .filter(r => r.status === 'Pending' || r.status === 'Processing')
     .slice(0, 5);
 
-  const StatCard = ({ title, count, icon, colorClass, bgClass, subtext }: any) => (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md">
+  const StatCard = ({ title, count, icon, colorClass, bgClass, subtext, cardClass }: any) => (
+    <div className={`p-5 rounded-2xl shadow-sm border flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md ${cardClass || 'bg-white border-gray-100'}`}>
         <div>
             <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">{title}</p>
             <h3 className="text-2xl font-bold text-slate-800">{count}</h3>
@@ -65,6 +71,7 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                 colorClass="text-yellow-600" 
                 bgClass="bg-yellow-50"
                 subtext="Waiting for approval"
+                cardClass="bg-yellow-50 border-yellow-100"
             />
             <StatCard 
                 title="Processing" 
@@ -73,6 +80,7 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                 colorClass="text-blue-600" 
                 bgClass="bg-blue-50"
                 subtext="Sent to stores"
+                cardClass="bg-blue-50 border-blue-100"
             />
             <StatCard 
                 title="Live Releases" 
@@ -81,6 +89,7 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                 colorClass="text-green-600" 
                 bgClass="bg-green-50"
                 subtext="Active on DSPs"
+                cardClass="bg-green-50 border-green-100"
             />
             <StatCard 
                 title="Rejected" 
@@ -89,7 +98,40 @@ export const Dashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigate
                 colorClass="text-red-600" 
                 bgClass="bg-red-50"
                 subtext="Requires attention"
+                cardClass="bg-red-50 border-red-100"
             />
+       </div>
+
+       {/* EXTRA CARDS: META COUNTS */}
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <StatCard 
+                title="Jumlah Single" 
+                count={metaStats.singles} 
+                icon={<Music size={20} />} 
+                colorClass="text-indigo-600" 
+                bgClass="bg-indigo-100"
+                subtext="Total single releases"
+                cardClass="bg-indigo-50 border-indigo-100"
+            />
+            <StatCard 
+                title="Jumlah Album" 
+                count={metaStats.albums} 
+                icon={<Disc size={20} />} 
+                colorClass="text-purple-600" 
+                bgClass="bg-purple-100"
+                subtext="Total album releases"
+                cardClass="bg-purple-50 border-purple-100"
+            />
+            <StatCard 
+                title="Jumlah Track" 
+                count={metaStats.tracks} 
+                icon={<Music size={20} />} 
+                colorClass="text-blue-600" 
+                bgClass="bg-blue-100"
+                subtext="Tracks across catalog"
+                cardClass="bg-blue-50 border-blue-100"
+            />
+            
        </div>
 
        {/* RECENT ACTIVITY TABLE */}

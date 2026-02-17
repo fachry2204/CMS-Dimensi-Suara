@@ -12,6 +12,7 @@ import { SingleReleasePage } from './screens/SingleReleasePage';
 // import { Publishing } from './screens/Publishing';
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
+import { RoleUserPage } from './screens/RoleUserPage';
 import { UserDetailPage } from './screens/UserDetailPage';
 import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
@@ -19,6 +20,10 @@ import { LoginScreen } from './screens/LoginScreen';
 import { RegisterScreen } from './screens/RegisterScreen';
 import { UserStatusScreen } from './screens/UserStatusScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
+import { UserAnalytics } from './screens/UserAnalytics';
+import { UserPayments } from './screens/UserPayments';
+import { MyProfile } from './screens/MyProfile';
+import { MyContracts } from './screens/MyContracts';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ReleaseType, ReleaseData, ReportData, Notification } from './types';
@@ -64,6 +69,23 @@ const App: React.FC = () => {
   const [reportData, setReportData] = useState<ReportData[]>([]);
 
   const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn"]);
+  
+  const belongsToCurrentUser = (r: any) => {
+    const uid = (currentUserData as any)?.id;
+    const uname = currentUser || (currentUserData as any)?.username;
+    const email = (currentUserData as any)?.email;
+    if (!r) return false;
+    return (
+      (r.user_id && uid && String(r.user_id) === String(uid)) ||
+      (r.ownerId && uid && String(r.ownerId) === String(uid)) ||
+      (r.uploader && (r.uploader === uname || r.uploader === email)) ||
+      (Array.isArray(r.primaryArtists) && (r.primaryArtists as any[]).some((a: string) => {
+        const full = (currentUserData as any)?.full_name || '';
+        return typeof a === 'string' && (full ? a.includes(full) : false);
+      }))
+    );
+  };
+  const myReleases = allReleases.filter(r => belongsToCurrentUser(r));
   
   // Initialize Data
   useEffect(() => {
@@ -212,8 +234,12 @@ const App: React.FC = () => {
     setCurrentUserData(user);
     const effectiveStatus = (user.status || '').toLowerCase();
     setIsAuthenticated(true);
-    if (user.role === 'User' && effectiveStatus && !['approved', 'active'].includes(effectiveStatus)) {
-      navigate('/user-status');
+    if (user.role === 'User') {
+      if (effectiveStatus && !['approved', 'active'].includes(effectiveStatus)) {
+        navigate('/user-status');
+      } else {
+        navigate('/my-releases');
+      }
     } else {
       navigate('/dashboard');
     }
@@ -761,6 +787,17 @@ const App: React.FC = () => {
                     error={dataFetchError}
                 />
             } />
+            <Route path="/my-releases" element={
+                 <AllReleases 
+                    releases={myReleases} 
+                    onViewDetails={(r) => navigate(`/releases/${r.id}/view`)}
+                    error={dataFetchError}
+                 />
+            } />
+            <Route path="/user/reports/analytics" element={<UserAnalytics releases={allReleases} reportData={reportData} currentUserData={currentUserData} />} />
+            <Route path="/user/reports/payments" element={<UserPayments reportData={reportData} currentUserData={currentUserData} />} />
+            <Route path="/me/profile" element={<MyProfile currentUserData={currentUserData} />} />
+            <Route path="/me/contracts" element={<MyContracts />} />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
             <Route 
                 path="/releases/:id/view" 
@@ -810,6 +847,7 @@ const App: React.FC = () => {
                     token={token}
                 />
             } />
+            <Route path="/roles/user" element={<RoleUserPage />} />
             <Route path="/users/:id" element={<UserDetailPage />} />
             <Route path="/reports" element={
                 <ReportScreen 

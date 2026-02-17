@@ -138,6 +138,27 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
       </th>
   );
 
+  // Stat card UI
+  const StatCard = ({ title, count, icon, colorClass, bgClass, subtext, cardClass }: any) => (
+    <div className={`p-5 rounded-2xl shadow-sm border flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md ${cardClass || 'bg-white border-gray-100'}`}>
+        <div>
+            <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">{title}</p>
+            <h3 className="text-2xl font-bold text-slate-800">{count}</h3>
+            <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{subtext}</p>
+        </div>
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${bgClass} ${colorClass}`}>
+            {icon}
+        </div>
+    </div>
+  );
+
+  // Meta stats
+  const metaStats = {
+    singles: releases.filter(r => r.type === 'SINGLE').length,
+    albums: releases.filter(r => r.type === 'ALBUM').length,
+    tracks: releases.reduce((sum, r) => sum + (r.tracks?.length || 0), 0)
+  };
+
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -165,6 +186,38 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                     New Release
                 </button>
             </div>
+        </div>
+
+        {/* META COUNTS CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard 
+                title="Jumlah Single" 
+                count={metaStats.singles} 
+                icon={<Music size={20} />} 
+                colorClass="text-indigo-600" 
+                bgClass="bg-indigo-100"
+                subtext="Total single releases"
+                cardClass="bg-indigo-50 border-indigo-100"
+            />
+            <StatCard 
+                title="Jumlah Album" 
+                count={metaStats.albums} 
+                icon={<Disc size={20} />} 
+                colorClass="text-purple-600" 
+                bgClass="bg-purple-100"
+                subtext="Total album releases"
+                cardClass="bg-purple-50 border-purple-100"
+            />
+            <StatCard 
+                title="Jumlah Track" 
+                count={metaStats.tracks} 
+                icon={<Music size={20} />} 
+                colorClass="text-blue-600" 
+                bgClass="bg-blue-100"
+                subtext="Tracks across catalog"
+                cardClass="bg-blue-50 border-blue-100"
+            />
+            
         </div>
 
         {/* STATUS TABS NAVIGATION */}
