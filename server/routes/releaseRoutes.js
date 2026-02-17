@@ -447,11 +447,25 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                             const outAbs = path.join(targetDir, outName);
                             // Ensure targetDir exists
                             if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-                            // Convert using ffmpeg
-                            await runFfmpegConvert(absTmp, outAbs, {});
-                            // Delete original tmp file
-                            try { fs.unlinkSync(absTmp); } catch {}
-                            audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                            let converted = false;
+                            try {
+                                // Convert using ffmpeg
+                                await runFfmpegConvert(absTmp, outAbs, {});
+                                converted = true;
+                            } catch (convErr) {
+                                console.warn('Audio ffmpeg convert failed, fallback to copy:', convErr.message || convErr);
+                                try {
+                                    fs.copyFileSync(absTmp, outAbs);
+                                    converted = true;
+                                } catch (copyErr) {
+                                    console.warn('Audio fallback copy failed:', copyErr.message || copyErr);
+                                }
+                            }
+                            if (converted) {
+                                // Delete original tmp file only if we have a good output
+                                try { fs.unlinkSync(absTmp); } catch {}
+                                audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                            }
                         }
                     }
                     if (tmpClipSource) {
@@ -461,9 +475,23 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                             const outAbs = path.join(targetDir, outName);
                             if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
                             const startSec = Number(t.previewStart || 0);
-                            await runFfmpegConvert(absTmp, outAbs, { startSec, durationSec: 60 });
-                            try { fs.unlinkSync(absTmp); } catch {}
-                            clipPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                            let convertedClip = false;
+                            try {
+                                await runFfmpegConvert(absTmp, outAbs, { startSec, durationSec: 60 });
+                                convertedClip = true;
+                            } catch (convErr) {
+                                console.warn('Clip ffmpeg convert failed, fallback to copy:', convErr.message || convErr);
+                                try {
+                                    fs.copyFileSync(absTmp, outAbs);
+                                    convertedClip = true;
+                                } catch (copyErr) {
+                                    console.warn('Clip fallback copy failed:', copyErr.message || copyErr);
+                                }
+                            }
+                            if (convertedClip) {
+                                try { fs.unlinkSync(absTmp); } catch {}
+                                clipPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                            }
                         }
                     }
                 } catch (e) {
@@ -651,11 +679,20 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         }
 
         // Cleanup TMP folder for this release
+        // Only remove if tracks no longer reference any /uploads/tmp/ path
         try {
-            const userIdStr = String(userId);
-            const tmpTargetDir = path.join(TMP_DIR, userIdStr, artistDirName, releaseDirName);
-            if (fs.existsSync(tmpTargetDir)) {
-                fs.rmSync(tmpTargetDir, { recursive: true, force: true });
+            const stillUsesTmp = Array.isArray(releaseData.tracks) && releaseData.tracks.some(t => {
+                const a = t.audioFile;
+                const c = t.audioClip;
+                return (typeof a === 'string' && a.includes('/uploads/tmp/')) ||
+                       (typeof c === 'string' && c.includes('/uploads/tmp/'));
+            });
+            if (!stillUsesTmp) {
+                const userIdStr = String(userId);
+                const tmpTargetDir = path.join(TMP_DIR, userIdStr, artistDirName, releaseDirName);
+                if (fs.existsSync(tmpTargetDir)) {
+                    fs.rmSync(tmpTargetDir, { recursive: true, force: true });
+                }
             }
         } catch (e) {
             console.warn('Cleanup tmp after finalize failed:', e.message || e);
