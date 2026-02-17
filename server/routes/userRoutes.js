@@ -158,13 +158,20 @@ router.post('/', authenticateToken, async (req, res) => {
         const [cols] = await db.query('SHOW COLUMNS FROM users');
         const colNames = cols.map(c => c.Field);
         const hasStatus = colNames.includes('status');
+        const hasJoinedDate = colNames.includes('joined_date');
+        const hasRegisteredAt = colNames.includes('registered_at');
 
         let sql = '';
         let params = [];
 
-        if (hasStatus) {
-            sql = 'INSERT INTO users (username, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)';
-            params = [name, email, hash, role || 'User', status || 'Active'];
+        if (hasStatus && hasJoinedDate) {
+            if ((status || '').toUpperCase() === 'APPROVED') {
+                sql = 'INSERT INTO users (username, email, password_hash, role, status, joined_date) VALUES (?, ?, ?, ?, ?, NOW())';
+                params = [name, email, hash, role || 'User', 'Approved'];
+            } else {
+                sql = 'INSERT INTO users (username, email, password_hash, role, status, joined_date) VALUES (?, ?, ?, ?, ?, NULL)';
+                params = [name, email, hash, role || 'User', status || 'Active'];
+            }
         } else {
             sql = 'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)';
             params = [name, email, hash, role || 'User'];
@@ -172,17 +179,19 @@ router.post('/', authenticateToken, async (req, res) => {
 
         const [result] = await db.query(sql, params);
 
-        res.status(201).json({ 
-            message: 'User created successfully', 
-            user: {
-                id: result.insertId,
-                name,
-                email,
-                role: role || 'User',
-                status: status || 'Active',
-                joinedDate: new Date().toISOString().split('T')[0]
-            }
-        });
+        // Fetch created user with dates
+        const selectParts = [
+            'id',
+            'username as name',
+            'email',
+            'role',
+            hasStatus ? 'status' : `'Active' as status`,
+            colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate',
+            hasRegisteredAt ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
+            colNames.includes('rejected_date') ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate'
+        ];
+        const [rows] = await db.query(`SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`, [result.insertId]);
+        res.status(201).json({ message: 'User created successfully', user: rows[0] });
     } catch (err) {
         if (err.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ error: 'Username or email already exists' });
