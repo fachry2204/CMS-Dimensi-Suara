@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User } from '../types';
 import { api } from '../utils/api';
-import { XCircle } from 'lucide-react';
+import { XCircle, Eye, Download } from 'lucide-react';
 
 export const UserDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -12,6 +12,9 @@ export const UserDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [statusDraft, setStatusDraft] = useState<User['status'] | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [showDocPreview, setShowDocPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewIsPdf, setPreviewIsPdf] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -140,8 +143,21 @@ export const UserDetailPage: React.FC = () => {
                       <img src={user.ktp_doc_path} alt="KTP" className="w-full h-40 object-cover rounded-md" />
                     )}
                     <div className="flex gap-3 mt-2">
-                      <a href={user.ktp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
-                      <a href={user.ktp_doc_path} download className="text-slate-600 text-xs">Download</a>
+                      <button
+                        onClick={() => { setPreviewUrl(user.ktp_doc_path); setPreviewIsPdf(user.ktp_doc_path.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                      >
+                        <Eye size={14} /> Preview
+                      </button>
+                      <a
+                        href={user.ktp_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                      >
+                        <Download size={14} /> Download
+                      </a>
                     </div>
                   </div>
                 )}
@@ -154,8 +170,21 @@ export const UserDetailPage: React.FC = () => {
                       <img src={user.npwp_doc_path} alt="NPWP" className="w-full h-40 object-cover rounded-md" />
                     )}
                     <div className="flex gap-3 mt-2">
-                      <a href={user.npwp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
-                      <a href={user.npwp_doc_path} download className="text-slate-600 text-xs">Download</a>
+                      <button
+                        onClick={() => { setPreviewUrl(user.npwp_doc_path); setPreviewIsPdf(user.npwp_doc_path.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                      >
+                        <Eye size={14} /> Preview
+                      </button>
+                      <a
+                        href={user.npwp_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                      >
+                        <Download size={14} /> Download
+                      </a>
                     </div>
                   </div>
                 )}
@@ -168,8 +197,21 @@ export const UserDetailPage: React.FC = () => {
                       <img src={user.nib_doc_path} alt="NIB" className="w-full h-40 object-cover rounded-md" />
                     )}
                     <div className="flex gap-3 mt-2">
-                      <a href={user.nib_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
-                      <a href={user.nib_doc_path} download className="text-slate-600 text-xs">Download</a>
+                      <button
+                        onClick={() => { setPreviewUrl(user.nib_doc_path); setPreviewIsPdf(user.nib_doc_path.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                      >
+                        <Eye size={14} /> Preview
+                      </button>
+                      <a
+                        href={user.nib_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                      >
+                        <Download size={14} /> Download
+                      </a>
                     </div>
                   </div>
                 )}
@@ -182,8 +224,21 @@ export const UserDetailPage: React.FC = () => {
                       <img src={user.kemenkumham_doc_path} alt="Kemenkumham" className="w-full h-40 object-cover rounded-md" />
                     )}
                     <div className="flex gap-3 mt-2">
-                      <a href={user.kemenkumham_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
-                      <a href={user.kemenkumham_doc_path} download className="text-slate-600 text-xs">Download</a>
+                      <button
+                        onClick={() => { setPreviewUrl(user.kemenkumham_doc_path); setPreviewIsPdf(user.kemenkumham_doc_path.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                      >
+                        <Eye size={14} /> Preview
+                      </button>
+                      <a
+                        href={user.kemenkumham_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                      >
+                        <Download size={14} /> Download
+                      </a>
                     </div>
                   </div>
                 )}
@@ -241,6 +296,35 @@ export const UserDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {showDocPreview && previewUrl && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-[96vw] md:w-full max-w-6xl h-[90svh] overflow-hidden animate-scale-in flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-lg font-bold text-slate-800">Preview Dokumen</h3>
+              <button onClick={() => setShowDocPreview(false)} className="text-slate-400 hover:text-slate-600">
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className="p-6 flex-1 overflow-y-auto">
+              {previewIsPdf ? (
+                <iframe src={previewUrl} className="w-full h-[70vh] rounded-md" />
+              ) : (
+                <img src={previewUrl} alt="Preview Dokumen" className="w-full max-h-[70vh] object-contain rounded-md" />
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-100 flex justify-end">
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+              >
+                Buka di Tab Baru
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
