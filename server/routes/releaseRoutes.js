@@ -261,13 +261,38 @@ router.post('/tmp/preview-clip', authenticateToken, async (req, res) => {
         const absTmp = (typeof tmpPath === 'string') ? (function(p){ 
             const normalized = String(p).replace(/^[\\/]+/, '');
             let relPath = normalized;
+            // Handle various prefixes
             if (relPath.startsWith('uploads/')) relPath = relPath.replace(/^uploads[\\/]/, '');
             else if (relPath.startsWith('/uploads/')) relPath = relPath.replace(/^\/uploads[\\/]/, '');
-            const segs = relPath.split(/[\\/]/);
-            if (segs[0] !== 'tmp') return null;
-            const abs = path.join(__dirname, '../../', relPath);
-            if (!abs.startsWith(TMP_DIR)) return null;
-            return abs;
+            
+            // Ensure path starts with tmp/
+            if (!relPath.startsWith('tmp/')) {
+                 // Check if it's just the part after tmp/
+                 const segs = relPath.split(/[\\/]/);
+                 if (segs[0] !== 'tmp') {
+                     // Maybe it's a direct relative path? Let's check if it exists in TMP_DIR
+                     const checkAbs = path.join(TMP_DIR, relPath);
+                     if (fs.existsSync(checkAbs)) return checkAbs;
+                     return null;
+                 }
+            }
+            
+            // It starts with tmp/
+            // But TMP_DIR already ends with uploads/tmp
+            // So we need to strip 'tmp/' from relPath to join with TMP_DIR
+            // OR join with UPLOADS_ROOT
+            
+            // Let's rely on standard resolution:
+            // If p is "uploads/tmp/user/file", abs is UPLOADS_ROOT + p
+            const absFromRoot = path.join(__dirname, '../../', normalized);
+            if (fs.existsSync(absFromRoot) && absFromRoot.startsWith(TMP_DIR)) return absFromRoot;
+            
+            // If p is "/uploads/tmp/user/file", handle leading slash
+            const normalizedNoSlash = normalized.replace(/^\//, '');
+            const absFromRoot2 = path.join(__dirname, '../../', normalizedNoSlash);
+            if (fs.existsSync(absFromRoot2) && absFromRoot2.startsWith(TMP_DIR)) return absFromRoot2;
+
+            return null;
         })(tmpPath) : null;
         if (!absTmp || !fs.existsSync(absTmp)) {
             return res.status(400).json({ error: 'Invalid tmpPath' });
@@ -330,22 +355,38 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             if (!pubPath || typeof pubPath !== 'string') return null;
             const normalized = String(pubPath).replace(/^[\\/]+/, '');
             let relPath = normalized;
-            // Ensure we keep the 'uploads/' prefix so absolute path lands under UPLOADS_ROOT
-            if (relPath.startsWith('/uploads/')) {
-                relPath = relPath.replace(/^\/uploads[\\/]/, 'uploads/');
+            // Handle various prefixes
+            if (relPath.startsWith('uploads/')) relPath = relPath.replace(/^uploads[\\/]/, '');
+            else if (relPath.startsWith('/uploads/')) relPath = relPath.replace(/^\/uploads[\\/]/, '');
+            
+            // Ensure path starts with tmp/
+            if (!relPath.startsWith('tmp/')) {
+                 // Check if it's just the part after tmp/
+                 const segs = relPath.split(/[\\/]/);
+                 if (segs[0] !== 'tmp') {
+                     // Maybe it's a direct relative path? Let's check if it exists in TMP_DIR
+                     const checkAbs = path.join(TMP_DIR, relPath);
+                     if (fs.existsSync(checkAbs)) return checkAbs;
+                     return null;
+                 }
             }
-            // If missing 'uploads/' explicitly, add it
-            if (!relPath.startsWith('uploads/')) {
-                relPath = 'uploads/' + relPath;
-            }
-            // Must be under uploads/tmp/
-            if (!/^uploads[\\/]+tmp[\\/]+/i.test(relPath)) return null;
-            const segs = relPath.split(/[\\/]/);
-            // expected: uploads/tmp/<userId>/<artist>/<title>/<file>
-            if (segs.length < 6) return null;
-            const abs = path.join(__dirname, '../../', relPath);
-            if (!abs.startsWith(TMP_DIR)) return null;
-            return abs;
+            
+            // It starts with tmp/
+            // But TMP_DIR already ends with uploads/tmp
+            // So we need to strip 'tmp/' from relPath to join with TMP_DIR
+            // OR join with UPLOADS_ROOT
+            
+            // Let's rely on standard resolution:
+            // If p is "uploads/tmp/user/file", abs is UPLOADS_ROOT + p
+            const absFromRoot = path.join(__dirname, '../../', normalized);
+            if (fs.existsSync(absFromRoot) && absFromRoot.startsWith(TMP_DIR)) return absFromRoot;
+            
+            // If p is "/uploads/tmp/user/file", handle leading slash
+            const normalizedNoSlash = normalized.replace(/^\//, '');
+            const absFromRoot2 = path.join(__dirname, '../../', normalizedNoSlash);
+            if (fs.existsSync(absFromRoot2) && absFromRoot2.startsWith(TMP_DIR)) return absFromRoot2;
+
+            return null;
         };
         const runFfmpegConvert = (inPath, outPath, opts = {}) => {
             return new Promise((resolve, reject) => {
