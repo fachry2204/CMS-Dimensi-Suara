@@ -255,6 +255,36 @@ router.post('/tmp/cleanup', authenticateToken, async (req, res) => {
     }
 });
 
+router.post('/tmp/preview-clip', authenticateToken, async (req, res) => {
+    try {
+        const { tmpPath, startSec, durationSec } = req.body || {};
+        const absTmp = (typeof tmpPath === 'string') ? (function(p){ 
+            const normalized = String(p).replace(/^[\\/]+/, '');
+            let relPath = normalized;
+            if (relPath.startsWith('uploads/')) relPath = relPath.replace(/^uploads[\\/]/, '');
+            else if (relPath.startsWith('/uploads/')) relPath = relPath.replace(/^\/uploads[\\/]/, '');
+            const segs = relPath.split(/[\\/]/);
+            if (segs[0] !== 'tmp') return null;
+            const abs = path.join(__dirname, '../../', relPath);
+            if (!abs.startsWith(TMP_DIR)) return null;
+            return abs;
+        })(tmpPath) : null;
+        if (!absTmp || !fs.existsSync(absTmp)) {
+            return res.status(400).json({ error: 'Invalid tmpPath' });
+        }
+        const dir = path.dirname(absTmp);
+        const base = path.basename(absTmp, path.extname(absTmp));
+        const outName = `${base}-preview.wav`;
+        const outAbs = path.join(dir, outName);
+        await runFfmpegConvert(absTmp, outAbs, { startSec: Number(startSec || 0), durationSec: Number(durationSec || 60) });
+        const rel = path.relative(path.join(__dirname, '../../'), outAbs).replace(/\\/g, '/');
+        const pub = `/${rel}`;
+        res.json({ previewPath: pub });
+    } catch (err) {
+        console.error('TMP Preview Clip Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 // CREATE NEW RELEASE
 // Expects: JSON data in 'data' field, and files in 'files'
 // But for simplicity in this MVP, we might accept JSON first, then files, OR multipart/form-data.
@@ -379,7 +409,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                             const outName = `${baseName}-track${trackIdx}-clip.wav`;
                             const outAbs = path.join(targetDir, outName);
                             if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-                            await runFfmpegConvert(absTmp, outAbs, {});
+                            const startSec = Number(t.previewStart || 0);
+                            await runFfmpegConvert(absTmp, outAbs, { startSec, durationSec: 60 });
                             try { fs.unlinkSync(absTmp); } catch {}
                             clipPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                         }

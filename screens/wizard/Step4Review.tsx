@@ -59,8 +59,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         data.tracks.forEach((track, idx) => {
             const trackNum = idx + 1;
             if (!track.title) errors.push(`Track ${trackNum}: Title is required.`);
-            if (!track.audioFile) errors.push(`Track ${trackNum}: Audio file is missing.`);
-            if (!track.audioClip) errors.push(`Track ${trackNum}: Audio clip is required.`);
+            const hasAudio = (typeof (track as any).audioFile === 'string' && (track as any).audioFile.trim().length > 0)
+              || (typeof (track as any).tempAudioPath === 'string' && (track as any).tempAudioPath.trim().length > 0);
+            if (!hasAudio) errors.push(`Track ${trackNum}: Audio file is required (server TMP or URL).`);
+            const hasClip = (typeof (track as any).audioClip === 'string' && (track as any).audioClip.trim().length > 0)
+              || (typeof (track as any).tempClipPath === 'string' && (track as any).tempClipPath.trim().length > 0);
+            if (!hasClip) errors.push(`Track ${trackNum}: Audio clip is required (server TMP or URL).`);
             if (!track.genre) errors.push(`Track ${trackNum}: Genre is required.`);
             if (!track.composer) errors.push(`Track ${trackNum}: Composer is required.`);
             
@@ -92,8 +96,6 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         if (prepped.coverArt instanceof File) total += 1;
         prepped.tracks.forEach(t => {
           const anyT = t as any;
-          if (anyT.audioFile instanceof File) total += 1;
-          if (anyT.audioClip instanceof File) total += 1;
           if (anyT.iplFile instanceof File) total += 1;
         });
         setUploadTotal(total);
@@ -149,66 +151,6 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         }
         for (let i = 0; i < prepped.tracks.length; i++) {
           const t = prepped.tracks[i] as any;
-          if (t.audioFile instanceof File) {
-            const fieldName = `track_${i}_audio`;
-            try {
-              setUploadLabel(`Track ${i + 1} Audio`);
-              setFileProgress(0);
-              setQ(fieldName, 'Uploading', 0);
-              const resp: any = await api.uploadReleaseFileProgress(
-                token,
-                { title: prepped.title, primaryArtists: prepped.primaryArtists },
-                fieldName,
-                t.audioFile,
-                (p: number) => setFileProgress(p)
-              );
-              const candidate =
-                (resp && resp.paths && resp.paths[fieldName]) ||
-                (resp && resp.paths && resp.paths['file']) ||
-                (resp && resp.path) ||
-                (resp && resp.url) ||
-                (resp && resp[fieldName]) ||
-                '';
-              if (candidate) {
-                prepped.tracks[i].audioFile = candidate;
-              }
-            } catch {}
-            finally {
-              setUploadDone(prev => prev + 1);
-              setFileProgress(100);
-              setQ(fieldName, 'Done', 100);
-            }
-          }
-          if (t.audioClip instanceof File) {
-            const fieldName = `track_${i}_clip`;
-            try {
-              setUploadLabel(`Track ${i + 1} Clip`);
-              setFileProgress(0);
-              setQ(fieldName, 'Uploading', 0);
-              const resp: any = await api.uploadReleaseFileProgress(
-                token,
-                { title: prepped.title, primaryArtists: prepped.primaryArtists },
-                fieldName,
-                t.audioClip,
-                (p: number) => setFileProgress(p)
-              );
-              const candidate =
-                (resp && resp.paths && resp.paths[fieldName]) ||
-                (resp && resp.paths && resp.paths['file']) ||
-                (resp && resp.path) ||
-                (resp && resp.url) ||
-                (resp && resp[fieldName]) ||
-                '';
-              if (candidate) {
-                prepped.tracks[i].audioClip = candidate;
-              }
-            } catch {}
-            finally {
-              setUploadDone(prev => prev + 1);
-              setFileProgress(100);
-              setQ(fieldName, 'Done', 100);
-            }
-          }
           if (t.iplFile instanceof File) {
             const fieldName = `track_${i}_ipl`;
             try {
@@ -240,15 +182,15 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             }
           }
         }
-        // Verify uploads: ensure all audio files are server URLs
+        // Verify: ensure audio/clip exist via tmp path or server URL
         const uploadErrors: string[] = [];
         prepped.tracks.forEach((t: any, idx: number) => {
-          if (!t.audioFile || typeof t.audioFile !== 'string' || t.audioFile.trim().length === 0) {
-            uploadErrors.push(`Track ${idx + 1}: Audio file gagal diupload ke server.`);
-          }
-          if (!t.audioClip || typeof t.audioClip !== 'string' || t.audioClip.trim().length === 0) {
-            uploadErrors.push(`Track ${idx + 1}: Audio clip gagal diupload ke server.`);
-          }
+          const audioOk = (typeof t.audioFile === 'string' && t.audioFile.trim().length > 0) ||
+                          (typeof t.tempAudioPath === 'string' && t.tempAudioPath.trim().length > 0);
+          if (!audioOk) uploadErrors.push(`Track ${idx + 1}: Audio file belum ada di server (TMP).`);
+          const clipOk = (typeof t.audioClip === 'string' && t.audioClip.trim().length > 0) ||
+                         (typeof t.tempClipPath === 'string' && t.tempClipPath.trim().length > 0);
+          if (!clipOk) uploadErrors.push(`Track ${idx + 1}: Audio clip belum ada di server (TMP).`);
         });
         if (uploadErrors.length > 0) {
           setValidationErrors(uploadErrors);

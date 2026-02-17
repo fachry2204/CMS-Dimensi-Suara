@@ -184,20 +184,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       closeTrimmer(); // Close inline trimmer
 
       try {
-        const processedFile = await cropAndConvertAudio(
-            trimmerState.rawFile,
-            trimmerState.startTime,
-            60, // Duration fixed to 60s
-            trackTitle
-        );
         const token = localStorage.getItem('cms_token') || '';
-        let storedClip: any = processedFile;
         if (token) {
             const trackIndex = data.tracks.findIndex(t => t.id === trimmerState.trackId);
             if (trackIndex >= 0) {
                 const fieldName = `track_${trackIndex}_clip`;
                 try {
-                    // Upload original raw clip to TMP for staging
                     const resp = await api.uploadTmpReleaseFile(
                         token,
                         { title: data.title, primaryArtists: data.primaryArtists },
@@ -212,7 +204,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp[fieldName]) ||
                       '';
                     if (candidate) {
-                        updateTrack(trimmerState.trackId, { tempClipPath: candidate });
+                        const prev = await api.generateClipPreview(token, candidate, trimmerState.startTime, 60);
+                        const previewPath = prev.previewPath || candidate;
+                        updateTrack(trimmerState.trackId, { tempClipPath: candidate, audioClip: previewPath, previewStart: trimmerState.startTime });
                     }
                 } catch (e) {
                     console.error('Upload tmp audio clip failed:', e);
@@ -220,7 +214,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 }
             }
         }
-        updateTrack(trimmerState.trackId, { audioClip: storedClip });
       } catch (error) {
           console.error(error);
           alert("Failed to trim audio.");
@@ -289,6 +282,14 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     updateData({ tracks: updatedTracks });
   };
 
+  const [convertProgress, setConvertProgress] = useState<Record<string, { audio?: number; clip?: number }>>({});
+  const setAudioProgress = (trackId: string, p: number) => {
+    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), audio: p } }));
+  };
+  const setClipProgress = (trackId: string, p: number) => {
+    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), clip: p } }));
+  };
+
   // --- File Handlers ---
   const handleFileChange = async (trackId: string, field: 'audioFile' | 'videoFile' | 'audioClip' | 'iplFile', file: File | null) => {
     if (!file) {
@@ -314,10 +315,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     if (field === 'audioFile') {
         setProcessingState(prev => ({ ...prev, [processKey]: true }));
             try {
-              // Convert to WAV 24bit/44.1kHz and Rename
-            const processedFile = await processFullAudio(file, trackNameBase);
             const token = localStorage.getItem('cms_token') || '';
-            let storedAudio: any = processedFile;
             if (token) {
                 const trackIndex = data.tracks.findIndex(t => t.id === trackId);
                 if (trackIndex >= 0) {
@@ -346,8 +344,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp[fieldName]) ||
                       '';
                     if (candidate) {
-                        // Keep processed file locally for preview; store temp path separately
-                        updateTrack(trackId, { tempAudioPath: candidate });
+                        updateTrack(trackId, { tempAudioPath: candidate, audioFile: candidate });
                     }
                     } catch (e) {
                         console.error('Upload tmp audio failed:', e);
@@ -355,7 +352,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                     }
                 }
             }
-            updateTrack(trackId, { audioFile: storedAudio });
         } catch (error) {
             console.error("File processing error:", error);
             alert("Error processing Full Audio.");
@@ -526,7 +522,19 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
                                             <span>Full Audio (WAV) <span className="text-red-500">*</span></span>
-                                            {isProcessingAudio && <span className="text-xs text-blue-500 flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Converting...</span>}
+                                            {isProcessingAudio && (
+                                              <span className="text-xs text-blue-500 flex items-center gap-2">
+                                                <Loader2 size={12} className="animate-spin"/>
+                                                <span>Converting...</span>
+                                                <span className="inline-flex items-center w-24 h-1 bg-blue-100 rounded overflow-hidden">
+                                                  <span
+                                                    className="h-1 bg-blue-500"
+                                                    style={{ width: `${Math.min(100, Math.max(0, (convertProgress[track.id]?.audio || 0)))}%` }}
+                                                  />
+                                                </span>
+                                                <span>{Math.round(convertProgress[track.id]?.audio || 0)}%</span>
+                                              </span>
+                                            )}
                                         </label>
                                         <div className="relative">
                                             <input 
@@ -572,7 +580,19 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
                                             <span>Audio Clip (60s) <span className="text-red-500">*</span></span>
-                                            {isProcessingClip && <span className="text-xs text-orange-500 flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Processing...</span>}
+                                            {isProcessingClip && (
+                                              <span className="text-xs text-orange-500 flex items-center gap-2">
+                                                <Loader2 size={12} className="animate-spin"/>
+                                                <span>Processing...</span>
+                                                <span className="inline-flex items-center w-24 h-1 bg-orange-100 rounded overflow-hidden">
+                                                  <span
+                                                    className="h-1 bg-orange-500"
+                                                    style={{ width: `${Math.min(100, Math.max(0, (convertProgress[track.id]?.clip || 0)))}%` }}
+                                                  />
+                                                </span>
+                                                <span>{Math.round(convertProgress[track.id]?.clip || 0)}%</span>
+                                              </span>
+                                            )}
                                         </label>
                                         <div className="relative">
                                             <input 

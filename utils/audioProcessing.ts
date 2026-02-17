@@ -83,14 +83,17 @@ export const getAudioDuration = async (file: File): Promise<number> => {
     return audioBuffer.duration;
 }
 
-export const processFullAudio = async (file: File, targetFileName: string): Promise<File> => {
+export const processFullAudio = async (file: File, targetFileName: string, onProgress?: (p: number) => void): Promise<File> => {
   try {
+    if (onProgress) onProgress(1);
     const arrayBuffer = await file.arrayBuffer();
+    if (onProgress) onProgress(10);
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
       sampleRate: 48000
     });
     
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    if (onProgress) onProgress(30);
     
     // Process to offline context to resample/render to 48kHz and ensure stereo
     const offlineCtx = new OfflineAudioContext(
@@ -98,6 +101,7 @@ export const processFullAudio = async (file: File, targetFileName: string): Prom
         Math.ceil(audioBuffer.duration * 48000),
         48000
     );
+    if (onProgress) onProgress(40);
     
     // Ensure stereo: if mono, duplicate channel
     let bufferToUse = audioBuffer;
@@ -109,19 +113,31 @@ export const processFullAudio = async (file: File, targetFileName: string): Prom
       }
       bufferToUse = stereoBuffer;
     }
+    if (onProgress) onProgress(50);
 
     const source = offlineCtx.createBufferSource();
     source.buffer = bufferToUse;
     source.connect(offlineCtx.destination);
     source.start();
     
+    let prog = 55;
+    let done = false;
+    const timer = setInterval(() => {
+      if (done) return;
+      prog = Math.min(95, prog + 1);
+      if (onProgress) onProgress(prog);
+    }, 100);
     const renderedBuffer = await offlineCtx.startRendering();
+    done = true;
+    clearInterval(timer);
+    if (onProgress) onProgress(98);
     const wavBlob = bufferToWav24(renderedBuffer);
     
     // Rename file
     const safeName = targetFileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const newName = `${safeName}.wav`;
     
+    if (onProgress) onProgress(100);
     return new File([wavBlob], newName, { type: 'audio/wav' });
   } catch (error) {
     console.error("Audio conversion failed", error);
@@ -133,16 +149,20 @@ export const cropAndConvertAudio = async (
     file: File, 
     startTime: number, 
     duration: number, 
-    targetFileName: string
+    targetFileName: string,
+    onProgress?: (p: number) => void
 ): Promise<File> => {
 
   try {
+    if (onProgress) onProgress(1);
     const arrayBuffer = await file.arrayBuffer();
+    if (onProgress) onProgress(10);
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
         sampleRate: 48000
     });
     
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    if (onProgress) onProgress(30);
     
     // Calculate start and length in samples
     const startSample = Math.floor(startTime * 48000);
@@ -156,6 +176,7 @@ export const cropAndConvertAudio = async (
         finalLength,
         48000
     );
+    if (onProgress) onProgress(40);
     
     // Prepare buffer segment and ensure stereo
     let segmentBuffer = audioBuffer;
@@ -167,6 +188,7 @@ export const cropAndConvertAudio = async (
       }
       segmentBuffer = stereoBuffer;
     }
+    if (onProgress) onProgress(50);
 
     const source = offlineCtx.createBufferSource();
     source.buffer = segmentBuffer;
@@ -179,7 +201,17 @@ export const cropAndConvertAudio = async (
     
     source.start(0, startTime, duration); // play at 0, offset startTime, for duration
     
+    let prog = 55;
+    let done = false;
+    const timer = setInterval(() => {
+      if (done) return;
+      prog = Math.min(95, prog + 1);
+      if (onProgress) onProgress(prog);
+    }, 100);
     const renderedBuffer = await offlineCtx.startRendering();
+    done = true;
+    clearInterval(timer);
+    if (onProgress) onProgress(98);
     
     const wavBlob = bufferToWav24(renderedBuffer);
     
@@ -187,6 +219,7 @@ export const cropAndConvertAudio = async (
     const safeName = targetFileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const newName = `${safeName}-trim.wav`;
     
+    if (onProgress) onProgress(100);
     return new File([wavBlob], newName, { type: 'audio/wav' });
     
   } catch (error) {

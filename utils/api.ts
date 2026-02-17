@@ -313,6 +313,18 @@ export const api = {
         });
         return parseResponse(res);
     },
+    generateClipPreview: async (token: string, tmpPath: string, startSec: number, durationSec = 60) => {
+        const res = await fetch(`${API_BASE_URL}/releases/tmp/preview-clip`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            credentials: 'include',
+            body: JSON.stringify({ tmpPath, startSec, durationSec })
+        });
+        return parseResponse(res);
+    },
 
     // Reports
     getReports: async (token) => {
