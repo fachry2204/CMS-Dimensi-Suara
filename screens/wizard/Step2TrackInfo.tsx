@@ -323,14 +323,15 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 if (trackIndex >= 0) {
                     const fieldName = `track_${trackIndex}_audio`;
                     try {
-                        const useChunk = (file?.size || 0) > (90 * 1024 * 1024);
+                        // Use chunked upload for almost all audio files (threshold > 1MB) to bypass typical Nginx 2MB limits
+                        const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
                         const resp = useChunk
                           ? await api.uploadTmpReleaseFileChunked(
                               token,
                               { title: data.title, primaryArtists: data.primaryArtists },
                               fieldName,
                               file,
-                              8 * 1024 * 1024
+                              1 * 1024 * 1024 // 1MB chunks to be safe
                             )
                           : await api.uploadTmpReleaseFile(
                               token,
@@ -384,14 +385,15 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         try {
                             setProcessingState(prev => ({ ...prev, [`${trackId}-audioClip`]: true }));
                             updateTrack(trackId, { processingClip: true });
-                            const useChunk = (file?.size || 0) > (90 * 1024 * 1024);
+                            // Same for clip, lower threshold to 1MB
+                            const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
                             const resp = useChunk
                               ? await api.uploadTmpReleaseFileChunked(
                                   token,
                                   { title: data.title, primaryArtists: data.primaryArtists },
                                   fieldName,
                                   file,
-                                  8 * 1024 * 1024
+                                  1 * 1024 * 1024 // 1MB chunks
                                 )
                               : await api.uploadTmpReleaseFile(
                                   token,
