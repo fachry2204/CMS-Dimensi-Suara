@@ -205,6 +205,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                     );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
+                      (resp && resp.paths && resp.paths['file']) ||
                       (resp && resp.path) ||
                       (resp && resp.url) ||
                       (resp && resp[fieldName]) ||
@@ -327,6 +328,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
+                      (resp && resp.paths && resp.paths['file']) ||
                       (resp && resp.path) ||
                       (resp && resp.url) ||
                       (resp && resp[fieldName]) ||

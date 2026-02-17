@@ -128,6 +128,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               );
               const candidate =
                 (resp && resp.paths && resp.paths[fieldName]) ||
+                (resp && resp.paths && resp.paths['file']) ||
                 (resp && resp.path) ||
                 (resp && resp.url) ||
                 (resp && resp[fieldName]) ||
@@ -152,6 +153,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               );
               const candidate =
                 (resp && resp.paths && resp.paths[fieldName]) ||
+                (resp && resp.paths && resp.paths['file']) ||
                 (resp && resp.path) ||
                 (resp && resp.url) ||
                 (resp && resp[fieldName]) ||
@@ -176,6 +178,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               );
               const candidate =
                 (resp && resp.paths && resp.paths[fieldName]) ||
+                (resp && resp.paths && resp.paths['file']) ||
                 (resp && resp.path) ||
                 (resp && resp.url) ||
                 (resp && resp[fieldName]) ||
