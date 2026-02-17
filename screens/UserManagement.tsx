@@ -306,7 +306,7 @@ export const UserManagement: React.FC = () => {
        {/* Add User Modal */}
        {showAddUserModal && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-scale-in">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                         <h3 className="text-lg font-bold text-slate-800">
                             {addUserContext === 'INTERNAL' ? 'Add Internal User' : 'Add Registered User'}
@@ -400,7 +400,7 @@ export const UserManagement: React.FC = () => {
        {/* View User Modal */}
        {showUserViewModal && selectedUser && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-scale-in">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                         <h3 className="text-lg font-bold text-slate-800">User Detail</h3>
                         <button onClick={() => setShowUserViewModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -408,36 +408,107 @@ export const UserManagement: React.FC = () => {
                         </button>
                     </div>
                     <div className="p-6 space-y-4">
-                        <div className="space-y-1">
-                            <div className="font-medium text-slate-800">{selectedUser.name}</div>
-                            <div className="text-xs text-slate-500">{selectedUser.email}</div>
-                            <div className="text-xs text-slate-500">Role: {selectedUser.role}</div>
-                            <div className="text-xs text-slate-500">Joined: {selectedUser.registeredDate}</div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-xs text-slate-700">
-                            <div>Account Type: <span className="font-medium">{selectedUser.account_type || '-'}</span></div>
-                            <div>Company: <span className="font-medium">{selectedUser.company_name || '-'}</span></div>
-                            <div>NIK: <span className="font-medium">{selectedUser.nik || '-'}</span></div>
-                            <div>Full Name: <span className="font-medium">{selectedUser.full_name || '-'}</span></div>
-                            <div>Phone: <span className="font-medium">{selectedUser.phone || '-'}</span></div>
-                            <div>Address: <span className="font-medium">{selectedUser.address || '-'}</span></div>
-                            <div>Country: <span className="font-medium">{selectedUser.country || '-'}</span></div>
-                            <div>Province: <span className="font-medium">{selectedUser.province || '-'}</span></div>
-                            <div>City: <span className="font-medium">{selectedUser.city || '-'}</span></div>
-                            <div>District: <span className="font-medium">{selectedUser.district || '-'}</span></div>
-                            <div>Subdistrict: <span className="font-medium">{selectedUser.subdistrict || '-'}</span></div>
-                            <div>Postal Code: <span className="font-medium">{selectedUser.postal_code || '-'}</span></div>
-                            <div>PIC Name: <span className="font-medium">{selectedUser.pic_name || '-'}</span></div>
-                            <div>PIC Position: <span className="font-medium">{selectedUser.pic_position || '-'}</span></div>
-                            <div>PIC Phone: <span className="font-medium">{selectedUser.pic_phone || '-'}</span></div>
-                            <div>Approved: <span className="font-medium">{selectedUser.joinedDate || '-'}</span></div>
-                            <div>Reject Date: <span className="font-medium">{selectedUser.rejectedDate || '-'}</span></div>
-                            <div className="col-span-2">Rejection Reason: <span className="font-medium">{selectedUser.rejection_reason || '-'}</span></div>
-                            <div className="col-span-2 flex gap-3">
-                                {selectedUser.ktp_doc_path && <a href={selectedUser.ktp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">KTP</a>}
-                                {selectedUser.npwp_doc_path && <a href={selectedUser.npwp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">NPWP</a>}
-                                {selectedUser.nib_doc_path && <a href={selectedUser.nib_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">NIB</a>}
-                                {selectedUser.kemenkumham_doc_path && <a href={selectedUser.kemenkumham_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Kemenkumham</a>}
+                        <div className="space-y-4">
+                            <div>
+                                <div className="font-medium text-slate-800">{selectedUser.name}</div>
+                                <div className="text-xs text-slate-500">{selectedUser.email}</div>
+                                <div className="text-xs text-slate-500">Role: {selectedUser.role}</div>
+                                <div className="text-xs text-slate-500">Joined: {selectedUser.registeredDate}</div>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <tbody className="[&>tr>td]:py-2 [&>tr>td]:px-3 [&>tr:nth-child(even)]:bg-slate-50">
+                                        <tr><td className="text-slate-600">Account Type</td><td className="font-medium">{selectedUser.account_type || '-'}</td></tr>
+                                        {(selectedUser.account_type === 'COMPANY') && (
+                                            <tr><td className="text-slate-600">Company</td><td className="font-medium">{selectedUser.company_name || '-'}</td></tr>
+                                        )}
+                                        <tr><td className="text-slate-600">Full Name</td><td className="font-medium">{selectedUser.full_name || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">NIK</td><td className="font-medium">{selectedUser.nik || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">Phone</td><td className="font-medium">{selectedUser.phone || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">Address</td><td className="font-medium">{selectedUser.address || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">Country</td><td className="font-medium">{selectedUser.country || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">Province</td><td className="font-medium">{selectedUser.province || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">City</td><td className="font-medium">{selectedUser.city || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">District</td><td className="font-medium">{selectedUser.district || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">Subdistrict</td><td className="font-medium">{selectedUser.subdistrict || '-'}</td></tr>
+                                        <tr><td className="text-slate-600">Postal Code</td><td className="font-medium">{selectedUser.postal_code || '-'}</td></tr>
+                                        {(selectedUser.account_type === 'COMPANY') && (
+                                            <>
+                                                <tr><td className="text-slate-600">PIC Name</td><td className="font-medium">{selectedUser.pic_name || '-'}</td></tr>
+                                                <tr><td className="text-slate-600">PIC Position</td><td className="font-medium">{selectedUser.pic_position || '-'}</td></tr>
+                                                <tr><td className="text-slate-600">PIC Phone</td><td className="font-medium">{selectedUser.pic_phone || '-'}</td></tr>
+                                            </>
+                                        )}
+                                        <tr><td className="text-slate-600">Approved</td><td className="font-medium">{selectedUser.joinedDate || '-'}</td></tr>
+                                        {(selectedUser.status === 'Rejected' || statusDraft === 'Rejected') && (
+                                            <>
+                                                <tr><td className="text-slate-600">Reject Date</td><td className="font-medium">{selectedUser.rejectedDate || '-'}</td></tr>
+                                                <tr><td className="text-slate-600">Rejection Reason</td><td className="font-medium">{selectedUser.rejection_reason || '-'}</td></tr>
+                                            </>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-semibold text-slate-800">Documents</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {selectedUser.ktp_doc_path && (
+                                        <div className="border border-slate-200 rounded-xl p-3">
+                                            <div className="text-xs font-medium mb-2">KTP</div>
+                                            {selectedUser.ktp_doc_path.toLowerCase().endsWith('.pdf') ? (
+                                                <iframe src={selectedUser.ktp_doc_path} className="w-full h-40 rounded-md" />
+                                            ) : (
+                                                <img src={selectedUser.ktp_doc_path} alt="KTP" className="w-full h-40 object-cover rounded-md" />
+                                            )}
+                                            <div className="flex gap-3 mt-2">
+                                                <a href={selectedUser.ktp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
+                                                <a href={selectedUser.ktp_doc_path} download className="text-slate-600 text-xs">Download</a>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {selectedUser.npwp_doc_path && (
+                                        <div className="border border-slate-200 rounded-xl p-3">
+                                            <div className="text-xs font-medium mb-2">NPWP</div>
+                                            {selectedUser.npwp_doc_path.toLowerCase().endsWith('.pdf') ? (
+                                                <iframe src={selectedUser.npwp_doc_path} className="w-full h-40 rounded-md" />
+                                            ) : (
+                                                <img src={selectedUser.npwp_doc_path} alt="NPWP" className="w-full h-40 object-cover rounded-md" />
+                                            )}
+                                            <div className="flex gap-3 mt-2">
+                                                <a href={selectedUser.npwp_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
+                                                <a href={selectedUser.npwp_doc_path} download className="text-slate-600 text-xs">Download</a>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(selectedUser.account_type === 'COMPANY') && selectedUser.nib_doc_path && (
+                                        <div className="border border-slate-200 rounded-xl p-3">
+                                            <div className="text-xs font-medium mb-2">NIB</div>
+                                            {selectedUser.nib_doc_path.toLowerCase().endsWith('.pdf') ? (
+                                                <iframe src={selectedUser.nib_doc_path} className="w-full h-40 rounded-md" />
+                                            ) : (
+                                                <img src={selectedUser.nib_doc_path} alt="NIB" className="w-full h-40 object-cover rounded-md" />
+                                            )}
+                                            <div className="flex gap-3 mt-2">
+                                                <a href={selectedUser.nib_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
+                                                <a href={selectedUser.nib_doc_path} download className="text-slate-600 text-xs">Download</a>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(selectedUser.account_type === 'COMPANY') && selectedUser.kemenkumham_doc_path && (
+                                        <div className="border border-slate-200 rounded-xl p-3">
+                                            <div className="text-xs font-medium mb-2">Kemenkumham</div>
+                                            {selectedUser.kemenkumham_doc_path.toLowerCase().endsWith('.pdf') ? (
+                                                <iframe src={selectedUser.kemenkumham_doc_path} className="w-full h-40 rounded-md" />
+                                            ) : (
+                                                <img src={selectedUser.kemenkumham_doc_path} alt="Kemenkumham" className="w-full h-40 object-cover rounded-md" />
+                                            )}
+                                            <div className="flex gap-3 mt-2">
+                                                <a href={selectedUser.kemenkumham_doc_path} target="_blank" rel="noreferrer" className="text-blue-600 text-xs">Preview</a>
+                                                <a href={selectedUser.kemenkumham_doc_path} download className="text-slate-600 text-xs">Download</a>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="space-y-2">

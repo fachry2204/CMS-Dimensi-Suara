@@ -451,8 +451,8 @@ export const RegisterScreen: React.FC<Props> = () => {
       return true;
     }
     if (currentStep === 2) {
-      if (!regEmail || !regPassword || !regPasswordConfirm || !picName || !picPosition) {
-        setRegError('Email, password, dan data PIC wajib diisi.');
+      if (!regEmail || !regPassword || !regPasswordConfirm) {
+        setRegError('Email dan password wajib diisi.');
         setRegErrorModalOpen(true);
         return false;
       }
@@ -473,6 +473,13 @@ export const RegisterScreen: React.FC<Props> = () => {
         setRegError('Password dan konfirmasi tidak sama.');
         setRegErrorModalOpen(true);
         return false;
+      }
+      if (accountType === 'COMPANY') {
+        if (!picName || !picPosition) {
+          setRegError('Data PIC (Nama & Posisi) wajib diisi untuk perusahaan.');
+          setRegErrorModalOpen(true);
+          return false;
+        }
       }
       return true;
     }
@@ -1001,43 +1008,47 @@ export const RegisterScreen: React.FC<Props> = () => {
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Nama PIC</label>
-          <input
-            type="text"
-            value={picName}
-            onChange={(e) => setPicName(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-            placeholder="Nama PIC"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Posisi PIC</label>
-          <input
-            type="text"
-            value={picPosition}
-            onChange={(e) => setPicPosition(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-            placeholder="Posisi PIC"
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">No Handphone PIC</label>
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 min-w-[80px] text-center">
-            {selectedCountryDialCode || '+..'}
+      {accountType === 'COMPANY' && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Nama PIC</label>
+              <input
+                type="text"
+                value={picName}
+                onChange={(e) => setPicName(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+                placeholder="Nama PIC"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">Posisi PIC</label>
+              <input
+                type="text"
+                value={picPosition}
+                onChange={(e) => setPicPosition(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+                placeholder="Posisi PIC"
+              />
+            </div>
           </div>
-          <input
-            type="tel"
-            value={picPhoneLocal}
-            onChange={(e) => setPicPhoneLocal(e.target.value.replace(/[^0-9]/g, ''))}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-            placeholder="Nomor tanpa angka 0 di depan"
-          />
-        </div>
-      </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">No Handphone PIC</label>
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 min-w-[80px] text-center">
+                {selectedCountryDialCode || '+..'}
+              </div>
+              <input
+                type="tel"
+                value={picPhoneLocal}
+                onChange={(e) => setPicPhoneLocal(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+                placeholder="Nomor tanpa angka 0 di depan"
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -1074,9 +1085,13 @@ export const RegisterScreen: React.FC<Props> = () => {
         <p className="text-sm font-semibold text-slate-800">Kontak & PIC</p>
         <p>Email: {regEmail}</p>
         <p>No Handphone: {regPhoneLocal && selectedCountryDialCode ? `${selectedCountryDialCode}${regPhoneLocal}` : regPhoneLocal}</p>
-        <p>Nama PIC: {picName}</p>
-        <p>Posisi PIC: {picPosition}</p>
-        <p>No HP PIC: {picPhoneLocal && selectedCountryDialCode ? `${selectedCountryDialCode}${picPhoneLocal}` : picPhoneLocal}</p>
+        {accountType === 'COMPANY' && (
+          <>
+            <p>Nama PIC: {picName}</p>
+            <p>Posisi PIC: {picPosition}</p>
+            <p>No HP PIC: {picPhoneLocal && selectedCountryDialCode ? `${selectedCountryDialCode}${picPhoneLocal}` : picPhoneLocal}</p>
+          </>
+        )}
       </div>
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
         <p className="text-sm font-semibold text-slate-800">Dokumen</p>
