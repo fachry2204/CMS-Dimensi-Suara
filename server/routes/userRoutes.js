@@ -132,7 +132,7 @@ router.get('/', authenticateToken, async (req, res) => {
             hasRejectedDate ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate'
         ];
 
-        const orderBy = hasCreatedAt ? 'created_at DESC' : 'id DESC';
+        const orderBy = hasRegisteredAt ? 'registered_at DESC' : 'id DESC';
         const sql = `SELECT ${selectParts.join(', ')} FROM users ORDER BY ${orderBy}`;
 
         const [rows] = await db.query(sql);
