@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   username: string;
@@ -7,6 +8,7 @@ interface Props {
 
 export const UserStatusScreen: React.FC<Props> = ({ username, status }) => {
   const normalized = (status || 'Pending') as string;
+  const navigate = useNavigate();
 
   const getLabel = () => {
     if (normalized === 'Approved' || normalized === 'Active') return 'Approved';
@@ -19,7 +21,7 @@ export const UserStatusScreen: React.FC<Props> = ({ username, status }) => {
     if (normalized === 'Approved' || normalized === 'Active') return 'bg-green-100 text-green-700';
     if (normalized === 'Review') return 'bg-amber-100 text-amber-700';
     if (normalized === 'Inactive') return 'bg-red-100 text-red-700';
-    return 'bg-slate-100 text-slate-700';
+    return 'bg-amber-100 text-amber-700';
   };
 
   const label = getLabel();
@@ -59,8 +61,17 @@ export const UserStatusScreen: React.FC<Props> = ({ username, status }) => {
             silakan hubungi tim support atau admin Dimensi Suara.
           </p>
         </div>
+
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="w-full px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+          >
+            Kembali ke Login
+          </button>
+        </div>
       </div>
     </div>
   );
 };
-
