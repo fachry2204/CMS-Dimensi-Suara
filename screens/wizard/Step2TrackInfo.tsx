@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ReleaseData, Track, TrackArtist, TrackContributor, ReleaseType } from '../../types';
-import { Music, Trash2, PlusCircle, Info, ChevronDown, ChevronUp, FileAudio, Video, Mic2, User, UserPlus, Loader2, Scissors, Play, Pause, X, Check } from 'lucide-react';
+import { Music, Trash2, PlusCircle, Info, ChevronDown, ChevronUp, FileAudio, Video, Mic2, User, UserPlus, Loader2, Scissors, Play, Pause, X, Check, UploadCloud } from 'lucide-react';
 import { ARTIST_ROLES, CONTRIBUTOR_TYPES, EXPLICIT_OPTIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { processFullAudio, cropAndConvertAudio, getAudioDuration } from '../../utils/audioProcessing';
 import { api } from '../../utils/api';
@@ -208,7 +208,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                     }
                 } catch (e) {
                     console.error('Upload audio clip failed:', e);
-                    alert('Upload audio clip ke server gagal. File belum tersimpan di server.');
+                    // Keep local clip and defer upload to final submit
                 }
             }
         }
@@ -326,7 +326,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         }
                     } catch (e) {
                         console.error('Upload audio file failed:', e);
-                        alert('Upload audio ke server gagal. File belum tersimpan di server.');
+                        // Keep local file and defer upload to final submit
                     }
                 }
             }
@@ -454,9 +454,15 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             <Loader2 size={12} className="animate-spin" /> Converting...
                                         </span>
                                     ) : track.audioFile ? (
-                                        <span className="flex items-center gap-1 text-green-600 font-medium">
-                                            <FileAudio size={12} /> Audio Ready
-                                        </span>
+                                        typeof track.audioFile === 'string' ? (
+                                            <span className="flex items-center gap-1 text-green-600 font-medium">
+                                                <FileAudio size={12} /> Uploaded
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-yellow-600 font-medium">
+                                                <UploadCloud size={12} /> Local (will upload)
+                                            </span>
+                                        )
                                     ) : null}
                                     
                                     {track.videoFile && (
@@ -509,9 +515,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             />
                                             {track.audioFile ? (
                                                 <div className="mt-2">
-                                                    <p className="text-[10px] text-green-600 font-bold mb-1 truncate">
-                                                        ✅ Uploaded: {typeof track.audioFile === 'string' ? 'Existing Audio' : track.audioFile.name}
+                                                    <p className={`text-[10px] font-bold mb-1 truncate ${typeof track.audioFile === 'string' ? 'text-green-600' : 'text-yellow-600'}`}>
+                                                        {typeof track.audioFile === 'string' ? 'Server: Existing Audio' : `Local: ${track.audioFile.name}`}
                                                     </p>
+                                                    {typeof track.audioFile !== 'string' && (
+                                                        <p className="text-[10px] text-yellow-600">Will upload at final submit</p>
+                                                    )}
                                                     <AudioPreview file={track.audioFile} />
                                                 </div>
                                             ) : (
@@ -552,9 +561,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             />
                                             {track.audioClip ? (
                                                 <div className="mt-2">
-                                                    <p className="text-[10px] text-orange-600 font-bold mb-1 truncate">
-                                                        ✂️ Clipped: {typeof track.audioClip === 'string' ? 'Existing Clip' : track.audioClip.name}
+                                                    <p className={`text-[10px] font-bold mb-1 truncate ${typeof track.audioClip === 'string' ? 'text-green-600' : 'text-orange-600'}`}>
+                                                        {typeof track.audioClip === 'string' ? 'Server: Existing Clip' : `Local: ${track.audioClip.name}`}
                                                     </p>
+                                                    {typeof track.audioClip !== 'string' && (
+                                                        <p className="text-[10px] text-orange-600">Will upload at final submit</p>
+                                                    )}
                                                     <AudioPreview file={track.audioClip} />
                                                 </div>
                                             ) : (
