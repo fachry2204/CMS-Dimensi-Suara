@@ -365,14 +365,14 @@ export const api = {
         return res.json();
     },
     
-    updateUserStatus: async (token, userId, status) => {
+    updateUserStatus: async (token, userId, status, reason?: string) => {
         const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ status }),
+            body: JSON.stringify({ status, reason }),
             credentials: 'include'
         });
         if (!res.ok) {

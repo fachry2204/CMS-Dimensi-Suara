@@ -24,6 +24,7 @@ export const UserManagement: React.FC = () => {
   const [token] = useState(localStorage.getItem('cms_token') || '');
   const [showUserViewModal, setShowUserViewModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   
   // Add User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -396,6 +397,7 @@ export const UserManagement: React.FC = () => {
                                             const res = await api.updateUserStatus(token, selectedUser.id, 'Pending');
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
@@ -410,6 +412,7 @@ export const UserManagement: React.FC = () => {
                                             const res = await api.updateUserStatus(token, selectedUser.id, 'Review');
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
@@ -424,6 +427,7 @@ export const UserManagement: React.FC = () => {
                                             const res = await api.updateUserStatus(token, selectedUser.id, 'Approved');
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
@@ -435,9 +439,11 @@ export const UserManagement: React.FC = () => {
                                 <button
                                     onClick={async () => {
                                         try {
-                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Rejected');
+                                            const reason = rejectReason || window.prompt('Alasan penolakan pengguna?') || '';
+                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Rejected', reason.trim() || undefined);
                                             setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
                                             setSelectedUser(res.user);
+                                            setRejectReason('');
                                         } catch (err: any) { alert(err.message); }
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
@@ -447,6 +453,15 @@ export const UserManagement: React.FC = () => {
                                     Di Tolak
                                 </button>
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-sm text-slate-600">Alasan penolakan (opsional, hanya saat Di Tolak)</p>
+                            <textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="Tulis alasan penolakan di sini..."
+                                className="w-full min-h-20 p-2 border border-slate-200 rounded-xl text-sm"
+                            />
                         </div>
                     </div>
                     <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-slate-50">

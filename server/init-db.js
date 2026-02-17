@@ -81,12 +81,13 @@ const initDb = async () => {
                     !type.includes('pending') ||
                     !type.includes('review') ||
                     !type.includes('approved') ||
+                    !type.includes('rejected') ||
                     !type.includes('inactive') ||
                     !type.includes('active');
                 if (needsUpdate) {
                     console.log('⚠️ Updating users.status enum to support registration workflow');
                     await connection.query(
-                        "ALTER TABLE users MODIFY COLUMN status ENUM('Pending','Review','Approved','Active','Inactive') DEFAULT 'Pending'"
+                        "ALTER TABLE users MODIFY COLUMN status ENUM('Pending','Review','Approved','Rejected','Active','Inactive') DEFAULT 'Pending'"
                     );
                 }
             }
@@ -125,6 +126,16 @@ const initDb = async () => {
                     console.log(`⚠️ Adding missing column: ${col.name} to users table`);
                     await connection.query(`ALTER TABLE users ADD COLUMN \`${col.name}\` ${col.type}`);
                 }
+            }
+        }
+
+        // 3b. Ensure rejection_reason column in 'users'
+        try {
+            await connection.query('SELECT rejection_reason FROM users LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: rejection_reason to users table');
+                await connection.query('ALTER TABLE users ADD COLUMN rejection_reason TEXT');
             }
         }
 

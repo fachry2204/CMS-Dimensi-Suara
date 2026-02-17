@@ -117,7 +117,7 @@ router.get('/', authenticateToken, async (req, res) => {
         const [cols] = await db.query('SHOW COLUMNS FROM users');
         const colNames = cols.map(c => c.Field);
         const hasStatus = colNames.includes('status');
-        const hasCreatedAt = colNames.includes('created_at');
+        const hasJoinedDate = colNames.includes('joined_date');
 
         const selectParts = [
             'id',
@@ -125,7 +125,7 @@ router.get('/', authenticateToken, async (req, res) => {
             'email',
             'role',
             hasStatus ? 'status' : `'Active' as status`,
-            hasCreatedAt ? 'DATE_FORMAT(created_at, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
+            hasJoinedDate ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
         ];
 
         const orderBy = hasCreatedAt ? 'created_at DESC' : 'id DESC';
@@ -211,7 +211,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
-        const { status } = req.body || {};
+        const { status, reason } = req.body || {};
         const allowed = ['Pending', 'Review', 'Approved', 'Rejected', 'Active', 'Inactive'];
         if (!allowed.includes(String(status))) {
             return res.status(400).json({ error: 'Invalid status value' });
@@ -221,8 +221,12 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         if (!colNames.includes('status')) {
             return res.status(400).json({ error: 'Status column not available' });
         }
-        await db.query('UPDATE users SET status = ? WHERE id = ?', [status, userId]);
-        const [rows] = await db.query('SELECT id, username as name, email, role, status, DATE_FORMAT(created_at, "%Y-%m-%d") as joinedDate FROM users WHERE id = ?', [userId]);
+        if (status === 'Rejected' && colNames.includes('rejection_reason')) {
+            await db.query('UPDATE users SET status = ?, rejection_reason = ? WHERE id = ?', [status, reason || null, userId]);
+        } else {
+            await db.query('UPDATE users SET status = ? WHERE id = ?', [status, userId]);
+        }
+        const [rows] = await db.query('SELECT id, username as name, email, role, status, DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate, rejection_reason FROM users WHERE id = ?', [userId]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }

@@ -121,10 +121,11 @@ export interface User {
   name: string;
   email: string;
   role: 'Admin' | 'Operator' | 'User'; // User = Registered User
-  status: 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved';
+  status: 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved' | 'Rejected';
   joinedDate: string;
   password?: string; // Optional for UI display
   profilePicture?: string;
+  rejection_reason?: string;
 }
 
 export interface Notification {
