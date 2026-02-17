@@ -203,9 +203,13 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         fieldName,
                         processedFile
                     );
-                    if (resp && resp.paths && resp.paths[fieldName]) {
-                        storedClip = resp.paths[fieldName];
-                    }
+                    const candidate =
+                      (resp && resp.paths && resp.paths[fieldName]) ||
+                      (resp && resp.path) ||
+                      (resp && resp.url) ||
+                      (resp && resp[fieldName]) ||
+                      '';
+                    if (candidate) storedClip = candidate;
                 } catch (e) {
                     console.error('Upload audio clip failed:', e);
                     // Keep local clip and defer upload to final submit
@@ -305,8 +309,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     // 1. Handle Full Audio (WAV Force Convert & Rename)
     if (field === 'audioFile') {
         setProcessingState(prev => ({ ...prev, [processKey]: true }));
-        try {
-            // Convert to WAV 24bit/44.1kHz and Rename
+            try {
+              // Convert to WAV 24bit/44.1kHz and Rename
             const processedFile = await processFullAudio(file, trackNameBase);
             const token = localStorage.getItem('cms_token') || '';
             let storedAudio: any = processedFile;
@@ -321,9 +325,13 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                             fieldName,
                             processedFile
                         );
-                        if (resp && resp.paths && resp.paths[fieldName]) {
-                            storedAudio = resp.paths[fieldName];
-                        }
+                    const candidate =
+                      (resp && resp.paths && resp.paths[fieldName]) ||
+                      (resp && resp.path) ||
+                      (resp && resp.url) ||
+                      (resp && resp[fieldName]) ||
+                      '';
+                    if (candidate) storedAudio = candidate;
                     } catch (e) {
                         console.error('Upload audio file failed:', e);
                         // Keep local file and defer upload to final submit

@@ -58,6 +58,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             const trackNum = idx + 1;
             if (!track.title) errors.push(`Track ${trackNum}: Title is required.`);
             if (!track.audioFile) errors.push(`Track ${trackNum}: Audio file is missing.`);
+            if (!track.audioClip) errors.push(`Track ${trackNum}: Audio clip is required.`);
             if (!track.genre) errors.push(`Track ${trackNum}: Genre is required.`);
             if (!track.composer) errors.push(`Track ${trackNum}: Composer is required.`);
             
@@ -188,6 +189,22 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             }
           }
         }
+        // Verify uploads: ensure all audio files are server URLs
+        const uploadErrors: string[] = [];
+        prepped.tracks.forEach((t: any, idx: number) => {
+          if (!t.audioFile || typeof t.audioFile !== 'string' || t.audioFile.trim().length === 0) {
+            uploadErrors.push(`Track ${idx + 1}: Audio file gagal diupload ke server.`);
+          }
+          if (!t.audioClip || typeof t.audioClip !== 'string' || t.audioClip.trim().length === 0) {
+            uploadErrors.push(`Track ${idx + 1}: Audio clip gagal diupload ke server.`);
+          }
+        });
+        if (uploadErrors.length > 0) {
+          setValidationErrors(uploadErrors);
+          setShowValidationModal(true);
+          setIsSubmitting(false);
+          return;
+        }
         // Sanitize: ensure no File objects remain in payload
         if (prepped.coverArt instanceof File) {
           prepped.coverArt = null;
@@ -203,13 +220,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
 
         const normalizedId = String(result.id ?? data.id ?? Date.now());
         const finalizedData: ReleaseData = {
-            ...data,
+            ...prepped,
             id: normalizedId,
             status: 'Pending',
-            submissionDate: new Date().toISOString().split('T')[0]
+            submissionDate: new Date().toISOString().split('T')[0],
+            type: data.type
         };
-        
-        // Propagate to App
         onSave(finalizedData);
         setSuccessMsg(result.message || 'Release submitted successfully');
         

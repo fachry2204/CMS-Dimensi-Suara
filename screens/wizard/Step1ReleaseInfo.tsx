@@ -115,52 +115,9 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
         <p className="text-slate-500">Let's start with the essentials of your release.</p>
       </div>
       
-      <div className="flex flex-col md:flex-row gap-10 items-start">
-          {/* Left Side: Cover Art */}
-          <div className="w-full md:w-1/3 flex flex-col items-center">
-            <div className="w-full aspect-square max-w-[280px] bg-blue-50 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-dashed border-blue-200 relative group hover:border-blue-400 transition-colors cursor-pointer shadow-inner"
-                 onClick={() => !data.coverArt && !isProcessingImg && fileInputRef.current?.click()}
-            >
-                {isProcessingImg ? (
-                  <div className="flex flex-col items-center text-blue-500">
-                    <Loader2 size={32} className="animate-spin mb-2" />
-                    <span className="text-xs font-bold">Resizing to 3000px...</span>
-                  </div>
-                ) : data.coverArt ? (
-                  <img 
-                      src={typeof data.coverArt === 'string' ? data.coverArt : URL.createObjectURL(data.coverArt)} 
-                      alt="Cover" 
-                      className="w-full h-full object-cover shadow-lg" 
-                  />
-                ) : (
-                  <div className="flex flex-col items-center p-6 text-center">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                          <ImagePlus size={28} className="text-blue-500" />
-                      </div>
-                      <p className="text-sm font-bold text-blue-600 mb-1">Upload Cover Art</p>
-                      <p className="text-xs text-slate-400">Auto-convert to 3000x3000px JPG</p>
-                  </div>
-                )}
-                
-                {data.coverArt && !isProcessingImg && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); removeCover(); }} className="px-4 py-2 bg-white text-red-500 rounded-full font-bold text-sm shadow-lg hover:bg-red-50">
-                            Change Image
-                        </button>
-                    </div>
-                )}
-            </div>
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleCoverUpload}
-            />
-          </div>
-
-          {/* Right Side: Form */}
-          <div className="w-full md:w-2/3">
+      <div className="flex flex-col gap-10 items-start">
+          {/* Form */}
+          <div className="w-full">
               {/* UPC Field (Moved to Top) */}
               <TextInput 
                 label="Kode UPC (Jika pernah rilis sebelumnya)" 
@@ -208,6 +165,57 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                   <UserPlus size={16} className="mr-2" />
                   Add Another Artist
                 </button>
+              </div>
+              
+              {/* Cover Art (moved below Primary Artists) */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Cover Art</label>
+                <div
+                  className="w-full aspect-square max-w-[280px] bg-blue-50 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-dashed border-blue-200 relative group hover:border-blue-400 transition-colors cursor-pointer shadow-inner"
+                  onClick={() => !data.coverArt && !isProcessingImg && fileInputRef.current?.click()}
+                >
+                  {isProcessingImg ? (
+                    <div className="flex flex-col items-center text-blue-500">
+                      <Loader2 size={32} className="animate-spin mb-2" />
+                      <span className="text-xs font-bold">Resizing to 3000px...</span>
+                    </div>
+                  ) : data.coverArt ? (
+                    <img
+                      src={typeof data.coverArt === 'string' ? data.coverArt : URL.createObjectURL(data.coverArt)}
+                      alt="Cover"
+                      className="w-full h-full object-cover shadow-lg"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center p-6 text-center">
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                        <ImagePlus size={28} className="text-blue-500" />
+                      </div>
+                      <p className="text-sm font-bold text-blue-600 mb-1">Upload Cover Art</p>
+                      <p className="text-xs text-slate-400">Auto-convert to 3000x3000px JPG</p>
+                    </div>
+                  )}
+                  {data.coverArt && !isProcessingImg && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeCover();
+                        }}
+                        className="px-4 py-2 bg-white text-red-500 rounded-full font-bold text-sm shadow-lg hover:bg-red-50"
+                      >
+                        Change Image
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleCoverUpload}
+                />
               </div>
 
               <TextInput 

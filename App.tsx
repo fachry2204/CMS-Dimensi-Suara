@@ -115,11 +115,19 @@ const App: React.FC = () => {
     }
     if (u) {
       if ((u.account_type || '').toUpperCase() === 'COMPANY' && u.company_name) return u.company_name;
-      return u.full_name || '';
+      return u.full_name || u.name || '';
     }
     // Fallback only to release-provided fields for display
-    if (typeof r.company_name === 'string' && r.company_name.trim().length > 0) return r.company_name.trim();
-    if (typeof r.user_full_name === 'string' && r.user_full_name.trim().length > 0) return r.user_full_name.trim();
+    const rawCandidates = [
+      r.company_name,
+      r.user_full_name,
+      r.owner_name,
+      r.owner,
+      r.created_by
+    ];
+    for (const v of rawCandidates) {
+      if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+    }
     return '';
   };
   
