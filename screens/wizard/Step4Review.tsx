@@ -279,6 +279,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         };
         onSave(finalizedData);
         setSuccessMsg(result.message || 'Release submitted successfully');
+        try {
+          await api.cleanupTmp(token, { title: prepped.title, primaryArtists: prepped.primaryArtists });
+        } catch (e) {
+          console.warn('TMP cleanup after submit failed:', (e as any)?.message || e);
+        }
         
     } catch (error: any) {
         console.error("Submission failed:", error);

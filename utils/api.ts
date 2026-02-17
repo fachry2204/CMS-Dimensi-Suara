@@ -186,6 +186,23 @@ export const api = {
 
         return parseResponse(res);
     },
+    uploadTmpReleaseFile: async (token, releaseMeta, fieldName, file) => {
+        const formData = new FormData();
+        formData.append('data', JSON.stringify({
+            title: releaseMeta.title,
+            primaryArtists: releaseMeta.primaryArtists || [],
+            field: fieldName
+        }));
+        formData.append('file', file);
+        formData.append(fieldName, file);
+        const res = await fetch(`${API_BASE_URL}/releases/upload-tmp`, {
+            method: 'POST',
+            headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+            body: formData,
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     uploadReleaseFileProgress: (token: string, releaseMeta: any, fieldName: string, file: File, onProgress?: (p: number) => void) => {
         return new Promise(async (resolve, reject) => {
@@ -252,6 +269,18 @@ export const api = {
                 reject(e);
             }
         });
+    },
+    cleanupTmp: async (token: string, meta: { title: string; primaryArtists: string[] }) => {
+        const res = await fetch(`${API_BASE_URL}/releases/tmp/cleanup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            credentials: 'include',
+            body: JSON.stringify({ title: meta.title, primaryArtists: meta.primaryArtists || [] })
+        });
+        return parseResponse(res);
     },
 
     // Reports

@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import db from '../config/db.js';
+import { spawn } from 'child_process';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,9 +18,13 @@ const sanitizeName = (s) => String(s || '').replace(/[/\\?%*:|"<>]/g, '_').repla
 // Ensure directories exist
 const UPLOADS_ROOT = path.join(__dirname, '../../uploads');
 const RELEASES_DIR = path.join(UPLOADS_ROOT, 'releases');
+const TMP_DIR = path.join(UPLOADS_ROOT, 'tmp');
 
 if (!fs.existsSync(RELEASES_DIR)) {
     fs.mkdirSync(RELEASES_DIR, { recursive: true });
+}
+if (!fs.existsSync(TMP_DIR)) {
+    fs.mkdirSync(TMP_DIR, { recursive: true });
 }
 
 const storage = multer.diskStorage({
@@ -58,8 +63,36 @@ const storage = multer.diskStorage({
     }
 });
 
+const storageTmp = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, TMP_DIR);
+    },
+    filename: (req, file, cb) => {
+        let artist = 'Unknown_Artist';
+        let title = 'Untitled_Release';
+        try {
+            if (req.body && typeof req.body.data === 'string') {
+                const payload = JSON.parse(req.body.data);
+                const primaryArtist = (Array.isArray(payload.primaryArtists) && payload.primaryArtists[0]) ? payload.primaryArtists[0] : 'Unknown_Artist';
+                artist = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+                title = sanitizeName(payload.title).substring(0, 80) || 'Untitled_Release';
+            }
+        } catch {}
+        const ext = path.extname(file.originalname) || '';
+        const base = `${artist} - ${title}`;
+        // preserve raw/original cues
+        const orig = file.fieldname;
+        const fileName = `${base}-${orig}${ext}`;
+        cb(null, fileName);
+    }
+});
+
 const upload = multer({ 
     storage: storage,
+    limits: { fileSize: 100 * 1024 * 1024 }
+});
+const uploadTmp = multer({
+    storage: storageTmp,
     limits: { fileSize: 100 * 1024 * 1024 }
 });
 
@@ -87,6 +120,59 @@ router.post('/upload', authenticateToken, upload.any(), async (req, res) => {
         res.json({ paths });
     } catch (err) {
         console.error('Upload Release File Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Upload to TMP (store original files before final submit)
+router.post('/upload-tmp', authenticateToken, uploadTmp.any(), async (req, res) => {
+    try {
+        const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
+        const userId = req.user.id;
+        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
+        const targetDir = path.join(TMP_DIR, String(userId), artistDirName, releaseDirName);
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        const files = Array.isArray(req.files) ? req.files : [];
+        const paths = {};
+        for (const f of files) {
+            const destName = f.filename;
+            const destPath = path.join(targetDir, destName);
+            if (f.path !== destPath) {
+                fs.renameSync(f.path, destPath);
+            }
+            const publicPath = `/uploads/tmp/${userId}/${artistDirName}/${releaseDirName}/${destName}`;
+            paths[f.fieldname] = publicPath;
+        }
+
+        res.json({ paths });
+    } catch (err) {
+        console.error('Upload TMP File Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Cleanup TMP folder for current user and given release meta
+router.post('/tmp/cleanup', authenticateToken, async (req, res) => {
+    try {
+        const { title, primaryArtists } = req.body || {};
+        const userId = req.user.id;
+        const primaryArtist = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
+        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(title).substring(0, 80) || 'Untitled_Release';
+        const targetDir = path.join(TMP_DIR, String(userId), artistDirName, releaseDirName);
+        if (fs.existsSync(targetDir)) {
+            try {
+                fs.rmSync(targetDir, { recursive: true, force: true });
+            } catch (e) {
+                console.warn('Failed to cleanup tmp dir:', e.message);
+            }
+        }
+        res.json({ message: 'TMP cleaned' });
+    } catch (err) {
+        console.error('TMP Cleanup Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -131,12 +217,51 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             pathMap[f.fieldname] = publicPath;
         }
 
+        // Helper: resolve absolute path from public tmp path (validates user scope)
+        const resolveTmpAbs = (pubPath) => {
+            if (!pubPath || typeof pubPath !== 'string') return null;
+            const normalized = String(pubPath).replace(/^[\\/]+/, '');
+            let relPath = normalized;
+            if (relPath.startsWith('uploads/')) {
+                relPath = relPath.replace(/^uploads[\\/]/, '');
+            } else if (relPath.startsWith('/uploads/')) {
+                relPath = relPath.replace(/^\/uploads[\\/]/, '');
+            }
+            const segs = relPath.split(/[\\/]/);
+            if (segs[0] !== 'tmp') return null;
+            // expected: tmp/<userId>/<artist>/<title>/<file>
+            if (segs.length < 5) return null;
+            const abs = path.join(__dirname, '../../', relPath);
+            if (!abs.startsWith(TMP_DIR)) return null;
+            return abs;
+        };
+        const runFfmpegConvert = (inPath, outPath, opts = {}) => {
+            return new Promise((resolve, reject) => {
+                const args = ['-y'];
+                if (opts.startSec !== undefined) {
+                    args.push('-ss', String(opts.startSec));
+                }
+                args.push('-i', inPath);
+                if (opts.durationSec !== undefined) {
+                    args.push('-t', String(opts.durationSec));
+                }
+                // 24-bit PCM WAV at 48kHz
+                args.push('-acodec', 'pcm_s24le', '-ar', '48000', outPath);
+                const proc = spawn('ffmpeg', args, { stdio: 'ignore' });
+                proc.on('error', (err) => reject(err));
+                proc.on('exit', (code) => {
+                    if (code === 0) resolve(true);
+                    else reject(new Error(`ffmpeg exited with code ${code}`));
+                });
+            });
+        };
+
         // Attach file paths back into releaseData
         if (pathMap['coverArt']) {
             releaseData.coverArt = pathMap['coverArt'];
         }
         if (releaseData.tracks && Array.isArray(releaseData.tracks)) {
-            releaseData.tracks = releaseData.tracks.map((t, idx) => {
+            releaseData.tracks = await Promise.all(releaseData.tracks.map(async (t, idx) => {
                 const audioField = `track_${idx}_audio`;
                 const clipField = `track_${idx}_clip`;
                 const iplField = `track_${idx}_ipl`;
@@ -150,15 +275,50 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     featuredArtists = featuredArtists && Array.isArray(featuredArtists) ? featuredArtists : arts.filter(a => /feat/i.test(a.role)).map(a => a.name);
                 }
 
+                // Convert & move from TMP if provided
+                let audioPath = pathMap[audioField] || t.audioFile || null;
+                let clipPath = pathMap[clipField] || t.audioClip || null;
+                try {
+                    const baseName = `${artistDirName} - ${releaseDirName}`;
+                    const trackIdx = idx + 1;
+                    if (t.tempAudioPath && typeof t.tempAudioPath === 'string') {
+                        const absTmp = resolveTmpAbs(t.tempAudioPath);
+                        if (absTmp && fs.existsSync(absTmp)) {
+                            const outName = `${baseName}-track${trackIdx}.wav`;
+                            const outAbs = path.join(targetDir, outName);
+                            // Ensure targetDir exists
+                            if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+                            // Convert using ffmpeg
+                            await runFfmpegConvert(absTmp, outAbs, {});
+                            // Delete original tmp file
+                            try { fs.unlinkSync(absTmp); } catch {}
+                            audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                        }
+                    }
+                    if (t.tempClipPath && typeof t.tempClipPath === 'string') {
+                        const absTmp = resolveTmpAbs(t.tempClipPath);
+                        if (absTmp && fs.existsSync(absTmp)) {
+                            const outName = `${baseName}-track${trackIdx}-clip.wav`;
+                            const outAbs = path.join(targetDir, outName);
+                            if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+                            await runFfmpegConvert(absTmp, outAbs, {});
+                            try { fs.unlinkSync(absTmp); } catch {}
+                            clipPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('TMP convert/move failed:', e.message || e);
+                }
+
                 return {
                     ...t,
                     primaryArtists,
                     featuredArtists,
-                    audioFile: pathMap[audioField] || t.audioFile || null,
-                    audioClip: pathMap[clipField] || t.audioClip || null,
+                    audioFile: audioPath,
+                    audioClip: clipPath,
                     iplFile: pathMap[iplField] || t.iplFile || null
                 };
-            });
+            }));
         }
 
         if (isUpdate) {
@@ -328,6 +488,17 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     }
                 }
             }
+        }
+
+        // Cleanup TMP folder for this release
+        try {
+            const userIdStr = String(userId);
+            const tmpTargetDir = path.join(TMP_DIR, userIdStr, artistDirName, releaseDirName);
+            if (fs.existsSync(tmpTargetDir)) {
+                fs.rmSync(tmpTargetDir, { recursive: true, force: true });
+            }
+        } catch (e) {
+            console.warn('Cleanup tmp after finalize failed:', e.message || e);
         }
 
         res.status(isUpdate ? 200 : 201).json({ message: isUpdate ? 'Release updated successfully' : 'Release submitted successfully', id: releaseId });

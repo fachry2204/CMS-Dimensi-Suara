@@ -7,6 +7,7 @@ import { Step2TrackInfo } from './wizard/Step2TrackInfo';
 import { Step3ReleaseDetail } from './wizard/Step3ReleaseDetail';
 import { Step4Review } from './wizard/Step4Review';
 import { ChevronLeft, ChevronRight, AlertTriangle, X } from 'lucide-react';
+import { api } from '../utils/api';
 
 interface Props {
   type: ReleaseType;
@@ -80,6 +81,18 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
 
   const handleConfirmExit = () => {
       setShowExitModal(false);
+      try {
+        const token = localStorage.getItem('cms_token') || '';
+        if (token && data.title && (data.primaryArtists || []).length > 0) {
+          (async () => {
+            try {
+              await api.cleanupTmp(token, { title: data.title, primaryArtists: data.primaryArtists });
+            } catch (e) {
+              console.warn('Failed to cleanup tmp on exit:', (e as any)?.message || e);
+            }
+          })();
+        }
+      } catch {}
       onBack();
   };
 

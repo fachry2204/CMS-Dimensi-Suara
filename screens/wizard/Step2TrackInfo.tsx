@@ -197,11 +197,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             if (trackIndex >= 0) {
                 const fieldName = `track_${trackIndex}_clip`;
                 try {
-                    const resp = await api.uploadReleaseFile(
+                    // Upload original raw clip to TMP for staging
+                    const resp = await api.uploadTmpReleaseFile(
                         token,
                         { title: data.title, primaryArtists: data.primaryArtists },
                         fieldName,
-                        processedFile
+                        trimmerState.rawFile
                     );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
@@ -210,9 +211,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp.url) ||
                       (resp && resp[fieldName]) ||
                       '';
-                    if (candidate) storedClip = candidate;
+                    if (candidate) {
+                        updateTrack(trimmerState.trackId, { tempClipPath: candidate });
+                    }
                 } catch (e) {
-                    console.error('Upload audio clip failed:', e);
+                    console.error('Upload tmp audio clip failed:', e);
                     // Keep local clip and defer upload to final submit
                 }
             }
@@ -320,11 +323,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 if (trackIndex >= 0) {
                     const fieldName = `track_${trackIndex}_audio`;
                     try {
-                        const resp = await api.uploadReleaseFile(
+                        // Store original file to TMP, not release
+                        const resp = await api.uploadTmpReleaseFile(
                             token,
                             { title: data.title, primaryArtists: data.primaryArtists },
                             fieldName,
-                            processedFile
+                            file
                         );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
@@ -333,9 +337,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp.url) ||
                       (resp && resp[fieldName]) ||
                       '';
-                    if (candidate) storedAudio = candidate;
+                    if (candidate) {
+                        // Keep processed file locally for preview; store temp path separately
+                        updateTrack(trackId, { tempAudioPath: candidate });
+                    }
                     } catch (e) {
-                        console.error('Upload audio file failed:', e);
+                        console.error('Upload tmp audio failed:', e);
                         // Keep local file and defer upload to final submit
                     }
                 }

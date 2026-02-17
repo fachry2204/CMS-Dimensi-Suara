@@ -42,6 +42,8 @@ export interface Track {
   audioClip?: File | null;
   videoFile?: File | null;
   iplFile?: File | string | null;
+  tempAudioPath?: string;
+  tempClipPath?: string;
   
   // Metadata
   trackNumber: string;
