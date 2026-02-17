@@ -405,14 +405,9 @@ export const UserManagement: React.FC = () => {
                             <p className="text-sm font-semibold text-slate-800">Status</p>
                             <div className="grid grid-cols-2 gap-2">
                                 <button
-                                    onClick={async () => {
-                                        try {
-                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Pending');
-                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
-                                            setSelectedUser(res.user);
-                                            setStatusDraft(res.user.status);
-                                            setRejectReason('');
-                                        } catch (err: any) { alert(err.message); }
+                                    onClick={() => {
+                                        setStatusDraft('Pending');
+                                        setRejectReason('');
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
                                         statusDraft === 'Pending' ? 'bg-yellow-100 border-yellow-200 text-yellow-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -421,14 +416,9 @@ export const UserManagement: React.FC = () => {
                                     Pending
                                 </button>
                                 <button
-                                    onClick={async () => {
-                                        try {
-                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Review');
-                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
-                                            setSelectedUser(res.user);
-                                            setStatusDraft(res.user.status);
-                                            setRejectReason('');
-                                        } catch (err: any) { alert(err.message); }
+                                    onClick={() => {
+                                        setStatusDraft('Review');
+                                        setRejectReason('');
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
                                         statusDraft === 'Review' ? 'bg-blue-100 border-blue-200 text-blue-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -437,14 +427,9 @@ export const UserManagement: React.FC = () => {
                                     Di Riview
                                 </button>
                                 <button
-                                    onClick={async () => {
-                                        try {
-                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Approved');
-                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
-                                            setSelectedUser(res.user);
-                                            setStatusDraft(res.user.status);
-                                            setRejectReason('');
-                                        } catch (err: any) { alert(err.message); }
+                                    onClick={() => {
+                                        setStatusDraft('Approved');
+                                        setRejectReason('');
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
                                         statusDraft === 'Approved' ? 'bg-green-100 border-green-200 text-green-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -453,18 +438,8 @@ export const UserManagement: React.FC = () => {
                                     Di Approved
                                 </button>
                                 <button
-                                    onClick={async () => {
-                                        try {
-                                            if (!rejectReason || rejectReason.trim().length === 0) {
-                                                setStatusDraft('Rejected');
-                                                return;
-                                            }
-                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Rejected', rejectReason.trim());
-                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
-                                            setSelectedUser(res.user);
-                                            setStatusDraft(res.user.status);
-                                            setRejectReason('');
-                                        } catch (err: any) { alert(err.message); }
+                                    onClick={() => {
+                                        setStatusDraft('Rejected');
                                     }}
                                     className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
                                         statusDraft === 'Rejected' ? 'bg-red-100 border-red-200 text-red-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -493,6 +468,31 @@ export const UserManagement: React.FC = () => {
                             className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors"
                         >
                             Close
+                        </button>
+                        <button
+                            onClick={async () => {
+                                if (!selectedUser) return;
+                                const s = statusDraft || selectedUser.status;
+                                if (s === 'Rejected' && (!rejectReason || !rejectReason.trim())) {
+                                    alert('Alasan penolakan wajib diisi');
+                                    return;
+                                }
+                                try {
+                                    const res = await api.updateUserStatus(
+                                        token,
+                                        selectedUser.id,
+                                        s,
+                                        s === 'Rejected' ? rejectReason.trim() : undefined
+                                    );
+                                    setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
+                                    setSelectedUser(res.user);
+                                    setStatusDraft(res.user.status);
+                                    if (s !== 'Rejected') setRejectReason('');
+                                } catch (err: any) { alert(err.message); }
+                            }}
+                            className={`px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 ${statusDraft === 'Rejected' && !rejectReason?.trim() ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        >
+                            Simpan
                         </button>
                     </div>
                 </div>
