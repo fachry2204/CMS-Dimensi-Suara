@@ -441,16 +441,27 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {data.tracks.map((track) => (
+                        {data.tracks.map((track) => {
+                            const anyTrack: any = track;
+                            const audioSource: string =
+                              typeof track.audioFile === 'string' && track.audioFile.trim().length > 0
+                                ? track.audioFile
+                                : (typeof anyTrack.tempAudioPath === 'string' ? anyTrack.tempAudioPath : '');
+                            const audioDisplay =
+                              audioSource && audioSource.includes('/')
+                                ? audioSource.split('/').slice(-1)[0]
+                                : (audioSource || (track.audioFile instanceof File ? track.audioFile.name : 'No File'));
+                            const hasClip =
+                              !!track.audioClip ||
+                              (typeof anyTrack.tempClipPath === 'string' && anyTrack.tempClipPath.trim().length > 0);
+                            return (
                             <tr key={track.id} className="hover:bg-slate-50/50">
                                 <td className="px-6 py-4 font-bold text-slate-700">{track.trackNumber}</td>
                                 <td className="px-6 py-4">
                                     <div className="font-bold text-slate-800">{track.title}</div>
-                                    <div className="text-xs text-blue-500 flex items-center gap-1 mt-1 truncate max-w-[200px]" title={typeof track.audioFile === 'string' ? track.audioFile : track.audioFile?.name}>
+                                    <div className="text-xs text-blue-500 flex items-center gap-1 mt-1 truncate max-w-[200px]" title={audioSource || (track.audioFile instanceof File ? track.audioFile.name : undefined)}>
                                         <FileAudio size={10} />
-                                        {typeof track.audioFile === 'string'
-                                            ? track.audioFile.split('/').slice(-1)[0]
-                                            : (track.audioFile?.name || "No File")}
+                                        {audioDisplay}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
@@ -473,7 +484,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                                     {track.isrc || "-"}
                                 </td>
                                 <td className="px-6 py-4">
-                                    {track.audioClip ? (
+                                    {hasClip ? (
                                         <span className="text-xs text-green-600 font-medium flex items-center gap-1">
                                             <CheckCircle size={12} /> Trimmed
                                         </span>
@@ -482,7 +493,8 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                                     )}
                                 </td>
                             </tr>
-                        ))}
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

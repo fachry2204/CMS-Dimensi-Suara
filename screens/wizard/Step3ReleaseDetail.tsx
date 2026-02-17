@@ -8,7 +8,7 @@ import allDspLogo from '../../assets/platforms/alldsp.svg';
 
 interface Props {
   data: ReleaseData;
-  updateData: (updates: Partial<ReleaseData>) => void;
+  updateData: (updates: Partial<ReleaseData> | ((prev: ReleaseData) => Partial<ReleaseData>)) => void;
 }
 
 export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData }) => {

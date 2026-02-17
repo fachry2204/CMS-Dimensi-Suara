@@ -7,7 +7,7 @@ import { api } from '../../utils/api';
 
 interface Props {
   data: ReleaseData;
-  updateData: (updates: Partial<ReleaseData>) => void;
+  updateData: (updates: Partial<ReleaseData> | ((prev: ReleaseData) => Partial<ReleaseData>)) => void;
   releaseType: ReleaseType;
 }
 
@@ -235,53 +235,53 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   const addTrack = () => {
     if (releaseType === 'SINGLE' && data.tracks.length >= 1) return;
 
-    let initialArtists: TrackArtist[] = [{ name: "", role: "MainArtist" }];
-    let initialTitle = "";
+    updateData(prev => {
+      let initialArtists: TrackArtist[] = [{ name: "", role: "MainArtist" }];
+      let initialTitle = "";
 
-    if (releaseType === 'SINGLE') {
-      const inheritedArtists: TrackArtist[] = data.primaryArtists
-        .filter(name => name.trim() !== "")
-        .map(name => ({ name, role: "MainArtist" }));
+      if (releaseType === 'SINGLE') {
+        const inheritedArtists: TrackArtist[] = prev.primaryArtists
+          .filter(name => name.trim() !== "")
+          .map(name => ({ name, role: "MainArtist" }));
 
-      if (inheritedArtists.length > 0) {
-        initialArtists = inheritedArtists;
+        if (inheritedArtists.length > 0) {
+          initialArtists = inheritedArtists;
+        }
+        initialTitle = prev.title || "";
       }
-      initialTitle = data.title || "";
-    }
 
-    const newTrack: Track = {
-      id: Date.now().toString(),
-      title: initialTitle,
-      trackNumber: (data.tracks.length + 1).toString(),
-      duration: "",
-      releaseDate: data.plannedReleaseDate || "",
-      isrc: "",
-      genre: "",
-      isInstrumental: "No",
-      explicitLyrics: "No",
-      composer: "",
-      lyricist: "",
-      lyrics: "",
-      artists: initialArtists,
-      contributors: [],
-    };
-    const newTracks = [...data.tracks, newTrack];
-    updateData({ tracks: newTracks });
-    setExpandedTrackId(newTrack.id);
+      const newTrack: Track = {
+        id: Date.now().toString(),
+        title: initialTitle,
+        trackNumber: (prev.tracks.length + 1).toString(),
+        duration: "",
+        releaseDate: prev.plannedReleaseDate || "",
+        isrc: "",
+        genre: "",
+        isInstrumental: "No",
+        explicitLyrics: "No",
+        composer: "",
+        lyricist: "",
+        lyrics: "",
+        artists: initialArtists,
+        contributors: [],
+      };
+      setExpandedTrackId(newTrack.id);
+      return { tracks: [...prev.tracks, newTrack] };
+    });
   };
 
   const removeTrack = (id: string) => {
     if (releaseType === 'SINGLE') return;
     if (confirm('Are you sure you want to remove this track?')) {
-        updateData({ tracks: data.tracks.filter(t => t.id !== id) });
+      updateData(prev => ({ tracks: prev.tracks.filter(t => t.id !== id) }));
     }
   };
 
   const updateTrack = (id: string, updates: Partial<Track>) => {
-    const updatedTracks = data.tracks.map(t => 
-      t.id === id ? { ...t, ...updates } : t
-    );
-    updateData({ tracks: updatedTracks });
+    updateData(prev => ({
+      tracks: prev.tracks.map(t => (t.id === id ? { ...t, ...updates } : t)),
+    }));
   };
 
   const [convertProgress, setConvertProgress] = useState<Record<string, { audio?: number; clip?: number }>>({});

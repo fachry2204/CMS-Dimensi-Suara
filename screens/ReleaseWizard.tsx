@@ -50,8 +50,11 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
     }
   }, [initialData]);
 
-  const updateData = (updates: Partial<ReleaseData>) => {
-    setData(prev => ({ ...prev, ...updates }));
+  const updateData = (updates: Partial<ReleaseData> | ((prev: ReleaseData) => Partial<ReleaseData>)) => {
+    setData(prev => {
+      const patch = typeof updates === 'function' ? updates(prev) : updates;
+      return { ...prev, ...patch };
+    });
   };
 
   const handleNext = () => {

@@ -7,7 +7,7 @@ import { api } from '../../utils/api';
 
 interface Props {
   data: ReleaseData;
-  updateData: (updates: Partial<ReleaseData>) => void;
+  updateData: (updates: Partial<ReleaseData> | ((prev: ReleaseData) => Partial<ReleaseData>)) => void;
   releaseType: ReleaseType;
 }
 
