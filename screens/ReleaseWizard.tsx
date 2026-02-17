@@ -71,9 +71,11 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         const missingIssues: string[] = [];
         (data.tracks || []).forEach((t, idx) => {
             const audioOk = (typeof (t as any).audioFile === 'string' && (t as any).audioFile.trim().length > 0)
+              || ((t as any).audioFile instanceof File)
               || (typeof (t as any).tempAudioPath === 'string' && (t as any).tempAudioPath.trim().length > 0);
             if (!audioOk) missingIssues.push(`Track ${idx + 1}: Full Audio belum diupload ke server.`);
             const clipOk = (typeof (t as any).audioClip === 'string' && (t as any).audioClip.trim().length > 0)
+              || ((t as any).audioClip instanceof File)
               || (typeof (t as any).tempClipPath === 'string' && (t as any).tempClipPath.trim().length > 0);
             if (!clipOk) missingIssues.push(`Track ${idx + 1}: Audio Clip 60s belum diupload ke server.`);
         });

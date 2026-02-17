@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ReleaseData, Track, TrackArtist, TrackContributor, ReleaseType } from '../../types';
-import { Music, Trash2, PlusCircle, Info, ChevronDown, ChevronUp, FileAudio, Video, Mic2, User, UserPlus, Loader2, Scissors, Play, Pause, X, Check, UploadCloud } from 'lucide-react';
+import { Music, Trash2, PlusCircle, Info, ChevronDown, ChevronUp, FileAudio, Mic2, User, UserPlus, Loader2, Scissors, Play, Pause, X, Check, UploadCloud } from 'lucide-react';
 import { ARTIST_ROLES, CONTRIBUTOR_TYPES, EXPLICIT_OPTIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { processFullAudio, cropAndConvertAudio, getAudioDuration } from '../../utils/audioProcessing';
 import { api } from '../../utils/api';
@@ -293,7 +293,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   };
 
   // --- File Handlers ---
-  const handleFileChange = async (trackId: string, field: 'audioFile' | 'videoFile' | 'audioClip' | 'iplFile', file: File | null) => {
+  const handleFileChange = async (trackId: string, field: 'audioFile' | 'audioClip' | 'iplFile', file: File | null) => {
     if (!file) {
         updateTrack(trackId, { [field]: null });
         return;
@@ -304,10 +304,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     // Fallback title if empty
     const trackNameBase = track?.title && track.title.trim() !== "" ? track.title : `Track-${track?.trackNumber}`;
 
-    if (field === 'videoFile') {
-        updateTrack(trackId, { [field]: file });
-        return;
-    }
     if (field === 'iplFile') {
         updateTrack(trackId, { [field]: file });
         return;
@@ -315,6 +311,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
 
     // 1. Handle Full Audio (WAV Force Convert & Rename)
     if (field === 'audioFile') {
+        if (file) {
+            updateTrack(trackId, { audioFile: file });
+        }
         setProcessingState(prev => ({ ...prev, [processKey]: true }));
         updateTrack(trackId, { processingAudio: true });
             try {
@@ -370,6 +369,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     
     // 2. Handle Audio Clip (Open Trimmer)
     else if (field === 'audioClip') {
+        if (file) {
+            updateTrack(trackId, { audioClip: file });
+        }
         try {
             const duration = await getAudioDuration(file);
             // If user uploads a ready 60s clip, accept it directly and upload to TMP
@@ -539,12 +541,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             </span>
                                         )
                                     ) : null}
-                                    
-                                    {track.videoFile && (
-                                        <span className="flex items-center gap-1 text-purple-600 font-medium">
-                                            <Video size={12} /> Video Attached
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -616,20 +612,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                         </div>
                                     </div>
                                     
-                                    {/* MUSIC VIDEO */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
-                                            <span>Music Video (Optional)</span>
-                                            <Info size={14} className="text-slate-400" />
-                                        </label>
-                                        <input 
-                                            type="file" 
-                                            accept="video/*"
-                                            onChange={(e) => handleFileChange(track.id, 'videoFile', e.target.files?.[0] || null)}
-                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer border border-gray-200 rounded-lg bg-white"
-                                        />
-                                    </div>
-
                                     {/* AUDIO CLIP */}
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">

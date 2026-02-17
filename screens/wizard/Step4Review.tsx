@@ -181,6 +181,85 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               setQ(fieldName, 'Done', 100);
             }
           }
+          if ((!t.tempAudioPath || typeof t.tempAudioPath !== 'string' || !t.tempAudioPath.trim()) && t.audioFile instanceof File) {
+            const fieldName = `track_${i}_audio_tmp`;
+            try {
+              setUploadLabel(`Track ${i + 1} Audio`);
+              setFileProgress(0);
+              setQ(fieldName, 'Uploading', 0);
+              const useChunk = (t.audioFile?.size || 0) > (90 * 1024 * 1024);
+              const resp: any = useChunk
+                ? await api.uploadTmpReleaseFileChunked(
+                    token,
+                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                    `track_${i}_audio`,
+                    t.audioFile,
+                    8 * 1024 * 1024
+                  )
+                : await api.uploadTmpReleaseFile(
+                    token,
+                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                    `track_${i}_audio`,
+                    t.audioFile
+                  );
+              const candidate =
+                (resp && resp.paths && resp.paths[`track_${i}_audio`]) ||
+                (resp && resp.paths && resp.paths['file']) ||
+                (resp && resp.path) ||
+                (resp && resp.url) ||
+                '';
+              if (candidate) {
+                prepped.tracks[i].tempAudioPath = candidate;
+                prepped.tracks[i].audioFile = candidate;
+              }
+            } catch {}
+            finally {
+              setUploadDone(prev => prev + 1);
+              setFileProgress(100);
+              setQ(fieldName, 'Done', 100);
+            }
+          }
+          if ((!t.tempClipPath || typeof t.tempClipPath !== 'string' || !t.tempClipPath.trim()) && t.audioClip instanceof File) {
+            const fieldName = `track_${i}_clip_tmp`;
+            try {
+              setUploadLabel(`Track ${i + 1} Clip`);
+              setFileProgress(0);
+              setQ(fieldName, 'Uploading', 0);
+              const useChunk = (t.audioClip?.size || 0) > (90 * 1024 * 1024);
+              const resp: any = useChunk
+                ? await api.uploadTmpReleaseFileChunked(
+                    token,
+                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                    `track_${i}_clip`,
+                    t.audioClip,
+                    8 * 1024 * 1024
+                  )
+                : await api.uploadTmpReleaseFile(
+                    token,
+                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                    `track_${i}_clip`,
+                    t.audioClip
+                  );
+              const candidate =
+                (resp && resp.paths && resp.paths[`track_${i}_clip`]) ||
+                (resp && resp.paths && resp.paths['file']) ||
+                (resp && resp.path) ||
+                (resp && resp.url) ||
+                '';
+              if (candidate) {
+                prepped.tracks[i].tempClipPath = candidate;
+                prepped.tracks[i].audioClip = candidate;
+                if (typeof prepped.tracks[i].previewStart !== 'number') {
+                  prepped.tracks[i].previewStart = 0;
+                }
+              }
+            } catch {}
+            finally {
+              setUploadDone(prev => prev + 1);
+              setFileProgress(100);
+              setQ(fieldName, 'Done', 100);
+            }
+          }
         }
         // Verify: ensure audio/clip exist via tmp path or server URL
         const uploadErrors: string[] = [];
@@ -373,11 +452,6 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                                             ? track.audioFile.split('/').slice(-1)[0]
                                             : (track.audioFile?.name || "No File")}
                                     </div>
-                                    {track.videoFile && (
-                                        <div className="text-xs text-purple-500 flex items-center gap-1 mt-0.5">
-                                            <PlayCircle size={10} /> Video Attached
-                                        </div>
-                                    )}
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="text-slate-600"><span className="text-slate-400 text-xs">C:</span> {track.composer}</div>
