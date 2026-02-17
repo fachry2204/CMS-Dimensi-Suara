@@ -48,6 +48,7 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [docError, setDocError] = useState('');
   const [docPreviews, setDocPreviews] = useState<{ ktp?: string; npwp?: string; nib?: string; kemenkumham?: string }>({});
+  const [previewModal, setPreviewModal] = useState<{ url: string; title: string } | null>(null);
 
   const [cropField, setCropField] = useState<'ktp' | 'npwp' | 'nib' | 'kemenkumham' | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -638,11 +639,11 @@ export const RegisterScreen: React.FC<Props> = () => {
           </span>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="space-y-3">
         <label className="flex-1 px-4 py-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-xs text-slate-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50">
           <input
             type="file"
-            accept="image/*,application/pdf"
+            accept={field === 'kemenkumham' ? 'application/pdf' : 'image/*,application/pdf'}
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] || null;
@@ -652,8 +653,13 @@ export const RegisterScreen: React.FC<Props> = () => {
           {file ? file.name : 'Pilih file'}
         </label>
         {docPreviews[field] && (
-          <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
-            <img src={docPreviews[field]} alt={label} className="w-full h-full object-contain" />
+          <div className="w-28 h-28 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+            <img
+              src={docPreviews[field]}
+              alt={label}
+              className="w-full h-full object-contain cursor-zoom-in"
+              onClick={() => setPreviewModal({ url: docPreviews[field]!, title: label })}
+            />
           </div>
         )}
       </div>
@@ -666,16 +672,16 @@ export const RegisterScreen: React.FC<Props> = () => {
         <button
           type="button"
           onClick={() => handleSelectAccountType('PERSONAL')}
-          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold
-            ${accountType === 'PERSONAL' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+          className={`flex items-center justify-center gap-2 py-3 rounded-xl text-base bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium
+            ${accountType === 'PERSONAL' ? 'bg-green-100 text-green-700 ring-2 ring-green-300' : ''}`}
         >
           Personal
         </button>
         <button
           type="button"
           onClick={() => handleSelectAccountType('COMPANY')}
-          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold
-            ${accountType === 'COMPANY' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+          className={`flex items-center justify-center gap-2 py-3 rounded-xl text-base bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium
+            ${accountType === 'COMPANY' ? 'bg-green-100 text-green-700 ring-2 ring-green-300' : ''}`}
         >
           <Building2 size={16} />
           Perusahaan
@@ -693,26 +699,28 @@ export const RegisterScreen: React.FC<Props> = () => {
           />
         </div>
       )}
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">NIK</label>
-        <input
-          type="text"
-          value={nik}
-          onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, '').slice(0, 16))}
-          maxLength={16}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-          placeholder="Masukkan NIK"
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}</label>
-        <input
-          type="text"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-          placeholder={accountType === 'COMPANY' ? 'Masukkan nama direktur' : 'Masukkan nama lengkap'}
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">NIK</label>
+          <input
+            type="text"
+            value={nik}
+            onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, '').slice(0, 16))}
+            maxLength={16}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            placeholder="Masukkan NIK"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}</label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            placeholder={accountType === 'COMPANY' ? 'Masukkan nama direktur' : 'Masukkan nama lengkap'}
+          />
+        </div>
       </div>
       <div className="space-y-2">
         <label className="text-sm font-semibold text-slate-700">Alamat Lengkap</label>
@@ -723,52 +731,70 @@ export const RegisterScreen: React.FC<Props> = () => {
           placeholder="Masukkan alamat lengkap"
         />
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">Negara</label>
-        <select
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-        >
-          <option value="">Pilih negara</option>
-          {countries.map((c) => (
-            <option key={c.name} value={c.name}>{c.name}</option>
-          ))}
-        </select>
-      </div>
+      {country === 'Indonesia' ? (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Negara</label>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            >
+              <option value="">Pilih negara</option>
+              {countries.map((c) => (
+                <option key={c.name} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700">Provinsi</label>
+            {provinces.length > 0 ? (
+              <select
+                value={provinceCode}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setProvinceCode(code);
+                  const selected = provinces.find((p) => p.code === code);
+                  setProvince(selected?.name || '');
+                  setCity('');
+                  setDistrict('');
+                  setSubdistrict('');
+                  setPostalCode('');
+                }}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+              >
+                <option value="">Pilih provinsi</option>
+                {provinces.map((p) => (<option key={p.code} value={p.code}>{p.name}</option>))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={province}
+                onChange={(e) => setProvince(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                placeholder="Provinsi"
+              />
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">Negara</label>
+          <select
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+          >
+            <option value="">Pilih negara</option>
+            {countries.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
       {country === 'Indonesia' ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Provinsi</label>
-              {provinces.length > 0 ? (
-                <select
-                  value={provinceCode}
-                  onChange={(e) => {
-                    const code = e.target.value;
-                    setProvinceCode(code);
-                    const selected = provinces.find((p) => p.code === code);
-                    setProvince(selected?.name || '');
-                    setCity('');
-                    setDistrict('');
-                    setSubdistrict('');
-                    setPostalCode('');
-                  }}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
-                >
-                  <option value="">Pilih provinsi</option>
-                  {provinces.map((p) => (<option key={p.code} value={p.code}>{p.name}</option>))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
-                  placeholder="Provinsi"
-                />
-              )}
-            </div>
+          <div className="grid grid-cols-1 gap-3">
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700">Kota / Kabupaten</label>
               {regencies.length > 0 ? (
@@ -799,7 +825,7 @@ export const RegisterScreen: React.FC<Props> = () => {
               )}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[2fr_2fr_1fr] gap-3">
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700">Kecamatan</label>
               {districts.length > 0 ? (
@@ -875,16 +901,16 @@ export const RegisterScreen: React.FC<Props> = () => {
                 />
               )}
             </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700">Kodepos</label>
-            <input
-              type="text"
-              value={postalCode}
-              onChange={(e) => setPostalCode(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
-              placeholder={isPostalLoading ? 'Mencari kodepos...' : 'Kodepos'}
-            />
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-700">Kodepos</label>
+              <input
+                type="text"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs max-w-[160px]"
+                placeholder={isPostalLoading ? 'Mencari kodepos...' : 'Kodepos'}
+              />
+            </div>
           </div>
         </div>
       ) : country ? (
@@ -904,29 +930,31 @@ export const RegisterScreen: React.FC<Props> = () => {
 
   const renderStep2 = () => (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">Email</label>
-        <input
-          type="email"
-          value={regEmail}
-          onChange={(e) => setRegEmail(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-          placeholder="Masukkan email"
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">No Handphone</label>
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 min-w-[80px] text-center">
-            {selectedCountryDialCode || '+..'}
-          </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">Email</label>
           <input
-            type="tel"
-            value={regPhoneLocal}
-            onChange={(e) => setRegPhoneLocal(e.target.value.replace(/[^0-9]/g, ''))}
+            type="email"
+            value={regEmail}
+            onChange={(e) => setRegEmail(e.target.value)}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-            placeholder="Nomor tanpa angka 0 di depan"
+            placeholder="Masukkan email"
           />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">No Handphone</label>
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 min-w-[80px] text-center">
+              {selectedCountryDialCode || '+..'}
+            </div>
+            <input
+              type="tel"
+              value={regPhoneLocal}
+              onChange={(e) => setRegPhoneLocal(e.target.value.replace(/[^0-9]/g, ''))}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+              placeholder="Nomor tanpa angka 0 di depan"
+            />
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -973,25 +1001,27 @@ export const RegisterScreen: React.FC<Props> = () => {
           />
         </div>
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">Nama PIC</label>
-        <input
-          type="text"
-          value={picName}
-          onChange={(e) => setPicName(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-          placeholder="Nama PIC"
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">Posisi PIC</label>
-        <input
-          type="text"
-          value={picPosition}
-          onChange={(e) => setPicPosition(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
-          placeholder="Posisi PIC"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">Nama PIC</label>
+          <input
+            type="text"
+            value={picName}
+            onChange={(e) => setPicName(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            placeholder="Nama PIC"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">Posisi PIC</label>
+          <input
+            type="text"
+            value={picPosition}
+            onChange={(e) => setPicPosition(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            placeholder="Posisi PIC"
+          />
+        </div>
       </div>
       <div className="space-y-2">
         <label className="text-sm font-semibold text-slate-700">No Handphone PIC</label>
@@ -1054,24 +1084,24 @@ export const RegisterScreen: React.FC<Props> = () => {
           <>
             <div className="flex items-center gap-2">
               <p className="flex-1">NIB:</p>
-              {docPreviews.nib && <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.nib} alt="NIB" className="w-full h-full object-contain" /></div>}
+              {docPreviews.nib && <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.nib} alt="NIB" className="w-full h-full object-contain cursor-zoom-in" onClick={() => setPreviewModal({ url: docPreviews.nib!, title: 'NIB' })} /></div>}
               {!docPreviews.nib && <span>{nibFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
             </div>
             <div className="flex items-center gap-2">
               <p className="flex-1">Dokumen Kemenkumham:</p>
-              {docPreviews.kemenkumham && <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.kemenkumham} alt="Dokumen Kemenkumham" className="w-full h-full object-contain" /></div>}
+              {docPreviews.kemenkumham && <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.kemenkumham} alt="Dokumen Kemenkumham" className="w-full h-full object-contain cursor-zoom-in" onClick={() => setPreviewModal({ url: docPreviews.kemenkumham!, title: 'Dokumen Kemenkumham' })} /></div>}
               {!docPreviews.kemenkumham && <span>{kemenkumhamFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
             </div>
           </>
         )}
         <div className="flex items-center gap-2">
           <p className="flex-1">{accountType === 'COMPANY' ? 'KTP Direktur:' : 'KTP:'}</p>
-          {docPreviews.ktp && <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.ktp} alt="KTP" className="w-full h-full object-contain" /></div>}
+          {docPreviews.ktp && <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.ktp} alt="KTP" className="w-full h-full object-contain cursor-zoom-in" onClick={() => setPreviewModal({ url: docPreviews.ktp!, title: 'KTP' })} /></div>}
           {!docPreviews.ktp && <span>{ktpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
         </div>
         <div className="flex items-center gap-2">
           <p className="flex-1">NPWP:</p>
-          {docPreviews.npwp && <div className="w-12 h-12 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.npwp} alt="NPWP" className="w-full h-full object-contain" /></div>}
+          {docPreviews.npwp && <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.npwp} alt="NPWP" className="w-full h-full object-contain cursor-zoom-in" onClick={() => setPreviewModal({ url: docPreviews.npwp!, title: 'NPWP' })} /></div>}
           {!docPreviews.npwp && <span>{npwpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
         </div>
       </div>
@@ -1308,6 +1338,19 @@ export const RegisterScreen: React.FC<Props> = () => {
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={cancelCrop} className="px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-700">Batal</button>
               <button type="button" onClick={applyCrop} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">Simpan Crop</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {previewModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-slate-800">{previewModal.title}</p>
+              <button type="button" onClick={() => setPreviewModal(null)} className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-700">Tutup</button>
+            </div>
+            <div className="w-full max-h-[70vh] overflow-auto">
+              <img src={previewModal.url} alt={previewModal.title} className="w-full h-auto object-contain" />
             </div>
           </div>
         </div>
