@@ -73,19 +73,35 @@ const App: React.FC = () => {
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   
   const belongsToCurrentUser = (r: any) => {
-    const uid = (currentUserData as any)?.id;
-    const uname = currentUser || (currentUserData as any)?.username;
-    const email = (currentUserData as any)?.email;
     if (!r) return false;
-    return (
+    const uid = (currentUserData as any)?.id;
+    const uname = String((currentUserData as any)?.username || currentUser || '').toLowerCase();
+    const email = String((currentUserData as any)?.email || '').toLowerCase();
+    const company = String((currentUserData as any)?.company_name || '').toLowerCase();
+    const full = String((currentUserData as any)?.full_name || '').toLowerCase();
+    
+    const idMatches =
       (r.user_id && uid && String(r.user_id) === String(uid)) ||
       (r.ownerId && uid && String(r.ownerId) === String(uid)) ||
-      (r.uploader && (r.uploader === uname || r.uploader === email)) ||
-      (Array.isArray(r.primaryArtists) && (r.primaryArtists as any[]).some((a: string) => {
-        const full = (currentUserData as any)?.full_name || '';
-        return typeof a === 'string' && (full ? a.includes(full) : false);
-      }))
-    );
+      (r.userId && uid && String(r.userId) === String(uid));
+    
+    const nameCandidates = [
+      String((r as any).ownerDisplayName || '').toLowerCase(),
+      String((r as any).ownerName || '').toLowerCase(),
+      String((r as any).uploaderName || '').toLowerCase(),
+      String((r as any).uploader || '').toLowerCase(),
+      String((r as any).user_name || '').toLowerCase(),
+    ];
+    const nameMatches = nameCandidates.some(n => n && (n === company || n === full || n === uname || n === email));
+    
+    const artistMatches =
+      Array.isArray(r.primaryArtists) &&
+      (r.primaryArtists as any[]).some((a: string) => {
+        const al = String(a || '').toLowerCase();
+        return (full && al === full) || (company && al.includes(company));
+      });
+    
+    return idMatches || nameMatches || artistMatches;
   };
   const myReleases = allReleases.filter(r => belongsToCurrentUser(r));
   const resolveOwnerName = (r: any) => {
@@ -93,18 +109,18 @@ const App: React.FC = () => {
     let u: any = null;
     if (byId && usersMap[String(byId)]) {
       u = usersMap[String(byId)];
-    } else {
-      const cand = (r.user_name || r.uploaderName || r.uploader || '').toLowerCase();
-      if (cand) {
-        u = allUsers.find(x => (x.username || '').toLowerCase() === cand || (x.full_name || '').toLowerCase() === cand);
-      }
     }
     if (!u && belongsToCurrentUser(r)) {
       u = currentUserData;
     }
-    if (!u) return r.ownerName || r.uploaderName || r.uploader || r.user_name || '';
-    if ((u.account_type || '').toUpperCase() === 'COMPANY' && u.company_name) return u.company_name;
-    return u.full_name || u.name || u.username || u.email || '';
+    if (u) {
+      if ((u.account_type || '').toUpperCase() === 'COMPANY' && u.company_name) return u.company_name;
+      return u.full_name || '';
+    }
+    // Fallback only to release-provided fields for display
+    if (typeof r.company_name === 'string' && r.company_name.trim().length > 0) return r.company_name.trim();
+    if (typeof r.user_full_name === 'string' && r.user_full_name.trim().length > 0) return r.user_full_name.trim();
+    return '';
   };
   
   // Initialize Data
@@ -127,7 +143,7 @@ const App: React.FC = () => {
         };
 
         const p1 = api.getReleases(token)
-            .then(data => setAllReleases(data.map((r: any) => ({ ...r, id: String(r.id) }))))
+            .then(data => setAllReleases(data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }))))
             .catch((err: any) => {
                 if (err?.message === 'AUTH') return handleAuthExpired();
                 console.error('Failed to fetch releases:', err);

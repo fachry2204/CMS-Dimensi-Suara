@@ -36,6 +36,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
   const [currentStep, setCurrentStep] = useState<number>(Step.INFO);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showTrackWarning, setShowTrackWarning] = useState(false);
+  const [showArtistWarning, setShowArtistWarning] = useState(false);
   
   const [data, setData] = useState<ReleaseData>(() => initialData ? initialData : INITIAL_DATA);
 
@@ -51,6 +52,13 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
   };
 
   const handleNext = () => {
+    if (currentStep === Step.INFO) {
+        const artists = (data.primaryArtists || []).map(a => (a || '').trim()).filter(a => a.length > 0);
+        if (artists.length === 0) {
+            setShowArtistWarning(true);
+            return;
+        }
+    }
     if (currentStep === Step.TRACKS && type === 'ALBUM') {
         if (data.tracks.length < 2) {
             setShowTrackWarning(true);
@@ -210,6 +218,41 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                     <div className="flex justify-end">
                         <button
                             onClick={() => setShowTrackWarning(false)}
+                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                        >
+                            Mengerti
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+      {showArtistWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-red-50 p-6 border-b border-red-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="text-red-600" size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-bold text-red-800">Peringatan</h3>
+                        <p className="text-sm text-red-700">Primary Artist(s) wajib diisi</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowArtistWarning(false)}
+                        className="text-red-300 hover:text-red-500 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+                
+                <div className="p-6">
+                    <p className="text-slate-600 mb-4 font-medium">
+                        Isi setidaknya satu nama artis di kolom Primary Artist(s) sebelum lanjut ke Step 2.
+                    </p>
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowArtistWarning(false)}
                             className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
                         >
                             Mengerti

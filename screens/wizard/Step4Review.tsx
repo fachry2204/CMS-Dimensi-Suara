@@ -125,8 +125,14 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 fieldName,
                 t.audioFile
               );
-              if (resp && resp.paths && resp.paths[fieldName]) {
-                prepped.tracks[i].audioFile = resp.paths[fieldName];
+              const candidate =
+                (resp && resp.paths && resp.paths[fieldName]) ||
+                (resp && resp.path) ||
+                (resp && resp.url) ||
+                (resp && resp[fieldName]) ||
+                '';
+              if (candidate) {
+                prepped.tracks[i].audioFile = candidate;
               }
             } catch {}
             finally {
@@ -143,8 +149,14 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 fieldName,
                 t.audioClip
               );
-              if (resp && resp.paths && resp.paths[fieldName]) {
-                prepped.tracks[i].audioClip = resp.paths[fieldName];
+              const candidate =
+                (resp && resp.paths && resp.paths[fieldName]) ||
+                (resp && resp.path) ||
+                (resp && resp.url) ||
+                (resp && resp[fieldName]) ||
+                '';
+              if (candidate) {
+                prepped.tracks[i].audioClip = candidate;
               }
             } catch {}
             finally {
@@ -161,8 +173,14 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 fieldName,
                 t.iplFile
               );
-              if (resp && resp.paths && resp.paths[fieldName]) {
-                prepped.tracks[i].iplFile = resp.paths[fieldName];
+              const candidate =
+                (resp && resp.paths && resp.paths[fieldName]) ||
+                (resp && resp.path) ||
+                (resp && resp.url) ||
+                (resp && resp[fieldName]) ||
+                '';
+              if (candidate) {
+                prepped.tracks[i].iplFile = candidate;
               }
             } catch {}
             finally {
@@ -174,12 +192,13 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         if (prepped.coverArt instanceof File) {
           prepped.coverArt = null;
         }
-        prepped.tracks = prepped.tracks.map((t: any) => ({
-          ...t,
-          audioFile: t.audioFile instanceof File ? "" : t.audioFile,
-          audioClip: t.audioClip instanceof File ? "" : t.audioClip,
-          iplFile: t.iplFile instanceof File ? "" : t.iplFile
-        }));
+        prepped.tracks = prepped.tracks.map((t: any) => {
+          const norm = { ...t };
+          if (norm.audioFile instanceof File) norm.audioFile = '';
+          if (norm.audioClip instanceof File) norm.audioClip = '';
+          if (norm.iplFile instanceof File) norm.iplFile = '';
+          return norm;
+        });
         const result = await api.createRelease(token, prepped);
 
         const normalizedId = String(result.id ?? data.id ?? Date.now());

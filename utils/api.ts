@@ -170,8 +170,11 @@ export const api = {
         const formData = new FormData();
         formData.append('data', JSON.stringify({
             title: releaseMeta.title,
-            primaryArtists: releaseMeta.primaryArtists || []
+            primaryArtists: releaseMeta.primaryArtists || [],
+            field: fieldName
         }));
+        // Send under both a generic 'file' key and the specific fieldName for broader backend compatibility
+        formData.append('file', file);
         formData.append(fieldName, file);
 
         const res = await fetch(`${API_BASE_URL}/releases/upload`, {

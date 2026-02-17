@@ -319,7 +319,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             // Date priority: Planned > Original > Submission
                             const displayDateRaw = release.plannedReleaseDate || release.originalReleaseDate || release.submissionDate || "N/A";
                             const status = release.status || "Pending";
-                            const ownerName = (release as any).ownerDisplayName || (release as any).ownerName || (release as any).uploaderName || (release as any).uploader || (release as any).user_name || "";
+                            const ownerName = (release as any).ownerDisplayName || "";
 
                             // Determine color based on status
                             let statusClass = "bg-gray-100 text-gray-600 border-gray-200";
