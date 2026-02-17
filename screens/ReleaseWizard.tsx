@@ -70,27 +70,18 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         }
         const missingIssues: string[] = [];
         (data.tracks || []).forEach((t, idx) => {
-            const audioOk = (typeof (t as any).audioFile === 'string' && (t as any).audioFile.trim().length > 0)
-              || ((t as any).audioFile instanceof File)
-              || (typeof (t as any).tempAudioPath === 'string' && (t as any).tempAudioPath.trim().length > 0);
-            
-            // Check if audioFile is File but processing not done?
-            // Actually Step2TrackInfo sets audioFile to File immediately.
-            // But let's debug: if user says "Full Audio belum diupload", maybe audioOk is false.
-            // Check if t.audioFile is undefined/null?
-            // Also handle if user has uploaded but it's in tempAudioPath only.
-
+            const hasAudioFile = (t as any).audioFile != null;
+            const hasTempAudio = typeof (t as any).tempAudioPath === 'string' && (t as any).tempAudioPath.trim().length > 0;
+            const audioOk = hasAudioFile || hasTempAudio;
             if (!audioOk) {
-                 // Double check if we have a file object in a different property or if the state update lagged?
-                 // For now, trust the check.
-                 missingIssues.push(`Track ${idx + 1}: Full Audio belum diupload ke server.`);
+                missingIssues.push(`Track ${idx + 1}: Full Audio belum diupload ke server.`);
             }
-
-            const clipOk = (typeof (t as any).audioClip === 'string' && (t as any).audioClip.trim().length > 0)
-              || ((t as any).audioClip instanceof File)
-              || (typeof (t as any).tempClipPath === 'string' && (t as any).tempClipPath.trim().length > 0);
-            
-            if (!clipOk) missingIssues.push(`Track ${idx + 1}: Audio Clip 60s belum diupload ke server.`);
+            const hasClipFile = (t as any).audioClip != null;
+            const hasTempClip = typeof (t as any).tempClipPath === 'string' && (t as any).tempClipPath.trim().length > 0;
+            const clipOk = hasClipFile || hasTempClip;
+            if (!clipOk) {
+                missingIssues.push(`Track ${idx + 1}: Audio Clip 60s belum diupload ke server.`);
+            }
         });
         if (missingIssues.length > 0) {
             setShowAudioMissingWarning(missingIssues);
