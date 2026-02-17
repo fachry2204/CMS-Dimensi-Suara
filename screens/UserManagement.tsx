@@ -22,6 +22,8 @@ export const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [token] = useState(localStorage.getItem('cms_token') || '');
+  const [showUserViewModal, setShowUserViewModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
   // Add User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -228,9 +230,14 @@ export const UserManagement: React.FC = () => {
                                     </td>
                                     <td className="py-3 px-4">
                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                            user.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                            user.status === 'Review' ? 'bg-blue-100 text-blue-700' :
+                                            user.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                            user.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                            user.status === 'Active' ? 'bg-green-100 text-green-700' :
+                                            user.status === 'Inactive' ? 'bg-gray-100 text-gray-700' : 'bg-slate-100 text-slate-700'
                                         }`}>
-                                            {user.status === 'Active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                                            {user.status === 'Rejected' ? <XCircle size={12} /> : <CheckCircle size={12} />}
                                             {user.status}
                                         </span>
                                     </td>
@@ -239,6 +246,13 @@ export const UserManagement: React.FC = () => {
                                     </td>
                                     <td className="py-3 px-4 text-right">
                                         <div className="flex justify-end items-center gap-2">
+                                            <button
+                                                onClick={() => { setSelectedUser(user); setShowUserViewModal(true); }}
+                                                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
+                                                title="View User"
+                                            >
+                                                View
+                                            </button>
                                             <button 
                                                 onClick={() => handleDeleteUser(user.id)}
                                                 className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors"
@@ -350,6 +364,97 @@ export const UserManagement: React.FC = () => {
                             className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
                         >
                             Create User
+                        </button>
+                    </div>
+                </div>
+            </div>
+       )}
+
+       {/* View User Modal */}
+       {showUserViewModal && selectedUser && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                        <h3 className="text-lg font-bold text-slate-800">User Detail</h3>
+                        <button onClick={() => setShowUserViewModal(false)} className="text-slate-400 hover:text-slate-600">
+                            <XCircle size={24} />
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="space-y-1">
+                            <div className="font-medium text-slate-800">{selectedUser.name}</div>
+                            <div className="text-xs text-slate-500">{selectedUser.email}</div>
+                            <div className="text-xs text-slate-500">Role: {selectedUser.role}</div>
+                            <div className="text-xs text-slate-500">Joined: {selectedUser.joinedDate}</div>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-slate-800">Status</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Pending');
+                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
+                                            setSelectedUser(res.user);
+                                        } catch (err: any) { alert(err.message); }
+                                    }}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
+                                        selectedUser.status === 'Pending' ? 'bg-yellow-100 border-yellow-200 text-yellow-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    Pending
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Review');
+                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
+                                            setSelectedUser(res.user);
+                                        } catch (err: any) { alert(err.message); }
+                                    }}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
+                                        selectedUser.status === 'Review' ? 'bg-blue-100 border-blue-200 text-blue-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    Di Riview
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Approved');
+                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
+                                            setSelectedUser(res.user);
+                                        } catch (err: any) { alert(err.message); }
+                                    }}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
+                                        selectedUser.status === 'Approved' ? 'bg-green-100 border-green-200 text-green-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    Di Approved
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await api.updateUserStatus(token, selectedUser.id, 'Rejected');
+                                            setUsers(prev => prev.map(u => u.id === selectedUser.id ? res.user : u));
+                                            setSelectedUser(res.user);
+                                        } catch (err: any) { alert(err.message); }
+                                    }}
+                                    className={`px-3 py-2 rounded-xl text-xs font-semibold border ${
+                                        selectedUser.status === 'Rejected' ? 'bg-red-100 border-red-200 text-red-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    Di Tolak
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-slate-50">
+                        <button 
+                            onClick={() => setShowUserViewModal(false)}
+                            className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors"
+                        >
+                            Close
                         </button>
                     </div>
                 </div>

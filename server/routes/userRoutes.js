@@ -204,4 +204,32 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// UPDATE USER STATUS (Admin/Operator)
+router.put('/:id/status', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role === 'User') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const userId = req.params.id;
+        const { status } = req.body || {};
+        const allowed = ['Pending', 'Review', 'Approved', 'Rejected', 'Active', 'Inactive'];
+        if (!allowed.includes(String(status))) {
+            return res.status(400).json({ error: 'Invalid status value' });
+        }
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        if (!colNames.includes('status')) {
+            return res.status(400).json({ error: 'Status column not available' });
+        }
+        await db.query('UPDATE users SET status = ? WHERE id = ?', [status, userId]);
+        const [rows] = await db.query('SELECT id, username as name, email, role, status, DATE_FORMAT(created_at, "%Y-%m-%d") as joinedDate FROM users WHERE id = ?', [userId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ message: 'Status updated', user: rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;

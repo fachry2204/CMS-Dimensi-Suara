@@ -363,5 +363,22 @@ export const api = {
              throw new Error(err.error || 'Failed to delete user');
         }
         return res.json();
+    },
+    
+    updateUserStatus: async (token, userId, status) => {
+        const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ status }),
+            credentials: 'include'
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({} as any));
+            throw new Error((err as any).error || 'Failed to update status');
+        }
+        return res.json();
     }
 };
