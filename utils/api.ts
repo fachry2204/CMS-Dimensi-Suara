@@ -203,7 +203,7 @@ export const api = {
         });
         return parseResponse(res);
     },
-    uploadTmpReleaseFileChunked: async (token, releaseMeta, fieldName, file: File, chunkSize = 8 * 1024 * 1024) => {
+    uploadTmpReleaseFileChunked: async (token, releaseMeta, fieldName, file: File, chunkSize = 10 * 1024 * 1024, onProgress?: (p: number) => void) => {
         const total = Math.ceil(file.size / chunkSize);
         const fileId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         for (let i = 0; i < total; i++) {
@@ -228,6 +228,10 @@ export const api = {
                 credentials: 'include'
             });
             const json = await parseResponse(res);
+            if (typeof onProgress === 'function') {
+                const percent = Math.round(((i + 1) / total) * 100);
+                onProgress(percent);
+            }
             if (json && json.done) {
                 return json;
             }

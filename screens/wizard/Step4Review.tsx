@@ -194,7 +194,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                     { title: prepped.title, primaryArtists: prepped.primaryArtists },
                     `track_${i}_audio`,
                     t.audioFile,
-                    8 * 1024 * 1024
+                    10 * 1024 * 1024,
+                    (p: number) => {
+                      setFileProgress(p);
+                      setQ(fieldName, 'Uploading', p);
+                    }
                   )
                 : await api.uploadTmpReleaseFile(
                     token,
@@ -232,7 +236,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                     { title: prepped.title, primaryArtists: prepped.primaryArtists },
                     `track_${i}_clip`,
                     t.audioClip,
-                    8 * 1024 * 1024
+                    10 * 1024 * 1024,
+                    (p: number) => {
+                      setFileProgress(p);
+                      setQ(fieldName, 'Uploading', p);
+                    }
                   )
                 : await api.uploadTmpReleaseFile(
                     token,
@@ -519,9 +527,9 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               <div className="text-sm font-semibold text-slate-700">Uploading Files</div>
               <div className="text-xs text-slate-500">{uploadDone}/{uploadTotal}</div>
             </div>
-            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500"
+            className="h-full rounded-full transition-all bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500"
                 style={{ width: `${Math.round((uploadDone / uploadTotal) * 100)}%` }}
               ></div>
             </div>
@@ -529,9 +537,9 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               <div className="mt-2 text-[12px] text-slate-500">Current: {uploadLabel}</div>
             )}
             <div className="mt-2">
-              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all bg-gradient-to-r from-orange-500 to-yellow-400"
+              className="h-full rounded-full transition-all bg-gradient-to-r from-orange-500 to-yellow-400"
                   style={{ width: `${Math.max(0, Math.min(100, Math.round(fileProgress)))}%` }}
                 ></div>
               </div>

@@ -331,7 +331,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                               { title: data.title, primaryArtists: data.primaryArtists },
                               fieldName,
                               file,
-                              1 * 1024 * 1024 // 1MB chunks to be safe
+                              10 * 1024 * 1024,
+                              (p: number) => setAudioProgress(trackId, p)
                             )
                           : await api.uploadTmpReleaseFile(
                               token,
@@ -393,7 +394,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                   { title: data.title, primaryArtists: data.primaryArtists },
                                   fieldName,
                                   file,
-                                  1 * 1024 * 1024 // 1MB chunks
+                                  10 * 1024 * 1024,
+                                  (p: number) => setClipProgress(trackId, p)
                                 )
                               : await api.uploadTmpReleaseFile(
                                   token,
@@ -578,9 +580,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                               <span className="text-xs text-blue-500 flex items-center gap-2">
                                                 <Loader2 size={12} className="animate-spin"/>
                                                 <span>Converting...</span>
-                                                <span className="inline-flex items-center w-24 h-1 bg-blue-100 rounded overflow-hidden">
+                                                <span className="inline-flex items-center w-32 h-2 bg-blue-100 rounded-full overflow-hidden">
                                                   <span
-                                                    className="h-1 bg-blue-500"
+                                                    className="h-2 bg-blue-500"
                                                     style={{ width: `${Math.min(100, Math.max(0, (convertProgress[track.id]?.audio || 0)))}%` }}
                                                   />
                                                 </span>
@@ -622,9 +624,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                               <span className="text-xs text-orange-500 flex items-center gap-2">
                                                 <Loader2 size={12} className="animate-spin"/>
                                                 <span>Processing...</span>
-                                                <span className="inline-flex items-center w-24 h-1 bg-orange-100 rounded overflow-hidden">
+                                                <span className="inline-flex items-center w-32 h-2 bg-orange-100 rounded-full overflow-hidden">
                                                   <span
-                                                    className="h-1 bg-orange-500"
+                                                    className="h-2 bg-orange-500"
                                                     style={{ width: `${Math.min(100, Math.max(0, (convertProgress[track.id]?.clip || 0)))}%` }}
                                                   />
                                                 </span>
