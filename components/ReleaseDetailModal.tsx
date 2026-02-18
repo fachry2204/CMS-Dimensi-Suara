@@ -214,6 +214,20 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
       alert("Copied to clipboard!");
   };
 
+  // Ensure only one audio element plays at a time and avoid play() race conditions
+  useEffect(() => {
+    if (!playingKey) return;
+    const audioEl = document.getElementById(`audio-${playingKey}`) as HTMLAudioElement | null;
+    if (!audioEl) return;
+    document.querySelectorAll('audio').forEach(el => {
+      if (el !== audioEl) el.pause();
+    });
+    audioEl.play().catch((err) => {
+      console.warn('Audio play failed', err);
+      setPlayingKey(null);
+    });
+  }, [playingKey]);
+
   const AudioPlayer = ({ track, type = 'full' }: { track: Track, type?: 'full' | 'clip' }) => {
     const key = `${track.id}_${type}`;
     const url = objectUrls[key];
@@ -223,18 +237,13 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
     const isPlaying = playingKey === key;
 
     const togglePlay = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent accordion toggle
-        const audioEl = document.getElementById(`audio-${key}`) as HTMLAudioElement;
-        if (!audioEl) return;
-
+        e.stopPropagation();
         if (isPlaying) {
-            audioEl.pause();
+            const audioEl = document.getElementById(`audio-${key}`) as HTMLAudioElement | null;
+            if (audioEl) audioEl.pause();
             setPlayingKey(null);
         } else {
-            // Stop others
-            document.querySelectorAll('audio').forEach(el => el.pause());
             setPlayingKey(key);
-            audioEl.play();
         }
     };
 
@@ -256,7 +265,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
             >
                 <Download size={14} />
             </button>
-            <audio id={`audio-${key}`} src={url} onEnded={() => setPlayingKey(null)} className="hidden" preload="none" />
+            <audio id={`audio-${key}`} src={url} onEnded={() => setPlayingKey(null)} className="hidden" preload="metadata" />
         </div>
     );
   };
@@ -373,41 +382,41 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
                     <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
                         <div>
-                            <table className="w-full text-xs text-slate-700">
+                            <table className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg overflow-hidden">
                                 <tbody>
-                                    <tr>
-                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Planned Release Date</td>
-                                        <td className="pl-4 text-slate-700 align-top">{formatDMY(release.plannedReleaseDate)}</td>
+                                    <tr className="border-b border-slate-200">
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Planned Release Date</td>
+                                        <td className="px-3 py-1.5 text-slate-700 align-top">{formatDMY(release.plannedReleaseDate)}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-200">
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Version</td>
+                                        <td className="px-3 py-1.5 text-slate-700 align-top">{release.version || '-'}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-200">
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Genre</td>
+                                        <td className="px-3 py-1.5 text-slate-700 align-top">{release.genre || release.tracks[0]?.genre || '-'}</td>
                                     </tr>
                                     <tr>
-                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Version</td>
-                                        <td className="pl-4 text-slate-700 align-top">{release.version || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Genre</td>
-                                        <td className="pl-4 text-slate-700 align-top">{release.genre || release.tracks[0]?.genre || '-'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Subgenre</td>
-                                        <td className="pl-4 text-slate-700 align-top">{release.subGenre || release.tracks[0]?.subGenre || '-'}</td>
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Subgenre</td>
+                                        <td className="px-3 py-1.5 text-slate-700 align-top">{release.subGenre || release.tracks[0]?.subGenre || '-'}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <div>
-                            <table className="w-full text-xs text-slate-700">
+                            <table className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg overflow-hidden">
                                 <tbody>
-                                    <tr>
-                                        <td className="w-36 text-[11px] uppercase text-slate-500 align-top">Title Language</td>
-                                        <td className="pl-4 text-slate-700 align-top">{release.language || '-'}</td>
+                                    <tr className="border-b border-slate-200">
+                                        <td className="w-36 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Title Language</td>
+                                        <td className="px-3 py-1.5 text-slate-700 align-top">{release.language || '-'}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-200">
+                                        <td className="w-36 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">UPC</td>
+                                        <td className="px-3 py-1.5 text-slate-700 align-top">{upcDisplay || 'Not Assigned'}</td>
                                     </tr>
                                     <tr>
-                                        <td className="w-36 text-[11px] uppercase text-slate-500 align-top">UPC</td>
-                                        <td className="pl-4 text-slate-700 align-top">{upcDisplay || 'Not Assigned'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="w-36 text-[11px] uppercase text-slate-500 align-top">Record Label</td>
-                                        <td className="pl-4 text-slate-700 align-top">{release.label || '-'}</td>
+                                        <td className="w-36 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Record Label</td>
+                                        <td className="px-3 py-1.5 text-slate-700 align-top">{release.label || '-'}</td>
                                     </tr>
                                 </tbody>
                             </table>

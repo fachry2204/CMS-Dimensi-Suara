@@ -128,7 +128,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
 
   const ThSortable = ({ label, sortKey, align = 'left' }: { label: string, sortKey: SortKey, align?: 'left'|'right' }) => (
       <th 
-        className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group text-${align}`}
+        className={`px-6 py-4 text-[13px] text-slate-500 tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group text-${align}`}
         onClick={() => handleSort(sortKey)}
       >
         <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
@@ -305,10 +305,10 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             <ThSortable label="Release" sortKey="title" />
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
-                            <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submit Date</th>
+                            <th className="px-6 py-3 text-[13px] text-slate-500 tracking-wider">Submit Date</th>
                             <ThSortable label="Aggregator" sortKey="aggregator" />
                             <ThSortable label="Status" sortKey="status" />
-                            <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                            <th className="px-6 py-3 text-[13px] text-slate-500 tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
