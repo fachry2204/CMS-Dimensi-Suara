@@ -575,11 +575,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                     {/* FULL AUDIO */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
-                                            <span>Full Audio (WAV) <span className="text-red-500">*</span></span>
+                                            <span>Full Audio (WAV 24-bit / 48kHz) <span className="text-red-500">*</span></span>
                                             {isProcessingAudio && (
                                               <span className="text-xs text-blue-500 flex items-center gap-2">
                                                 <Loader2 size={12} className="animate-spin"/>
-                                                <span>Converting...</span>
+                                                <span>Uploading...</span>
                                                 <span className="inline-flex items-center w-32 h-2 bg-blue-100 rounded-full overflow-hidden">
                                                   <span
                                                     className="h-2 bg-blue-500"
@@ -611,7 +611,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                     <AudioPreview file={track.audioFile} />
                                                 </div>
                                             ) : (
-                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">Auto-converts to WAV 24-bit 48kHz & Renames</p>
+                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">
+                                                    Pastikan file sudah di-export dari DAW sebagai WAV 24-bit / 48kHz sebelum upload.
+                                                </p>
                                             )}
                                         </div>
                                     </div>
@@ -619,7 +621,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                     {/* AUDIO CLIP */}
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
-                                            <span>Audio Clip (60s) <span className="text-red-500">*</span></span>
+                                            <span>Audio Clip (60s, 24-bit / 48kHz) <span className="text-red-500">*</span></span>
                                             {isProcessingClip && (
                                               <span className="text-xs text-orange-500 flex items-center gap-2">
                                                 <Loader2 size={12} className="animate-spin"/>
@@ -724,7 +726,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                         className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                                                     >
                                                         <Check size={14} />
-                                                        Crop & Convert
+                                                        Crop 60s Clip
                                                     </button>
                                                 </div>
                                             </div>

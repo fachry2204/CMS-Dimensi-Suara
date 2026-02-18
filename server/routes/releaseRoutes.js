@@ -388,6 +388,37 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
 
             return null;
         };
+        const checkAudioFormat24_48 = (inPath) => {
+            return new Promise((resolve) => {
+                const args = [
+                    '-v', 'error',
+                    '-select_streams', 'a:0',
+                    '-show_entries', 'stream=sample_rate,bits_per_raw_sample',
+                    '-of', 'default=noprint_wrappers=1:nokey=1',
+                    inPath
+                ];
+                const proc = spawn('ffprobe', args);
+                let out = '';
+                let errOut = '';
+                proc.stdout.on('data', (d) => { out += d.toString(); });
+                proc.stderr.on('data', (d) => { errOut += d.toString(); });
+                proc.on('error', (e) => {
+                    console.warn('ffprobe spawn error:', e.message || e);
+                    resolve({ ok: false, reason: 'ffprobe_error', sampleRate: null, bitDepth: null });
+                });
+                proc.on('exit', (code) => {
+                    if (code !== 0) {
+                        console.warn('ffprobe exited with code', code, errOut);
+                        return resolve({ ok: false, reason: 'ffprobe_exit', sampleRate: null, bitDepth: null });
+                    }
+                    const parts = out.trim().split(/\s+/).filter(Boolean);
+                    const sampleRate = parts[0] ? parseInt(parts[0], 10) : null;
+                    const bitDepth = parts[1] ? parseInt(parts[1], 10) : null;
+                    const ok = sampleRate === 48000 && bitDepth === 24;
+                    resolve({ ok, sampleRate, bitDepth });
+                });
+            });
+        };
         const runFfmpegConvert = (inPath, outPath, opts = {}) => {
             return new Promise((resolve, reject) => {
                 const args = ['-y'];
@@ -408,6 +439,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                 });
             });
         };
+
+        const audioFormatErrors = [];
 
         // Attach file paths back into releaseData
         if (pathMap['coverArt']) {
@@ -443,28 +476,23 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     if (tmpAudioSource) {
                         const absTmp = resolveTmpAbs(tmpAudioSource);
                         if (absTmp && fs.existsSync(absTmp)) {
-                            const outName = `${baseName}-track${trackIdx}.wav`;
-                            const outAbs = path.join(targetDir, outName);
-                            // Ensure targetDir exists
-                            if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-                            let converted = false;
-                            try {
-                                // Convert using ffmpeg
-                                await runFfmpegConvert(absTmp, outAbs, {});
-                                converted = true;
-                            } catch (convErr) {
-                                console.warn('Audio ffmpeg convert failed, fallback to copy:', convErr.message || convErr);
+                            const fmt = await checkAudioFormat24_48(absTmp);
+                            if (!fmt.ok) {
+                                audioFormatErrors.push(
+                                    `Track ${trackIdx}: format harus 24-bit 48kHz (sampleRate=${fmt.sampleRate || 'unknown'}, bitDepth=${fmt.bitDepth || 'unknown'})`
+                                );
+                            } else {
+                                const ext = path.extname(absTmp) || '.wav';
+                                const outName = `${baseName}-track${trackIdx}${ext}`;
+                                const outAbs = path.join(targetDir, outName);
+                                if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
                                 try {
                                     fs.copyFileSync(absTmp, outAbs);
-                                    converted = true;
+                                    try { fs.unlinkSync(absTmp); } catch {}
+                                    audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                                 } catch (copyErr) {
-                                    console.warn('Audio fallback copy failed:', copyErr.message || copyErr);
+                                    console.warn('Audio copy failed:', copyErr.message || copyErr);
                                 }
-                            }
-                            if (converted) {
-                                // Delete original tmp file only if we have a good output
-                                try { fs.unlinkSync(absTmp); } catch {}
-                                audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                             }
                         }
                     }
@@ -507,6 +535,14 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     iplFile: pathMap[iplField] || t.iplFile || null
                 };
             }));
+        }
+
+        if (audioFormatErrors.length > 0) {
+            return res.status(400).json({
+                error: 'Hanya file audio WAV 24-bit 48kHz yang diterima. Mohon convert file di DAW lalu upload ulang.',
+                code: 'INVALID_AUDIO_FORMAT',
+                details: audioFormatErrors
+            });
         }
 
         if (isUpdate) {
