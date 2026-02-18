@@ -197,6 +197,16 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated, token]);
 
+  // Recompute ownerDisplayName once profile (currentUserData) is loaded,
+  // so old releases correctly show the current admin/user as owner.
+  useEffect(() => {
+    if (!currentUserData) return;
+    setAllReleases(prev => prev.map((r: any) => ({
+      ...r,
+      ownerDisplayName: resolveOwnerName(r),
+    })));
+  }, [currentUserData]);
+
   // Fetch Notifications & User Profile
   useEffect(() => {
     if (isAuthenticated && token) {
@@ -354,14 +364,26 @@ const App: React.FC = () => {
 
   const handleSaveRelease = async (data: ReleaseData) => {
       try {
+          const inferredOwnerDisplayName =
+            (data as any).ownerDisplayName ||
+            resolveOwnerName({
+              ...data,
+              user_id: (currentUserData as any)?.id,
+              company_name: (currentUserData as any)?.company_name,
+              user_full_name: (currentUserData as any)?.full_name,
+              owner_name: (currentUserData as any)?.full_name,
+              owner: (currentUserData as any)?.full_name,
+              created_by: (currentUserData as any)?.username,
+            } as any);
+
           const normalizedId = data.id ? String(data.id) : undefined;
           if (normalizedId) {
               setAllReleases(prev => {
                   const without = prev.filter(r => String(r.id) !== normalizedId);
-                  return [{ ...data, id: normalizedId }, ...without];
+                  return [{ ...(data as any), id: normalizedId, ownerDisplayName: inferredOwnerDisplayName }, ...without];
               });
           } else {
-              setAllReleases(prev => [data, ...prev]);
+              setAllReleases(prev => ([{ ...(data as any), ownerDisplayName: inferredOwnerDisplayName }, ...prev]));
           }
           navigate('/releases');
           setViewingRelease(null);
@@ -868,6 +890,7 @@ const App: React.FC = () => {
                         onDeleteRelease={(release) => {
                             setReleaseToDelete(release);
                         }}
+                        resolveOwnerName={resolveOwnerName}
                     />
                 } 
             />

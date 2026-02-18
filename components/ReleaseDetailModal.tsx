@@ -314,49 +314,117 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
         </div>
 
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-            
-            {/* Release Banner */}
-            <div className="flex flex-col md:flex-row gap-8 items-start mb-8 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl bg-gray-200 shadow-md overflow-hidden flex-shrink-0 border border-gray-300">
-                    {release.coverArt ? (
-                        <img 
-                            src={objectUrls['cover_art']} 
-                            className="w-full h-full object-cover" 
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
-                            }}
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400"><Disc size={40} /></div>
-                    )}
+            <div className="flex flex-col md:flex-row gap-8 items-start mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="w-40 h-40 md:w-48 md:h-48 rounded-xl bg-gray-200 shadow-md overflow-hidden flex-shrink-0 border border-gray-300 flex flex-col">
+                    <div className="flex-1">
+                        {release.coverArt ? (
+                            <img 
+                                src={objectUrls['cover_art']} 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                                }}
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400"><Disc size={40} /></div>
+                        )}
+                    </div>
+                    <button 
+                        onClick={() => {
+                            if (!release.coverArt) return;
+                            const name = getFileName(release.coverArt, 'cover_art');
+                            downloadFile(objectUrls['cover_art'], name);
+                        }}
+                        disabled={!release.coverArt}
+                        className="mt-3 w-full py-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-2 transition-colors
+                                   border-orange-400 text-orange-600 bg-white hover:bg-orange-50 disabled:opacity-50"
+                    >
+                        <Download size={14} /> Album Cover
+                    </button>
                 </div>
                 <div className="flex-1">
                     <div className="text-sm text-slate-500 mb-1">
                         {(release as any).ownerDisplayName || 'Unknown User'}
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-800 mb-2">{release.title}</h1>
-                    <p className="text-slate-500 font-medium text-xl mb-4">{release.primaryArtists.join(", ")}</p>
+                    <h1 className="text-3xl font-bold text-slate-800 mb-1">{release.title}</h1>
+                    <p className="text-slate-600 font-medium text-lg mb-3">
+                        {release.primaryArtists.join(", ")}
+                    </p>
                     
-                    <div className="flex flex-wrap items-center gap-3">
-                         <span className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
-                             status === 'Live' ? 'bg-green-100 text-green-700 border-green-200' :
-                             status === 'Processing' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                             status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                             'bg-yellow-100 text-yellow-700 border-yellow-200'
-                         }`}>
-                             {status === 'Rejected' && <AlertTriangle size={14} />}
-                             <span className="uppercase tracking-wider">{status}</span>
-                         </span>
-                         {release.aggregator && (
-                             <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1.5">
-                                 <Globe size={14} /> {release.aggregator}
-                             </span>
-                         )}
-                         <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-slate-600 border border-gray-200 flex items-center gap-1.5">
-                             <Music2 size={14} /> {release.tracks.length > 1 ? 'Album' : 'Single'}
-                         </span>
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
+                            status === 'Live' ? 'bg-green-100 text-green-700 border-green-200' :
+                            status === 'Processing' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                            status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                            'bg-yellow-100 text-yellow-700 border-yellow-200'
+                        }`}>
+                            {status === 'Rejected' && <AlertTriangle size={14} />}
+                            <span className="uppercase tracking-wider">{status}</span>
+                        </span>
+                        {release.aggregator && (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1.5">
+                                <Globe size={14} /> {release.aggregator}
+                            </span>
+                        )}
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-slate-600 border border-gray-200 flex items-center gap-1.5">
+                            <Music2 size={14} /> {release.tracks.length > 1 ? 'Album' : 'Single'}
+                        </span>
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
+
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+                        <div>
+                            <table className="w-full text-xs text-slate-700">
+                                <tbody>
+                                    <tr>
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Planned Release Date</td>
+                                        <td className="pl-4 text-slate-700 align-top">{formatDMY(release.plannedReleaseDate)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Version</td>
+                                        <td className="pl-4 text-slate-700 align-top">{release.version || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Genre</td>
+                                        <td className="pl-4 text-slate-700 align-top">{release.genre || release.tracks[0]?.genre || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="w-40 text-[11px] uppercase text-slate-500 align-top">Subgenre</td>
+                                        <td className="pl-4 text-slate-700 align-top">{release.subGenre || release.tracks[0]?.subGenre || '-'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div>
+                            <table className="w-full text-xs text-slate-700">
+                                <tbody>
+                                    <tr>
+                                        <td className="w-36 text-[11px] uppercase text-slate-500 align-top">Title Language</td>
+                                        <td className="pl-4 text-slate-700 align-top">{release.language || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="w-36 text-[11px] uppercase text-slate-500 align-top">UPC</td>
+                                        <td className="pl-4 text-slate-700 align-top">{upcDisplay || 'Not Assigned'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="w-36 text-[11px] uppercase text-slate-500 align-top">Record Label</td>
+                                        <td className="pl-4 text-slate-700 align-top">{release.label || '-'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div>
+                            <div className="text-[11px] uppercase text-slate-500 mb-1">Primary Artists</div>
+                            <ul className="text-sm text-slate-800 space-y-0.5">
+                                {(release.primaryArtists || []).map((name, idx) => (
+                                    <li key={idx} className="flex items-center gap-1">
+                                        <span>{name}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
                         {onEdit && (
                             <button
                                 onClick={() => onEdit(release)}
@@ -399,131 +467,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
             {/* Content Area */}
             <div>
-                {/* TAB 1: INFO & PREVIEW */}
                 {activeTab === 'INFO' && (
                     <div className="space-y-8 animate-fade-in-up">
-                        {/* RELEASE METADATA CARD (Detailed Step 1 & 3) */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-                            <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4 gap-4">
-                                <div className="flex items-center gap-2">
-                                    <FileText size={20} className="text-blue-500" />
-                                    <h3 className="font-bold text-slate-700 text-xl">Full Release Metadata</h3>
-                                </div>
-                                <div className="flex flex-col items-end gap-1 text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] uppercase font-bold text-slate-400">UPC</span>
-                                        <button
-                                            disabled={!upcDisplay}
-                                            onClick={() => upcDisplay && navigator.clipboard.writeText(upcDisplay)}
-                                            className={`px-2 py-1 rounded border text-[11px] font-mono ${
-                                                upcDisplay ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' : 'text-slate-300 border-slate-100 cursor-default'
-                                            }`}
-                                            title={upcDisplay ? 'Copy UPC' : 'UPC not set'}
-                                        >
-                                            {upcDisplay || 'Not Assigned'}
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] uppercase font-bold text-slate-400">Primary ISRC</span>
-                                        <button
-                                            disabled={!primaryIsrc}
-                                            onClick={() => primaryIsrc && navigator.clipboard.writeText(primaryIsrc)}
-                                            className={`px-2 py-1 rounded border text-[11px] font-mono ${
-                                                primaryIsrc ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' : 'text-slate-300 border-slate-100 cursor-default'
-                                            }`}
-                                            title={primaryIsrc ? 'Copy ISRC (Track 1)' : 'ISRC not set'}
-                                        >
-                                            {primaryIsrc || 'Not Assigned'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                                {/* Cover Art Column */}
-                                <div className="md:col-span-1">
-                                    <div className="aspect-square rounded-xl overflow-hidden border border-gray-200 mb-3 bg-gray-50">
-                                        {release.coverArt ? (
-                                            <img 
-                                                src={objectUrls['cover_art']} 
-                                                className="w-full h-full object-cover" 
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                                <Disc size={40} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <button 
-                                        onClick={() => {
-                                            if (!release.coverArt) return;
-                                            const name = getFileName(release.coverArt, 'cover_art');
-                                            downloadFile(objectUrls['cover_art'], name);
-                                        }}
-                                        disabled={!release.coverArt}
-                                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                                    >
-                                        <Download size={14} /> Download Cover
-                                    </button>
-                                </div>
-
-                                {/* Metadata Grid */}
-                                <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-6 content-start">
-                                    <InfoRow label="Release Title" value={release.title} />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                            Primary / Featured Artists
-                                        </span>
-                                        <div className="text-sm text-slate-700 space-y-1">
-                                            {release.tracks[0]?.artists && release.tracks[0].artists.length > 0 ? (
-                                                release.tracks[0].artists.map((a, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2">
-                                                        <span className="font-semibold">{a.name}</span>
-                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold uppercase">
-                                                            {a.role === 'MainArtist' ? 'Primary' : a.role === 'FeaturedArtist' ? 'Featured' : a.role}
-                                                        </span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                (release.primaryArtists || []).map((name, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2">
-                                                        <span className="font-semibold">{name}</span>
-                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold uppercase">
-                                                            Primary
-                                                        </span>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                    <InfoRow label="Label Name" value={release.label} />
-                                    <InfoRow label="Language / Territory" value={release.language} />
-                                    
-                                    <InfoRow label="Version" value={release.version} />
-                                    <InfoRow label="Release Format" value={release.tracks.length > 1 ? "Album/EP" : "Single"} />
-                                    <InfoRow label="Primary Genre" value={release.tracks[0]?.genre} />
-                                    <InfoRow label="Explicit Content" value={release.tracks.some(t => t.explicitLyrics === 'Yes') ? "Yes" : "No"} />
-
-                                    <div className="col-span-2 md:col-span-3 border-t border-gray-100 my-1"></div>
-
-                                    {/* Step 3 Data */}
-                                    <InfoRow label="UPC Code" value={upcInput || release.upc || "Not Assigned"} highlight />
-                                    <InfoRow label="Distribution Type" value={release.isNewRelease ? "New Release" : "Re-release"} />
-                                    <InfoRow label="Planned Release Date" value={formatDMY(release.plannedReleaseDate)} highlight />
-                                    <InfoRow label="Original Release Date" value={!release.isNewRelease ? formatDMY(release.originalReleaseDate) : "-"} />
-                                    
-                                    <InfoRow label="Submission Date" value={release.submissionDate ? formatDMY(release.submissionDate) : "Not Submitted"} />
-                                    <InfoRow label="Total Tracks" value={release.tracks.length.toString()} />
-                                    <InfoRow label="Current Status" value={status} />
-                                    <InfoRow label="Aggregator" value={selectedAggregator || "-"} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* TRACKLIST SECTION (FULL VIEW - NO TABLE) */}
                         <div>
                              <div className="flex items-center gap-2 mb-4">
                                  <FileAudio size={20} className="text-blue-500" />

@@ -812,6 +812,12 @@ router.get('/', authenticateToken, async (req, res) => {
 
             return {
                 id: r.id,
+                user_id: r.user_id,
+                company_name: r.company_name,
+                user_full_name: r.user_full_name,
+                owner_name: r.owner_name,
+                owner: r.owner,
+                created_by: r.created_by,
                 title: r.title,
                 status: r.status,
                 coverArt: r.cover_art,

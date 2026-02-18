@@ -10,9 +10,10 @@ interface Props {
   onReleaseUpdated?: (release: ReleaseData) => void;
   onEditRelease?: (release: ReleaseData) => void;
   onDeleteRelease?: (release: ReleaseData) => void;
+  resolveOwnerName?: (raw: any) => string;
 }
 
-export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onReleaseUpdated, onEditRelease, onDeleteRelease }) => {
+export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onReleaseUpdated, onEditRelease, onDeleteRelease, resolveOwnerName }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [release, setRelease] = useState<ReleaseData | null>(null);
@@ -26,6 +27,11 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onRele
         const raw: any = await api.getRelease(token, id);
         const mapArtists = (arr: any) => Array.isArray(arr) ? arr : (typeof arr === 'string' ? [arr] : []);
         const primaryArtists = mapArtists(raw.primaryArtists);
+
+        const ownerDisplayName =
+          (typeof resolveOwnerName === 'function' ? resolveOwnerName(raw) : '') ||
+          raw.ownerDisplayName ||
+          '';
 
         const mapped: ReleaseData = {
           id: String(raw.id),
@@ -75,6 +81,7 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onRele
           originalReleaseDate: raw.original_release_date || '',
           plannedReleaseDate: raw.planned_release_date || ''
         };
+        (mapped as any).ownerDisplayName = ownerDisplayName;
         setRelease(mapped);
       } catch (e: any) {
         setError(e?.message || 'Failed to load release detail');
