@@ -25,7 +25,6 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
   // Audio Preview State
   // Keys: `${trackId}_full` or `${trackId}_clip`
-  const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [objectUrls, setObjectUrls] = useState<{ [key: string]: string }>({});
 
   // Form State for Distribution
@@ -214,59 +213,31 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
       alert("Copied to clipboard!");
   };
 
-  // Ensure only one audio element plays at a time and avoid play() race conditions
-  useEffect(() => {
-    if (!playingKey) return;
-    const audioEl = document.getElementById(`audio-${playingKey}`) as HTMLAudioElement | null;
-    if (!audioEl) return;
-    document.querySelectorAll('audio').forEach(el => {
-      if (el !== audioEl) el.pause();
-    });
-    audioEl.play().catch((err) => {
-      console.warn('Audio play failed', err);
-      setPlayingKey(null);
-    });
-  }, [playingKey]);
-
   const AudioPlayer = ({ track, type = 'full' }: { track: Track, type?: 'full' | 'clip' }) => {
     const key = `${track.id}_${type}`;
     const url = objectUrls[key];
     
     if (!url) return <span className="text-xs text-gray-400 italic">No Audio</span>;
 
-    const isPlaying = playingKey === key;
-
-    const togglePlay = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isPlaying) {
-            const audioEl = document.getElementById(`audio-${key}`) as HTMLAudioElement | null;
-            if (audioEl) audioEl.pause();
-            setPlayingKey(null);
-        } else {
-            setPlayingKey(key);
-        }
-    };
-
     const fileName = type === 'full' ? getFileName((track as any).audioFile, 'full_audio') : getFileName((track as any).audioClip, 'audio_clip');
 
     return (
-        <div className="flex items-center gap-2">
-            <button 
-                onClick={togglePlay} 
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isPlaying ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-                title="Preview"
-            >
-                {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-            </button>
-            <button 
-                onClick={(e) => { e.stopPropagation(); downloadFile(url, fileName || `audio_${type}.wav`); }}
-                className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 hover:text-blue-600 transition-colors"
-                title={`Download ${type === 'full' ? 'Full Track' : 'Clip'}`}
-            >
-                <Download size={14} />
-            </button>
-            <audio id={`audio-${key}`} src={url} onEnded={() => setPlayingKey(null)} className="hidden" preload="metadata" />
-        </div>
+      <div className="flex items-center gap-3 w-full">
+        <audio
+          id={`audio-${key}`}
+          src={url}
+          controls
+          preload="metadata"
+          className="flex-1 h-8"
+        />
+        <button 
+          onClick={(e) => { e.stopPropagation(); downloadFile(url, fileName || `audio_${type}.wav`); }}
+          className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 hover:text-blue-600 transition-colors"
+          title={`Download ${type === 'full' ? 'Full Track' : 'Clip'}`}
+        >
+          <Download size={14} />
+        </button>
+      </div>
     );
   };
 
