@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users, Shield, User } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users, Shield, User, MessageSquare } from 'lucide-react';
 
 interface SidebarProps {
   currentUser: string;
@@ -105,6 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 )}
               </NavLink>
             </li>
+            {userRole !== 'User' && (
             <li>
               <NavLink to="/publishing/analytics" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -115,6 +116,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 )}
               </NavLink>
             </li>
+            )}
+            {userRole !== 'User' && (
             <li>
               <NavLink to="/publishing/reports" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -125,6 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 )}
               </NavLink>
             </li>
+            )}
           </ul>
         </div>
 
@@ -269,6 +273,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
             </ul>
         </div>
         )}
+
+        {/* Support Section */}
+        <div>
+          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Bantuan
+          </h3>
+          <ul className="space-y-2">
+            <li>
+              <NavLink to="/tickets" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <MessageSquare size={20} className={getIconClass(isActive)} />
+                    Tiket Bantuan
+                  </>
+                )}
+              </NavLink>
+            </li>
+          </ul>
+        </div>
       </nav>
     </aside>
   );

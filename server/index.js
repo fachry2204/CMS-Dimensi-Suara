@@ -15,6 +15,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { loadBackupScheduleFromDb } from './utils/scheduler.js';
 import userRoutes from './routes/userRoutes.js';
+import ticketRoutes from './routes/ticketRoutes.js';
 
 import { initDb } from './init-db.js';
 
@@ -89,6 +90,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/publishing', publishingRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/tickets', ticketRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 

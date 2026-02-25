@@ -15,7 +15,7 @@ const parseResponse = async (res: Response) => {
         // Try read json, else text
         try {
             const j = await res.json();
-            let msg = j.error || 'Request failed';
+            let msg = j.error || j.message || 'Request failed';
             if (j.duplicate && Array.isArray(j.duplicate) && j.duplicate.length > 0) {
                 msg += ` (Duplikasi: ${j.duplicate.join(', ')})`;
             }
@@ -597,7 +597,7 @@ export const api = {
         });
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.error || 'Failed to create user');
+            throw new Error(err.message || 'Failed to create user');
         }
         return res.json();
     },
@@ -634,5 +634,55 @@ export const api = {
             throw new Error((err as any).error || 'Failed to update status');
         }
         return res.json();
+    },
+
+    // Tickets
+    tickets: {
+        list: async (token) => {
+            const res = await fetch(`${API_BASE_URL}/tickets`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        create: async (token, data) => {
+            const res = await fetch(`${API_BASE_URL}/tickets`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(data),
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        get: async (token, id) => {
+            const res = await fetch(`${API_BASE_URL}/tickets/${id}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        reply: async (token, id, message) => {
+            const res = await fetch(`${API_BASE_URL}/tickets/${id}/reply`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ message }),
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        close: async (token, id) => {
+            const res = await fetch(`${API_BASE_URL}/tickets/${id}/close`, {
+                method: 'PUT',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        }
     }
 };

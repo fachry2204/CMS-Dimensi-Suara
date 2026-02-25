@@ -525,7 +525,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       
       <div className="space-y-6">
         {data.tracks.map((track, index) => {
-            const isExpanded = expandedTrackId === track.id;
+            const isExpanded = releaseType === 'SINGLE' || expandedTrackId === track.id;
             const isProcessingAudio = processingState[`${track.id}-audioFile`];
             const isProcessingClip = processingState[`${track.id}-audioClip`];
             
@@ -536,8 +536,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 <div key={track.id} className={`bg-white rounded-2xl border transition-all duration-300 ${isExpanded ? 'border-blue-200 shadow-xl ring-1 ring-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
                     {/* Header */}
                     <div 
-                        className="flex items-center justify-between p-5 cursor-pointer"
-                        onClick={() => toggleExpand(track.id)}
+                        className={`flex items-center justify-between p-5 ${releaseType === 'SINGLE' ? '' : 'cursor-pointer'}`}
+                        onClick={() => releaseType !== 'SINGLE' && toggleExpand(track.id)}
                     >
                         <div className="flex items-center gap-4">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm ${isExpanded ? 'bg-blue-500 text-white' : 'bg-gray-100 text-slate-500'}`}>
@@ -576,7 +576,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                   <Trash2 size={18} />
                                </button>
                              )}
-                            {isExpanded ? <ChevronUp className="text-blue-500" /> : <ChevronDown className="text-gray-400" />}
+                            {releaseType !== 'SINGLE' && (
+                                isExpanded ? <ChevronUp className="text-blue-500" /> : <ChevronDown className="text-gray-400" />
+                            )}
                         </div>
                     </div>
 

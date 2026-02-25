@@ -60,10 +60,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             const trackNum = idx + 1;
             if (!track.title) errors.push(`Track ${trackNum}: Title is required.`);
             const hasAudio = (typeof (track as any).audioFile === 'string' && (track as any).audioFile.trim().length > 0)
-              || (typeof (track as any).tempAudioPath === 'string' && (track as any).tempAudioPath.trim().length > 0);
+              || (typeof (track as any).tempAudioPath === 'string' && (track as any).tempAudioPath.trim().length > 0)
+              || ((track as any).audioFile instanceof File);
             if (!hasAudio) errors.push(`Track ${trackNum}: Audio file is required (server TMP or URL).`);
             const hasClip = (typeof (track as any).audioClip === 'string' && (track as any).audioClip.trim().length > 0)
-              || (typeof (track as any).tempClipPath === 'string' && (track as any).tempClipPath.trim().length > 0);
+              || (typeof (track as any).tempClipPath === 'string' && (track as any).tempClipPath.trim().length > 0)
+              || ((track as any).audioClip instanceof File);
             if (!hasClip) errors.push(`Track ${trackNum}: Audio clip is required (server TMP or URL).`);
             if (!track.genre) errors.push(`Track ${trackNum}: Genre is required.`);
             if (!track.composer) errors.push(`Track ${trackNum}: Composer is required.`);

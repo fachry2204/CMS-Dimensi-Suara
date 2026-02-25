@@ -26,6 +26,8 @@ import { UserStatusScreen } from './screens/UserStatusScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { UserAnalytics } from './screens/UserAnalytics';
 import { UserPayments } from './screens/UserPayments';
+import Tickets from './screens/Tickets';
+import TicketDetail from './screens/TicketDetail';
 import { MyProfile } from './screens/MyProfile';
 import { MyContracts } from './screens/MyContracts';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
@@ -75,6 +77,21 @@ const App: React.FC = () => {
   const [aggregators, setAggregators] = useState<string[]>(["LokaMusik", "SoundOn"]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
+  
+  const handleAuthExpired = () => {
+      localStorage.removeItem('cms_auth');
+      localStorage.removeItem('cms_user');
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('cms_role');
+      localStorage.removeItem('cms_status');
+      setIsAuthenticated(false);
+      setCurrentUser('');
+      setToken('');
+      setUserRole('');
+      setUserStatus('');
+      setDataFetchError('Session expired. Please login again.');
+      navigate('/');
+  };
   
   const belongsToCurrentUser = (r: any) => {
     if (!r) return false;
@@ -141,18 +158,6 @@ const App: React.FC = () => {
         if (!token) return;
 
         setDataFetchError(null);
-        const handleAuthExpired = () => {
-            localStorage.removeItem('cms_auth');
-            localStorage.removeItem('cms_user');
-            localStorage.removeItem('cms_token');
-            localStorage.removeItem('cms_role');
-            setIsAuthenticated(false);
-            setCurrentUser('');
-            setToken('');
-            setUserRole('');
-            setDataFetchError('Session expired. Please login again.');
-            navigate('/');
-        };
 
         const p1 = api.getReleases(token)
             .then(data => setAllReleases(data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }))))
@@ -225,7 +230,10 @@ const App: React.FC = () => {
                 setUserStatus(user.status);
                 localStorage.setItem('cms_status', user.status);
             }
-        }).catch(err => console.error("Failed to fetch profile", err));
+        }).catch(err => {
+            if (err?.message === 'AUTH') return handleAuthExpired();
+            console.error("Failed to fetch profile", err);
+        });
 
         // Fetch Notifications
         const fetchNotifications = async () => {
@@ -233,7 +241,8 @@ const App: React.FC = () => {
                  const notifs = await api.getNotifications(token);
                  setNotifications(notifs);
                  setUnreadCount(notifs.filter((n: any) => !n.is_read).length);
-             } catch (err) {
+             } catch (err: any) {
+                 if (err?.message === 'AUTH') return handleAuthExpired();
                  console.error("Failed to fetch notifications", err);
              }
         };
@@ -891,8 +900,12 @@ const App: React.FC = () => {
                     error={dataFetchError}
                  />
             } />
-            <Route path="/user/reports/analytics" element={<UserAnalytics releases={allReleases} reportData={reportData} currentUserData={currentUserData} />} />
-            <Route path="/user/reports/payments" element={<UserPayments reportData={reportData} currentUserData={currentUserData} />} />
+            <Route path="/user/reports/analytics" element={<UserAnalytics releases={allReleases} reportData={reportData} currentUserData={currentUserData} token={token} onAuthExpired={handleAuthExpired} />} />
+            <Route path="/user/reports/payments" element={<UserPayments reportData={reportData} currentUserData={currentUserData} token={token} onAuthExpired={handleAuthExpired} />} />
+            
+            <Route path="/tickets" element={<Tickets token={token} userRole={userRole} onAuthExpired={handleAuthExpired} />} />
+            <Route path="/tickets/:id" element={<TicketDetail token={token} userRole={userRole} onAuthExpired={handleAuthExpired} />} />
+
             <Route path="/me/profile" element={<MyProfile currentUserData={currentUserData} />} />
             <Route path="/me/contracts" element={<MyContracts />} />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
