@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Eye, Download, XCircle } from 'lucide-react';
+import { User as UserIcon, Eye, Download, XCircle, FileText, CheckCircle, FileBadge } from 'lucide-react';
 import { User } from '../types';
 
 interface Props {
@@ -11,237 +11,351 @@ export const MyProfile: React.FC<Props> = ({ currentUserData }) => {
   const [showDocPreview, setShowDocPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewIsPdf, setPreviewIsPdf] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'contracts'>('profile');
+
+  // Mock contracts data based on user info
+  const contracts = [];
+  if (user.aggregator_percentage !== undefined || user.role === 'Admin' || user.account_type) {
+    contracts.push({
+      id: 1,
+      type: 'Aggregator',
+      percentage: user.aggregator_percentage || 0,
+      date: user.joinedDate,
+      status: 'Active',
+      doc: null // Placeholder
+    });
+  }
+  if (user.publishing_percentage !== undefined) {
+    contracts.push({
+      id: 2,
+      type: 'Publishing',
+      percentage: user.publishing_percentage,
+      date: user.joinedDate, // or specific date if available
+      status: 'Active',
+      doc: null // Placeholder
+    });
+  }
 
   return (
     <div className="p-8 max-w-5xl mx-auto min-h-screen">
       <div className="mb-6">
         <h1 className="text-lg text-slate-800 tracking-tight">Profile</h1>
-        <p className="text-slate-500 mt-0.5 text-[12px]">Data akun Anda.</p>
+        <p className="text-slate-500 mt-0.5 text-[12px]">Data akun dan kontrak Anda.</p>
       </div>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-            <UserIcon size={24} />
-          </div>
-          <div>
-            <div className="text-xl font-bold text-slate-800">{user.full_name || user.name || '-'}</div>
-            <div className="text-slate-500">{user.email || '-'}</div>
-          </div>
-        </div>
-        
 
-
-        <div className="grid grid-cols-1 gap-4 mb-8">
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <tbody className="[&>tr>td]:py-2 [&>tr>td]:px-3 [&>tr:nth-child(even)]:bg-slate-50">
-                <tr><td className="text-slate-600">Account Type</td><td className="font-normal text-slate-700">{user.account_type || '-'}</td></tr>
-                {(user.account_type === 'COMPANY') && (
-                  <tr><td className="text-slate-600">Company</td><td className="font-normal text-slate-700">{user.company_name || '-'}</td></tr>
-                )}
-                <tr><td className="text-slate-600">Nama Lengkap</td><td className="font-normal text-slate-700">{user.full_name || '-'}</td></tr>
-                <tr><td className="text-slate-600">NIK</td><td className="font-normal text-slate-700">{user.nik || '-'}</td></tr>
-                <tr><td className="text-slate-600">Phone</td><td className="font-normal text-slate-700">{user.phone || '-'}</td></tr>
-                <tr><td className="text-slate-600">Address</td><td className="font-normal text-slate-700 whitespace-pre-line">{user.address || '-'}</td></tr>
-                <tr><td className="text-slate-600">Country</td><td className="font-normal text-slate-700">{user.country || '-'}</td></tr>
-                <tr><td className="text-slate-600">Province</td><td className="font-normal text-slate-700">{user.province || '-'}</td></tr>
-                <tr><td className="text-slate-600">City</td><td className="font-normal text-slate-700">{user.city || '-'}</td></tr>
-                <tr><td className="text-slate-600">District</td><td className="font-normal text-slate-700">{user.district || '-'}</td></tr>
-                <tr><td className="text-slate-600">Subdistrict</td><td className="font-normal text-slate-700">{user.subdistrict || '-'}</td></tr>
-                <tr><td className="text-slate-600">Postal Code</td><td className="font-normal text-slate-700">{user.postal_code || '-'}</td></tr>
-                {(user.account_type === 'COMPANY') && (
-                  <>
-                    <tr><td className="text-slate-600">PIC Name</td><td className="font-normal text-slate-700">{user.pic_name || '-'}</td></tr>
-                    <tr><td className="text-slate-600">PIC Position</td><td className="font-normal text-slate-700">{user.pic_position || '-'}</td></tr>
-                    <tr><td className="text-slate-600">PIC Phone</td><td className="font-normal text-slate-700">{user.pic_phone || '-'}</td></tr>
-                  </>
-                )}
-                <tr><td className="text-slate-600">Role</td><td className="font-normal text-slate-700">{user.role || '-'}</td></tr>
-                <tr><td className="text-slate-600">Status</td><td className="font-normal text-slate-700">{user.status || '-'}</td></tr>
-                <tr><td className="text-slate-600">Joined Date</td><td className="font-normal text-slate-700">{user.joinedDate || '-'}</td></tr>
-                {user.aggregator_percentage !== undefined && (
-                  <tr><td className="text-slate-600">Aggregator Percentage</td><td className="font-normal text-slate-700">{user.aggregator_percentage}%</td></tr>
-                )}
-                {user.publishing_percentage !== undefined && (
-                  <tr><td className="text-slate-600">Publishing Percentage</td><td className="font-normal text-slate-700">{user.publishing_percentage}%</td></tr>
-                )}
-                {user.status === 'Blocked' && (
-                  <>
-                    <tr><td className="text-slate-600">Blocked Date</td><td className="font-normal text-slate-700">{user.blockedAt || '-'}</td></tr>
-                    <tr><td className="text-slate-600">Block Reason</td><td className="font-normal text-slate-700">{user.block_reason || '-'}</td></tr>
-                  </>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium text-slate-800">Documents</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {user.ktp_doc_path && (
-              <div className="border border-slate-200 rounded-xl p-3">
-                <div className="text-xs font-medium mb-2">KTP</div>
-                {user.ktp_doc_path.toLowerCase().endsWith('.pdf') ? (
-                  <iframe src={user.ktp_doc_path} className="w-full h-40 rounded-md" />
-                ) : (
-                  <img 
-                    src={user.ktp_doc_path} 
-                    alt="KTP" 
-                    className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
-                    onClick={() => { setPreviewUrl(user.ktp_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
-                  />
-                )}
-                <div className="flex gap-3 mt-2">
-                  <button
-                    onClick={() => { setPreviewUrl(user.ktp_doc_path!); setPreviewIsPdf(user.ktp_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Preview"
-                  >
-                    <Eye size={14} /> Preview
-                  </button>
-                  <a
-                    href={user.ktp_doc_path}
-                    download
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Download"
-                  >
-                    <Download size={14} /> Download
-                  </a>
-                </div>
-              </div>
+      {/* Tabs */}
+      <div className="flex items-center gap-6 border-b border-gray-200 mb-6">
+        <button
+            onClick={() => setActiveTab('profile')}
+            className={`pb-3 text-sm font-medium transition-colors relative ${
+                activeTab === 'profile' 
+                ? 'text-blue-600' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+        >
+            Profile Info
+            {activeTab === 'profile' && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full" />
             )}
-            {user.npwp_doc_path && (
-              <div className="border border-slate-200 rounded-xl p-3">
-                <div className="text-xs font-medium mb-2">NPWP</div>
-                {user.npwp_doc_path.toLowerCase().endsWith('.pdf') ? (
-                  <iframe src={user.npwp_doc_path} className="w-full h-40 rounded-md" />
-                ) : (
-                  <img 
-                    src={user.npwp_doc_path} 
-                    alt="NPWP" 
-                    className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
-                    onClick={() => { setPreviewUrl(user.npwp_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
-                  />
-                )}
-                <div className="flex gap-3 mt-2">
-                  <button
-                    onClick={() => { setPreviewUrl(user.npwp_doc_path!); setPreviewIsPdf(user.npwp_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Preview"
-                  >
-                    <Eye size={14} /> Preview
-                  </button>
-                  <a
-                    href={user.npwp_doc_path}
-                    download
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Download"
-                  >
-                    <Download size={14} /> Download
-                  </a>
-                </div>
-              </div>
+        </button>
+        <button
+            onClick={() => setActiveTab('contracts')}
+            className={`pb-3 text-sm font-medium transition-colors relative ${
+                activeTab === 'contracts' 
+                ? 'text-blue-600' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+        >
+            Kontrak
+            {activeTab === 'contracts' && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full" />
             )}
-            {user.signature_doc_path && (
-              <div className="border border-slate-200 rounded-xl p-3">
-                <div className="text-xs font-medium mb-2">File Tandatangan</div>
-                {user.signature_doc_path.toLowerCase().endsWith('.pdf') ? (
-                  <iframe src={user.signature_doc_path} className="w-full h-40 rounded-md" />
-                ) : (
-                  <img 
-                    src={user.signature_doc_path} 
-                    alt="Tandatangan" 
-                    className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => { setPreviewUrl(user.signature_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
-                  />
-                )}
-                <div className="flex gap-3 mt-2">
-                  <button
-                    onClick={() => { setPreviewUrl(user.signature_doc_path!); setPreviewIsPdf(user.signature_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Preview"
-                  >
-                    <Eye size={14} /> Preview
-                  </button>
-                  <a
-                    href={user.signature_doc_path}
-                    download
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Download"
-                  >
-                    <Download size={14} /> Download
-                  </a>
-                </div>
-              </div>
-            )}
-            {(user.account_type === 'COMPANY') && user.nib_doc_path && (
-              <div className="border border-slate-200 rounded-xl p-3">
-                <div className="text-xs font-medium mb-2">NIB</div>
-                {user.nib_doc_path.toLowerCase().endsWith('.pdf') ? (
-                  <iframe src={user.nib_doc_path} className="w-full h-40 rounded-md" />
-                ) : (
-                  <img 
-                    src={user.nib_doc_path} 
-                    alt="NIB" 
-                    className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
-                    onClick={() => { setPreviewUrl(user.nib_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
-                  />
-                )}
-                <div className="flex gap-3 mt-2">
-                  <button
-                    onClick={() => { setPreviewUrl(user.nib_doc_path!); setPreviewIsPdf(user.nib_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Preview"
-                  >
-                    <Eye size={14} /> Preview
-                  </button>
-                  <a
-                    href={user.nib_doc_path}
-                    download
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Download"
-                  >
-                    <Download size={14} /> Download
-                  </a>
-                </div>
-              </div>
-            )}
-            {(user.account_type === 'COMPANY') && user.kemenkumham_doc_path && (
-              <div className="border border-slate-200 rounded-xl p-3">
-                <div className="text-xs font-medium mb-2">Kemenkumham</div>
-                {user.kemenkumham_doc_path.toLowerCase().endsWith('.pdf') ? (
-                  <iframe src={user.kemenkumham_doc_path} className="w-full h-40 rounded-md" />
-                ) : (
-                  <img 
-                    src={user.kemenkumham_doc_path} 
-                    alt="Kemenkumham" 
-                    className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
-                    onClick={() => { setPreviewUrl(user.kemenkumham_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
-                  />
-                )}
-                <div className="flex gap-3 mt-2">
-                  <button
-                    onClick={() => { setPreviewUrl(user.kemenkumham_doc_path!); setPreviewIsPdf(user.kemenkumham_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Preview"
-                  >
-                    <Eye size={14} /> Preview
-                  </button>
-                  <a
-                    href={user.kemenkumham_doc_path}
-                    download
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-                    title="Download"
-                  >
-                    <Download size={14} /> Download
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        </button>
       </div>
+
+      {activeTab === 'profile' ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                <UserIcon size={24} />
+            </div>
+            <div>
+                <div className="text-xl font-bold text-slate-800">{user.full_name || user.name || '-'}</div>
+                <div className="text-slate-500">{user.email || '-'}</div>
+            </div>
+            </div>
+            
+
+
+            <div className="grid grid-cols-1 gap-4 mb-8">
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                <tbody className="[&>tr>td]:py-2 [&>tr>td]:px-3 [&>tr:nth-child(even)]:bg-slate-50">
+                    <tr><td className="text-slate-600">Account Type</td><td className="font-normal text-slate-700">{user.account_type || '-'}</td></tr>
+                    {(user.account_type === 'COMPANY') && (
+                    <tr><td className="text-slate-600">Company</td><td className="font-normal text-slate-700">{user.company_name || '-'}</td></tr>
+                    )}
+                    <tr><td className="text-slate-600">Nama Lengkap</td><td className="font-normal text-slate-700">{user.full_name || '-'}</td></tr>
+                    <tr><td className="text-slate-600">NIK</td><td className="font-normal text-slate-700">{user.nik || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Phone</td><td className="font-normal text-slate-700">{user.phone || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Address</td><td className="font-normal text-slate-700 whitespace-pre-line">{user.address || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Country</td><td className="font-normal text-slate-700">{user.country || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Province</td><td className="font-normal text-slate-700">{user.province || '-'}</td></tr>
+                    <tr><td className="text-slate-600">City</td><td className="font-normal text-slate-700">{user.city || '-'}</td></tr>
+                    <tr><td className="text-slate-600">District</td><td className="font-normal text-slate-700">{user.district || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Subdistrict</td><td className="font-normal text-slate-700">{user.subdistrict || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Postal Code</td><td className="font-normal text-slate-700">{user.postal_code || '-'}</td></tr>
+                    {(user.account_type === 'COMPANY') && (
+                    <>
+                        <tr><td className="text-slate-600">PIC Name</td><td className="font-normal text-slate-700">{user.pic_name || '-'}</td></tr>
+                        <tr><td className="text-slate-600">PIC Position</td><td className="font-normal text-slate-700">{user.pic_position || '-'}</td></tr>
+                        <tr><td className="text-slate-600">PIC Phone</td><td className="font-normal text-slate-700">{user.pic_phone || '-'}</td></tr>
+                    </>
+                    )}
+                    <tr><td className="text-slate-600">Role</td><td className="font-normal text-slate-700">{user.role || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Status</td><td className="font-normal text-slate-700">{user.status || '-'}</td></tr>
+                    <tr><td className="text-slate-600">Joined Date</td><td className="font-normal text-slate-700">{user.joinedDate || '-'}</td></tr>
+                    {user.aggregator_percentage !== undefined && (
+                    <tr><td className="text-slate-600">Aggregator Percentage</td><td className="font-normal text-slate-700">{user.aggregator_percentage}%</td></tr>
+                    )}
+                    {user.publishing_percentage !== undefined && (
+                    <tr><td className="text-slate-600">Publishing Percentage</td><td className="font-normal text-slate-700">{user.publishing_percentage}%</td></tr>
+                    )}
+                    {user.status === 'Blocked' && (
+                    <>
+                        <tr><td className="text-slate-600">Blocked Date</td><td className="font-normal text-slate-700">{user.blockedAt || '-'}</td></tr>
+                        <tr><td className="text-slate-600">Block Reason</td><td className="font-normal text-slate-700">{user.block_reason || '-'}</td></tr>
+                    </>
+                    )}
+                </tbody>
+                </table>
+            </div>
+            </div>
+
+            <div className="space-y-4">
+            <h4 className="text-sm font-medium text-slate-800">Documents</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {user.ktp_doc_path && (
+                <div className="border border-slate-200 rounded-xl p-3">
+                    <div className="text-xs font-medium mb-2">KTP</div>
+                    {user.ktp_doc_path.toLowerCase().endsWith('.pdf') ? (
+                    <iframe src={user.ktp_doc_path} className="w-full h-40 rounded-md" />
+                    ) : (
+                    <img 
+                        src={user.ktp_doc_path} 
+                        alt="KTP" 
+                        className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
+                        onClick={() => { setPreviewUrl(user.ktp_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
+                    />
+                    )}
+                    <div className="flex gap-3 mt-2">
+                    <button
+                        onClick={() => { setPreviewUrl(user.ktp_doc_path!); setPreviewIsPdf(user.ktp_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                    >
+                        <Eye size={14} /> Preview
+                    </button>
+                    <a
+                        href={user.ktp_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                    >
+                        <Download size={14} /> Download
+                    </a>
+                    </div>
+                </div>
+                )}
+                {user.npwp_doc_path && (
+                <div className="border border-slate-200 rounded-xl p-3">
+                    <div className="text-xs font-medium mb-2">NPWP</div>
+                    {user.npwp_doc_path.toLowerCase().endsWith('.pdf') ? (
+                    <iframe src={user.npwp_doc_path} className="w-full h-40 rounded-md" />
+                    ) : (
+                    <img 
+                        src={user.npwp_doc_path} 
+                        alt="NPWP" 
+                        className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
+                        onClick={() => { setPreviewUrl(user.npwp_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
+                    />
+                    )}
+                    <div className="flex gap-3 mt-2">
+                    <button
+                        onClick={() => { setPreviewUrl(user.npwp_doc_path!); setPreviewIsPdf(user.npwp_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                    >
+                        <Eye size={14} /> Preview
+                    </button>
+                    <a
+                        href={user.npwp_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                    >
+                        <Download size={14} /> Download
+                    </a>
+                    </div>
+                </div>
+                )}
+                {user.signature_doc_path && (
+                <div className="border border-slate-200 rounded-xl p-3">
+                    <div className="text-xs font-medium mb-2">File Tandatangan</div>
+                    {user.signature_doc_path.toLowerCase().endsWith('.pdf') ? (
+                    <iframe src={user.signature_doc_path} className="w-full h-40 rounded-md" />
+                    ) : (
+                    <img 
+                        src={user.signature_doc_path} 
+                        alt="Tandatangan" 
+                        className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => { setPreviewUrl(user.signature_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
+                    />
+                    )}
+                    <div className="flex gap-3 mt-2">
+                    <button
+                        onClick={() => { setPreviewUrl(user.signature_doc_path!); setPreviewIsPdf(user.signature_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                    >
+                        <Eye size={14} /> Preview
+                    </button>
+                    <a
+                        href={user.signature_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                    >
+                        <Download size={14} /> Download
+                    </a>
+                    </div>
+                </div>
+                )}
+                {(user.account_type === 'COMPANY') && user.nib_doc_path && (
+                <div className="border border-slate-200 rounded-xl p-3">
+                    <div className="text-xs font-medium mb-2">NIB</div>
+                    {user.nib_doc_path.toLowerCase().endsWith('.pdf') ? (
+                    <iframe src={user.nib_doc_path} className="w-full h-40 rounded-md" />
+                    ) : (
+                    <img 
+                        src={user.nib_doc_path} 
+                        alt="NIB" 
+                        className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
+                        onClick={() => { setPreviewUrl(user.nib_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
+                    />
+                    )}
+                    <div className="flex gap-3 mt-2">
+                    <button
+                        onClick={() => { setPreviewUrl(user.nib_doc_path!); setPreviewIsPdf(user.nib_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                    >
+                        <Eye size={14} /> Preview
+                    </button>
+                    <a
+                        href={user.nib_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                    >
+                        <Download size={14} /> Download
+                    </a>
+                    </div>
+                </div>
+                )}
+                {(user.account_type === 'COMPANY') && user.kemenkumham_doc_path && (
+                <div className="border border-slate-200 rounded-xl p-3">
+                    <div className="text-xs font-medium mb-2">SK Kemenkumham</div>
+                    {user.kemenkumham_doc_path.toLowerCase().endsWith('.pdf') ? (
+                    <iframe src={user.kemenkumham_doc_path} className="w-full h-40 rounded-md" />
+                    ) : (
+                    <img 
+                        src={user.kemenkumham_doc_path} 
+                        alt="SK Kemenkumham" 
+                        className="w-full h-40 object-cover rounded-md cursor-pointer hover:opacity-90 transition-opacity" 
+                        onClick={() => { setPreviewUrl(user.kemenkumham_doc_path!); setPreviewIsPdf(false); setShowDocPreview(true); }}
+                    />
+                    )}
+                    <div className="flex gap-3 mt-2">
+                    <button
+                        onClick={() => { setPreviewUrl(user.kemenkumham_doc_path!); setPreviewIsPdf(user.kemenkumham_doc_path!.toLowerCase().endsWith('.pdf')); setShowDocPreview(true); }}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Preview"
+                    >
+                        <Eye size={14} /> Preview
+                    </button>
+                    <a
+                        href={user.kemenkumham_doc_path}
+                        download
+                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+                        title="Download"
+                    >
+                        <Download size={14} /> Download
+                    </a>
+                    </div>
+                </div>
+                )}
+            </div>
+            </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                    <FileBadge size={24} />
+                </div>
+                <div>
+                    <div className="text-xl font-bold text-slate-800">Kontrak</div>
+                    <div className="text-slate-500 text-sm">Daftar kontrak Aggregator dan Publishing.</div>
+                </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-sm text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                        <tr>
+                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">No</th>
+                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Jenis Kontrak</th>
+                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Tanggal Mulai</th>
+                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Persentase</th>
+                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Status</th>
+                            <th className="px-4 py-3">Dokumen</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {contracts.length > 0 ? (
+                            contracts.map((contract, index) => (
+                                <tr key={index} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-b-0">
+                                    <td className="px-4 py-3 text-slate-500 border-r border-slate-100 last:border-r-0">{index + 1}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-800 border-r border-slate-100 last:border-r-0">{contract.type}</td>
+                                    <td className="px-4 py-3 text-slate-600 border-r border-slate-100 last:border-r-0">{contract.date || '-'}</td>
+                                    <td className="px-4 py-3 text-slate-600 border-r border-slate-100 last:border-r-0">{contract.percentage}%</td>
+                                    <td className="px-4 py-3 border-r border-slate-100 last:border-r-0">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600 border border-green-100">
+                                            <CheckCircle size={12} />
+                                            {contract.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <button className="text-blue-600 hover:text-blue-700 font-medium text-xs flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                            <Download size={14} />
+                                            Unduh
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                                    Tidak ada data kontrak.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      )}
 
       {showDocPreview && previewUrl && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
@@ -58,6 +58,11 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const [ticketUnreadCount, setTicketUnreadCount] = useState<number>(0);
+  
+  // Status Tracking Refs
+  const prevReleaseStatusRef = useRef<Record<string, string>>({});
+  const prevSongStatusRef = useRef<Record<string, string>>({});
   
   // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
@@ -161,13 +166,31 @@ const App: React.FC = () => {
         setDataFetchError(null);
 
         const p1 = api.getReleases(token)
-            .then(data => setAllReleases(data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }))))
+            .then(data => {
+                const mapped = data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }));
+                setAllReleases(mapped);
+                // Initialize status tracking ref
+                mapped.forEach((r: any) => {
+                    prevReleaseStatusRef.current[String(r.id)] = r.status;
+                });
+            })
             .catch((err: any) => {
                 if (err?.message === 'AUTH') return handleAuthExpired();
                 console.error('Failed to fetch releases:', err);
                 setDataFetchError(err.message || 'Failed to load releases');
                 setAllReleases([]);
             });
+
+        // Fetch Songs for status tracking
+        const pSongs = api.publishing.getSongs(token)
+            .then(data => {
+                if (Array.isArray(data)) {
+                     data.forEach((s: any) => {
+                         prevSongStatusRef.current[String(s.id)] = s.status;
+                     });
+                }
+            })
+            .catch(err => console.warn('Failed to fetch songs for status tracking', err));
 
         const p2 = api.getReports(token)
             .then(data => setReportData(data))
@@ -239,9 +262,94 @@ const App: React.FC = () => {
         // Fetch Notifications
         const fetchNotifications = async () => {
              try {
-                 const notifs = await api.getNotifications(token);
-                 setNotifications(notifs);
-                 setUnreadCount(notifs.filter((n: any) => !n.is_read).length);
+                 const apiNotifs = await api.getNotifications(token);
+                 let localNotifs: Notification[] = [];
+                 try {
+                     localNotifs = JSON.parse(localStorage.getItem('cms_local_notifs') || '[]');
+                 } catch {}
+
+                 // 1. Fetch Tickets & Count Replies
+                 try {
+                     const tickets = await api.tickets.list(token);
+                     const replyCount = Array.isArray(tickets) 
+                         ? tickets.filter((t: any) => t.status === 'Replied').length 
+                         : 0;
+                     setTicketUnreadCount(replyCount);
+                 } catch (e) {
+                     console.warn('Failed to fetch tickets count', e);
+                 }
+
+                 // 2. Check Status Changes (Releases)
+                 let hasNewLocal = false;
+                 try {
+                     const releases = await api.getReleases(token);
+                     if (Array.isArray(releases)) {
+                         releases.forEach((r: any) => {
+                             const id = String(r.id);
+                             const newStatus = r.status;
+                             const oldStatus = prevReleaseStatusRef.current[id];
+                             
+                             if (oldStatus && oldStatus !== newStatus) {
+                                 const msg = `Status Rilisan "${r.title}" berubah menjadi ${newStatus}`;
+                                 prevReleaseStatusRef.current[id] = newStatus;
+                                 
+                                 localNotifs.unshift({
+                                     id: -Date.now() - Math.floor(Math.random() * 10000),
+                                     user_id: 0,
+                                     type: 'RELEASE_STATUS',
+                                     message: msg,
+                                     is_read: false,
+                                     created_at: new Date().toISOString()
+                                 });
+                                 hasNewLocal = true;
+                             } else if (!oldStatus) {
+                                 prevReleaseStatusRef.current[id] = newStatus;
+                             }
+                         });
+                     }
+                 } catch (e) {
+                     console.warn('Failed to check release status', e);
+                 }
+
+                 // 3. Check Status Changes (Songs)
+                 try {
+                     const songs = await api.publishing.getSongs(token);
+                     if (Array.isArray(songs)) {
+                         songs.forEach((s: any) => {
+                             const id = String(s.id);
+                             const newStatus = s.status;
+                             const oldStatus = prevSongStatusRef.current[id];
+                             
+                             if (oldStatus && oldStatus !== newStatus) {
+                                 const msg = `Status Lagu "${s.title}" berubah menjadi ${newStatus}`;
+                                 prevSongStatusRef.current[id] = newStatus;
+                                 
+                                 localNotifs.unshift({
+                                     id: -Date.now() - Math.floor(Math.random() * 10000),
+                                     user_id: 0,
+                                     type: 'SONG_STATUS', // Using string type as per interface
+                                     message: msg,
+                                     is_read: false,
+                                     created_at: new Date().toISOString()
+                                 });
+                                 hasNewLocal = true;
+                             } else if (!oldStatus) {
+                                 prevSongStatusRef.current[id] = newStatus;
+                             }
+                         });
+                     }
+                 } catch (e) {
+                     // Silent fail if publishing not accessible
+                 }
+
+                 if (hasNewLocal) {
+                     localStorage.setItem('cms_local_notifs', JSON.stringify(localNotifs));
+                 }
+
+                 const combined = [...apiNotifs, ...localNotifs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                 setNotifications(combined);
+                 setUnreadCount(combined.filter((n: any) => !n.is_read).length);
+
              } catch (err: any) {
                  if (err?.message === 'AUTH') return handleAuthExpired();
                  console.error("Failed to fetch notifications", err);
@@ -257,6 +365,19 @@ const App: React.FC = () => {
 
   const handleNotificationClick = async (notif: Notification) => {
     if (!notif.is_read) {
+        // Handle local notification
+        if (typeof notif.id === 'number' && notif.id < 0) {
+            try {
+                const localNotifs = JSON.parse(localStorage.getItem('cms_local_notifs') || '[]');
+                const updated = localNotifs.map((n: any) => n.id === notif.id ? { ...n, is_read: true } : n);
+                localStorage.setItem('cms_local_notifs', JSON.stringify(updated));
+                
+                setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            } catch {}
+            return;
+        }
+
         try {
             await api.markNotificationRead(token, notif.id);
             setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
@@ -781,7 +902,11 @@ const App: React.FC = () => {
                     <div className="text-right hidden sm:block">
                         <div className="text-sm font-bold text-slate-800 capitalize">{currentUserData?.full_name || currentUserData?.name || currentUser}</div>
                         <div className="text-[10px] text-slate-500 font-medium">
-                            {userRole === 'Admin' ? 'Super Administrator' : (userRole === 'Operator' ? 'Content Manager' : 'Artist / Label')}
+                            {userRole === 'Admin' 
+                                ? 'Super Administrator' 
+                                : userRole === 'Operator' 
+                                    ? 'Content Manager' 
+                                    : (currentUserData?.account_type?.toLowerCase() === 'company' ? 'PT/LABEL' : 'ARTIS')}
                         </div>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 overflow-hidden relative">
@@ -1046,7 +1171,19 @@ const App: React.FC = () => {
             </div>
         )}
 
-        <FloatingSupportBubble />
+        {/* Support Bubble */}
+        <FloatingSupportBubble count={ticketUnreadCount} />
+        
+        {/* Release Detail Modal */}
+        {viewingRelease && (
+            <ReleaseDetailModal 
+                release={viewingRelease} 
+                isOpen={!!viewingRelease} 
+                onClose={() => setViewingRelease(null)} 
+                onEdit={handleEditRelease}
+                onDelete={(r) => { setReleaseToDelete(r); setViewingRelease(null); }}
+            />
+        )}
       </main>
     </div>
   );

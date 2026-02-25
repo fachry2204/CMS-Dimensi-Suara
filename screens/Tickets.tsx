@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Plus, MessageSquare, Search } from 'lucide-react';
+import { ReleaseData } from '../types';
 
 interface Ticket {
     id: number;
@@ -24,14 +25,38 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+    
+    // Form State
+    const [category, setCategory] = useState('Lainnya');
     const [newSubject, setNewSubject] = useState('');
     const [newMessage, setNewMessage] = useState('');
+    const [youtubeLink, setYoutubeLink] = useState('');
+    const [selectedReleaseId, setSelectedReleaseId] = useState('');
+    
+    // Data State
+    const [releases, setReleases] = useState<ReleaseData[]>([]);
+    const [loadingReleases, setLoadingReleases] = useState(false);
+    
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const categories = [
+        'Whitelist Youtube / Youtube Claim',
+        'Rilisan',
+        'Takedown Rilisan',
+        'Publishing',
+        'Lainnya'
+    ];
 
     useEffect(() => {
         fetchTickets();
     }, [token]);
+
+    useEffect(() => {
+        if ((category === 'Rilisan' || category === 'Takedown Rilisan') && releases.length === 0) {
+            fetchReleases();
+        }
+    }, [category]);
 
     const fetchTickets = async () => {
         try {
@@ -42,11 +67,8 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
         } catch (err: any) {
             console.error('Failed to fetch tickets', err);
             if (err?.message === 'AUTH') {
-                if (onAuthExpired) {
-                    onAuthExpired();
-                } else {
-                    setError('Sesi berakhir. Mohon refresh halaman.');
-                }
+                // Handle auth expiration if needed, or let parent handle it
+                setError('Sesi berakhir. Mohon refresh halaman.');
             } else {
                 setError('Gagal memuat tiket.');
             }
@@ -55,19 +77,52 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
         }
     };
 
+    const fetchReleases = async () => {
+        try {
+            setLoadingReleases(true);
+            const data = await api.getReleases(token);
+            // Filter releases based on requirements if needed
+            // For now, we fetch all, filtering can be done in render
+            setReleases(data);
+        } catch (err) {
+            console.error('Failed to fetch releases', err);
+        } finally {
+            setLoadingReleases(false);
+        }
+    };
+
     const handleCreateTicket = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newSubject.trim() || !newMessage.trim()) return;
+
+        let finalMessage = `[Kategori: ${category}]\n`;
+
+        if (category === 'Whitelist Youtube / Youtube Claim') {
+            finalMessage += `[Youtube Link: ${youtubeLink}]\n`;
+        } else if ((category === 'Rilisan' || category === 'Takedown Rilisan') && selectedReleaseId) {
+            const release = releases.find(r => r.id === selectedReleaseId);
+            if (release) {
+                const isrcs = release.tracks?.map(t => t.isrc).join(', ') || '-';
+                finalMessage += `[Release Info]\nJudul: ${release.title}\nUPC: ${release.upc || '-'}\nISRC: ${isrcs}\n`;
+            }
+        }
+
+        finalMessage += `\n${newMessage}`;
 
         try {
             setSubmitting(true);
             await api.tickets.create(token, {
                 subject: newSubject,
-                message: newMessage
+                message: finalMessage
             });
             setIsCreating(false);
+            // Reset form
             setNewSubject('');
             setNewMessage('');
+            setCategory('Lainnya');
+            setYoutubeLink('');
+            setSelectedReleaseId('');
+            
             fetchTickets();
         } catch (err: any) {
             console.error('Failed to create ticket', err);
@@ -129,6 +184,82 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                                 required
                             />
                         </div>
+
+                        <div className="mb-4">
+                            <label className="block text-xs text-gray-700 mb-1">Kategori</label>
+                            <select
+                                value={category}
+                                onChange={(e) => {
+                                    setCategory(e.target.value);
+                                    setYoutubeLink('');
+                                    setSelectedReleaseId('');
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs"
+                            >
+                                {categories.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {category === 'Whitelist Youtube / Youtube Claim' && (
+                            <div className="mb-4 animate-fade-in">
+                                <label className="block text-xs text-gray-700 mb-1">Link Youtube (yang mau di-whitelist)</label>
+                                <input 
+                                    type="url" 
+                                    value={youtubeLink}
+                                    onChange={(e) => setYoutubeLink(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs"
+                                    placeholder="https://youtube.com/..."
+                                    required
+                                />
+                            </div>
+                        )}
+
+                        {(category === 'Rilisan' || category === 'Takedown Rilisan') && (
+                            <div className="mb-4 animate-fade-in">
+                                <label className="block text-xs text-gray-700 mb-1">
+                                    {category === 'Takedown Rilisan' ? 'Pilih Rilisan (Live Only)' : 'Pilih Rilisan'}
+                                </label>
+                                {loadingReleases ? (
+                                    <div className="text-xs text-gray-500">Memuat rilisan...</div>
+                                ) : (
+                                    <select
+                                        value={selectedReleaseId}
+                                        onChange={(e) => setSelectedReleaseId(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs"
+                                        required
+                                    >
+                                        <option value="">-- Pilih Rilisan --</option>
+                                        {releases
+                                            .filter(r => category === 'Takedown Rilisan' ? r.status === 'Live' : true)
+                                            .map(r => (
+                                                <option key={r.id} value={r.id}>
+                                                    {r.title} ({r.upc || 'No UPC'}) - {r.status}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
+                                )}
+                                {selectedReleaseId && (
+                                    <div className="mt-2 p-3 bg-gray-50 rounded-lg text-[10px] text-gray-600 border border-gray-200">
+                                        {(() => {
+                                            const r = releases.find(rel => rel.id === selectedReleaseId);
+                                            if (!r) return null;
+                                            const isrcs = r.tracks?.map(t => t.isrc).join(', ') || '-';
+                                            return (
+                                                <div className="space-y-1">
+                                                    <div><span className="font-medium">Judul:</span> {r.title}</div>
+                                                    <div><span className="font-medium">UPC:</span> {r.upc || '-'}</div>
+                                                    <div><span className="font-medium">ISRC:</span> {isrcs}</div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="mb-4">
                             <label className="block text-xs text-gray-700 mb-1">Pesan</label>
                             <textarea 

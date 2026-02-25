@@ -147,16 +147,16 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
 
        {/* RECENT ACTIVITY TABLE */}
        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-sm text-slate-800 flex items-center gap-2">
-                    <LayoutDashboard size={20} className="text-slate-400" />
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 className="text-xs text-slate-800 flex items-center gap-2 font-bold uppercase tracking-wider">
+                    <LayoutDashboard size={16} className="text-slate-400" />
                     Recent Activity (Pending & Processing)
                 </h3>
                 <button 
                     onClick={onNavigateToAll}
-                    className="text-[12px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    className="text-[11px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
                 >
-                    View All <ArrowRight size={16} />
+                    View All <ArrowRight size={14} />
                 </button>
             </div>
             
@@ -164,12 +164,12 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-gray-100">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Cover</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Title</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Artist</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Aggregator</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Date</th>
+                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Cover</th>
+                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Title</th>
+                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Artist</th>
+                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Aggregator</th>
+                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Status</th>
+                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Date</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -195,8 +195,8 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                                     onClick={() => onViewRelease(release)}
                                     className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
                                 >
-                                    <td className="px-6 py-3">
-                                        <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden border border-gray-200">
+                                    <td className="px-6 py-2.5">
+                                        <div className="w-8 h-8 rounded-md bg-gray-100 overflow-hidden border border-gray-200">
                                             {release.coverArt ? (
                                                 <img 
                                                     src={typeof release.coverArt === 'string' ? assetUrl(release.coverArt) : URL.createObjectURL(release.coverArt)} 
@@ -207,32 +207,32 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                                                     }} 
                                                 />
                                             ) : (
-                                                <div className="flex items-center justify-center h-full text-gray-400"><Disc size={16} /></div>
+                                                <div className="flex items-center justify-center h-full text-gray-400"><Disc size={14} /></div>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-3 font-bold text-slate-700 group-hover:text-blue-600 transition-colors text-[13px]">
+                                    <td className="px-6 py-2.5 font-bold text-slate-700 group-hover:text-blue-600 transition-colors text-xs">
                                         {release.title}
                                     </td>
-                                    <td className="px-6 py-3 text-[13px] text-slate-600">
+                                    <td className="px-6 py-2.5 text-xs text-slate-600">
                                         {(release.primaryArtists || [])[0] || "Unknown"}
                                     </td>
-                                    <td className="px-6 py-3 text-[13px]">
+                                    <td className="px-6 py-2.5 text-xs">
                                         {release.aggregator ? (
                                             <div className="flex items-center gap-2 text-slate-700 font-medium">
-                                                <Globe size={14} className="text-purple-500" />
+                                                <Globe size={12} className="text-purple-500" />
                                                 {release.aggregator}
                                             </div>
                                         ) : (
-                                            <span className="text-slate-400 italic text-[11px]">-</span>
+                                            <span className="text-slate-400 italic text-[10px]">-</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-3">
-                                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${statusClass}`}>
+                                    <td className="px-6 py-2.5">
+                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusClass}`}>
                                             {release.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-3 text-[13px] text-slate-500">
+                                    <td className="px-6 py-2.5 text-xs text-slate-500">
                                         {formatDMY(release.submissionDate)}
                                     </td>
                                 </tr>
@@ -240,7 +240,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                         })}
                         {recentActivity.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="p-8 text-center text-slate-400 text-sm">
+                                <td colSpan={6} className="p-6 text-center text-slate-400 text-xs">
                                     No pending or processing releases found.
                                 </td>
                             </tr>
