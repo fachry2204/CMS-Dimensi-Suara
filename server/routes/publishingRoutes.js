@@ -517,12 +517,27 @@ router.get('/reports', authenticateToken, async (req, res) => {
 
 router.get('/analytics/stats', authenticateToken, async (req, res) => {
     try {
-        const userId = (req.user.role === 'Admin') ? null : req.user.id;
+        const isAdmin = req.user.role === 'Admin';
+        const userId = isAdmin ? null : req.user.id;
+
+        // Ensure non-admins ALWAYS filter by userId
+        // If userId is missing for non-admin, force empty result or error
+        if (!isAdmin && !userId) {
+            return res.json({
+                totalRevenue: 0,
+                totalSongs: 0,
+                pendingSongs: 0,
+                approvedSongs: 0,
+                topSongs: [],
+                topWriters: [],
+                monthlyData: []
+            });
+        }
         
         // 1. Total Revenue
         let revSql = 'SELECT SUM(sub_pub_share) as total FROM publishing_reports';
         let revParams = [];
-        if (userId) {
+        if (!isAdmin) {
             revSql += ' WHERE song_id IN (SELECT id FROM songs WHERE user_id = ?)';
             revParams.push(userId);
         }
