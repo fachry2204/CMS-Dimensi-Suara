@@ -20,17 +20,33 @@ const UPLOADS_ROOT = path.join(__dirname, '../../uploads');
 const RELEASES_DIR = path.join(UPLOADS_ROOT, 'releases');
 const TMP_DIR = path.join(UPLOADS_ROOT, 'tmp');
 
-if (!fs.existsSync(RELEASES_DIR)) {
-    fs.mkdirSync(RELEASES_DIR, { recursive: true });
-}
-if (!fs.existsSync(TMP_DIR)) {
-    fs.mkdirSync(TMP_DIR, { recursive: true });
+try {
+    if (!fs.existsSync(UPLOADS_ROOT)) {
+        console.log('Creating uploads root:', UPLOADS_ROOT);
+        fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
+    }
+    if (!fs.existsSync(RELEASES_DIR)) {
+        console.log('Creating releases dir:', RELEASES_DIR);
+        fs.mkdirSync(RELEASES_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(TMP_DIR)) {
+        console.log('Creating tmp dir:', TMP_DIR);
+        fs.mkdirSync(TMP_DIR, { recursive: true });
+    }
+} catch (err) {
+    console.error('Failed to create upload directories:', err);
 }
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        // Organize by user/release-title if possible, or just flat/date-based
-        // To keep it simple and avoid collision, use timestamp
+        // Ensure directory exists at runtime to be safe
+        if (!fs.existsSync(RELEASES_DIR)) {
+             try {
+                fs.mkdirSync(RELEASES_DIR, { recursive: true });
+             } catch (e) {
+                return cb(e);
+             }
+        }
         cb(null, RELEASES_DIR);
     },
     filename: (req, file, cb) => {
@@ -65,6 +81,13 @@ const storage = multer.diskStorage({
 
 const storageTmp = multer.diskStorage({
     destination: (req, file, cb) => {
+        if (!fs.existsSync(TMP_DIR)) {
+             try {
+                fs.mkdirSync(TMP_DIR, { recursive: true });
+             } catch (e) {
+                return cb(e);
+             }
+        }
         cb(null, TMP_DIR);
     },
     filename: (req, file, cb) => {
@@ -119,6 +142,13 @@ const uploadTmp = multer({
 // Chunk upload (store small parts then assemble)
 const chunkStorage = multer.diskStorage({
     destination: (req, file, cb) => {
+        if (!fs.existsSync(TMP_DIR)) {
+             try {
+                fs.mkdirSync(TMP_DIR, { recursive: true });
+             } catch (e) {
+                return cb(e);
+             }
+        }
         cb(null, TMP_DIR);
     },
     filename: (req, file, cb) => {
@@ -131,7 +161,22 @@ const uploadTmpChunk = multer({
     limits: { fileSize: Math.min(MAX_BYTES, 16 * 1024 * 1024) }
 });
 
-router.post('/upload', authenticateToken, upload.any(), async (req, res) => {
+// Middleware wrapper to catch Multer errors
+const handleUpload = (uploader) => (req, res, next) => {
+    uploader(req, res, (err) => {
+        if (err) {
+            console.error('Multer Upload Error:', err);
+            if (err instanceof multer.MulterError) {
+                return res.status(400).json({ error: `Upload Error: ${err.message} (${err.code})` });
+            } else if (err) {
+                return res.status(500).json({ error: `Server Upload Error: ${err.message}` });
+            }
+        }
+        next();
+    });
+};
+
+router.post('/upload', authenticateToken, handleUpload(upload.any()), async (req, res) => {
     try {
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
         const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
@@ -145,8 +190,19 @@ router.post('/upload', authenticateToken, upload.any(), async (req, res) => {
         for (const f of files) {
             const destName = f.filename;
             const destPath = path.join(targetDir, destName);
+            // f.path is where multer saved it (RELEASES_DIR/filename)
             if (f.path !== destPath) {
-                fs.renameSync(f.path, destPath);
+                 // Try rename, fallback to copy+unlink if cross-device
+                 try {
+                    fs.renameSync(f.path, destPath);
+                 } catch (renameErr) {
+                    if (renameErr.code === 'EXDEV') {
+                        fs.copyFileSync(f.path, destPath);
+                        fs.unlinkSync(f.path);
+                    } else {
+                        throw renameErr;
+                    }
+                 }
             }
             const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
             paths[f.fieldname] = publicPath;
@@ -160,7 +216,7 @@ router.post('/upload', authenticateToken, upload.any(), async (req, res) => {
 });
 
 // Upload to TMP (store original files before final submit)
-router.post('/upload-tmp', authenticateToken, uploadTmp.any(), async (req, res) => {
+router.post('/upload-tmp', authenticateToken, handleUpload(uploadTmp.any()), async (req, res) => {
     try {
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
         const userId = req.user.id;
@@ -176,7 +232,16 @@ router.post('/upload-tmp', authenticateToken, uploadTmp.any(), async (req, res) 
             const destName = f.filename;
             const destPath = path.join(targetDir, destName);
             if (f.path !== destPath) {
-                fs.renameSync(f.path, destPath);
+                try {
+                    fs.renameSync(f.path, destPath);
+                } catch (renameErr) {
+                    if (renameErr.code === 'EXDEV') {
+                        fs.copyFileSync(f.path, destPath);
+                        fs.unlinkSync(f.path);
+                    } else {
+                        throw renameErr;
+                    }
+                }
             }
             const publicPath = `/uploads/tmp/${userId}/${artistDirName}/${releaseDirName}/${destName}`;
             paths[f.fieldname] = publicPath;
@@ -190,7 +255,7 @@ router.post('/upload-tmp', authenticateToken, uploadTmp.any(), async (req, res) 
 });
 
 // Chunked TMP upload (append chunks sequentially)
-router.post('/upload-tmp-chunk', authenticateToken, uploadTmpChunk.single('chunk'), async (req, res) => {
+router.post('/upload-tmp-chunk', authenticateToken, handleUpload(uploadTmpChunk.single('chunk')), async (req, res) => {
     try {
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
         const userId = req.user.id;
@@ -333,7 +398,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
 
         const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
         const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
-        const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
+        // Folder name: Artist - Release Title
+        const releaseDirName = sanitizeName(`${primaryArtist} - ${releaseData.title}`).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
@@ -344,7 +410,17 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
             const destName = f.filename;
             const destPath = path.join(targetDir, destName);
             if (f.path !== destPath) {
-                fs.renameSync(f.path, destPath);
+                // Try rename, fallback to copy+unlink if cross-device
+                try {
+                   fs.renameSync(f.path, destPath);
+                } catch (renameErr) {
+                   if (renameErr.code === 'EXDEV') {
+                       fs.copyFileSync(f.path, destPath);
+                       fs.unlinkSync(f.path);
+                   } else {
+                       throw renameErr;
+                   }
+                }
             }
             const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
             pathMap[f.fieldname] = publicPath;
@@ -388,6 +464,25 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
 
             return null;
         };
+
+        // Handle Cover Art move from TMP if not uploaded directly
+        if (!pathMap['coverArt'] && releaseData.coverArt && typeof releaseData.coverArt === 'string' && releaseData.coverArt.includes('/uploads/tmp/')) {
+             const tmpCover = releaseData.coverArt;
+             const absTmp = resolveTmpAbs(tmpCover);
+             if (absTmp && fs.existsSync(absTmp)) {
+                 const ext = path.extname(absTmp) || path.extname(tmpCover) || '.jpg';
+                 const outName = `${artistDirName} - ${releaseDirName}-cover${ext}`;
+                 const outAbs = path.join(targetDir, outName);
+                 if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+                 try {
+                     fs.copyFileSync(absTmp, outAbs);
+                     try { fs.unlinkSync(absTmp); } catch {}
+                     pathMap['coverArt'] = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                 } catch (e) {
+                     console.warn('Cover art move failed:', e);
+                 }
+             }
+        }
         const checkAudioFormat24_48 = (inPath) => {
             return new Promise((resolve) => {
                 const args = [

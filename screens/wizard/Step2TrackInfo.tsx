@@ -341,8 +341,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 if (trackIndex >= 0) {
                     const fieldName = `track_${trackIndex}_audio`;
                     try {
-                        // Use chunked upload for almost all audio files (threshold > 1MB) to bypass typical Nginx 2MB limits
-                        const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
+                        // Use chunked upload for files > 20MB
+                        const useChunk = (file?.size || 0) > (20 * 1024 * 1024);
                         const resp = useChunk
                           ? await api.uploadTmpReleaseFileChunked(
                               token,

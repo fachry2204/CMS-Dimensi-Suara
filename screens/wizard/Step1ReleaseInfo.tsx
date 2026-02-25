@@ -29,7 +29,11 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                 setUserRole(profile.role);
                 
                 if (type === 'Personal' && profile.role !== 'Admin') {
-                    updateData({ label: 'Dimensi Suara' });
+                    updateData({ 
+                        label: 'Dimensi Suara',
+                        pLine: 'Dimensi Suara',
+                        cLine: 'Dimensi Suara'
+                    });
                 }
             } catch (error) {
                 console.error("Failed to fetch user profile", error);
@@ -86,7 +90,8 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
         let storedCover: any = processedFile;
         if (token) {
           try {
-            const resp = await api.uploadReleaseFile(
+            // Use TMP upload
+            const resp = await api.uploadTmpReleaseFile(
               token,
               { title: (data.title && data.title.trim()) || `Cover-${Date.now()}`, primaryArtists: (data.primaryArtists || []).filter(a => a && a.trim() !== '') },
               'coverArt',
@@ -268,30 +273,33 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
           <div className="w-full bg-white border border-gray-200 rounded-lg p-4 relative mt-2">
               <h3 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Details & Classification</h3>
               
-              <div className="mb-3">
-                  <TextInput 
-                    label="Record Label" 
-                    value={data.label} 
-                    onChange={(e) => updateData({ label: e.target.value })} 
-                    placeholder="Your Label Name"
-                    disabled={userType === 'Personal' && userRole !== 'Admin'}
-                  />
-              </div>
+              {(userType === 'Company' || userRole === 'Admin') && (
+                <>
+                  <div className="mb-3">
+                      <TextInput 
+                        label="Record Label" 
+                        value={data.label} 
+                        onChange={(e) => updateData({ label: e.target.value })} 
+                        placeholder="Your Label Name"
+                      />
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                  <TextInput 
-                    label="P-Line (Copyright)" 
-                    value={data.pLine} 
-                    onChange={(e) => updateData({ pLine: e.target.value })} 
-                    placeholder="℗ 2024 Your Label"
-                  />
-                  <TextInput 
-                    label="C-Line (Publishing)" 
-                    value={data.cLine} 
-                    onChange={(e) => updateData({ cLine: e.target.value })} 
-                    placeholder="© 2024 Your Label"
-                  />
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                      <TextInput 
+                        label="P-Line (Copyright)" 
+                        value={data.pLine} 
+                        onChange={(e) => updateData({ pLine: e.target.value })} 
+                        placeholder="℗ 2024 Your Label"
+                      />
+                      <TextInput 
+                        label="C-Line (Publishing)" 
+                        value={data.cLine} 
+                        onChange={(e) => updateData({ cLine: e.target.value })} 
+                        placeholder="© 2024 Your Label"
+                      />
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {releaseType === 'ALBUM' && (
