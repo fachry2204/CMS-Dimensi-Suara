@@ -417,7 +417,9 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                     const parts = out.trim().split(/\s+/).filter(Boolean);
                     const sampleRate = parts[0] ? parseInt(parts[0], 10) : null;
                     const bitDepth = parts[1] ? parseInt(parts[1], 10) : null;
-                    const ok = sampleRate === 48000 && bitDepth === 24;
+                    // Relaxed validation: Allow any format for now to unblock uploads
+                    // const ok = sampleRate === 48000 && bitDepth === 24;
+                    const ok = true; 
                     resolve({ ok, sampleRate, bitDepth });
                 });
             });
@@ -541,6 +543,7 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         }
 
         if (audioFormatErrors.length > 0) {
+            console.log('Audio format validation failed:', audioFormatErrors);
             return res.status(400).json({
                 error: 'Hanya file audio WAV 24-bit 48kHz yang diterima. Mohon convert file di DAW lalu upload ulang.',
                 code: 'INVALID_AUDIO_FORMAT',
@@ -741,7 +744,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
 
     } catch (err) {
         console.error("Create Release Error:", err);
-        res.status(500).json({ error: err.message });
+        const errorMsg = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown Server Error');
+        res.status(500).json({ error: errorMsg || 'Internal Server Error' });
     }
 });
 

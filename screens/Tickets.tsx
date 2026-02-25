@@ -96,8 +96,8 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
         <div className="p-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Tiket Bantuan</h1>
-                    <p className="text-gray-500">
+                    <h1 className="text-lg text-gray-900">Tiket Bantuan</h1>
+                    <p className="text-xs text-gray-500">
                         {userRole === 'Admin' 
                             ? 'Kelola tiket bantuan dari pengguna' 
                             : 'Kirim tiket bantuan jika Anda mengalami kendala'}
@@ -106,9 +106,9 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                 {userRole !== 'Admin' && (
                     <button 
                         onClick={() => setIsCreating(true)}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-xs"
                     >
-                        <Plus size={20} />
+                        <Plus size={16} />
                         Buat Tiket Baru
                     </button>
                 )}
@@ -116,25 +116,25 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
 
             {isCreating && (
                 <div className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <h2 className="text-lg font-semibold mb-4">Buat Tiket Baru</h2>
+                    <h2 className="text-sm mb-4">Buat Tiket Baru</h2>
                     <form onSubmit={handleCreateTicket}>
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Subjek</label>
+                            <label className="block text-xs text-gray-700 mb-1">Subjek</label>
                             <input 
                                 type="text" 
                                 value={newSubject}
                                 onChange={(e) => setNewSubject(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs"
                                 placeholder="Contoh: Kendala Upload Lagu"
                                 required
                             />
                         </div>
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Pesan</label>
+                            <label className="block text-xs text-gray-700 mb-1">Pesan</label>
                             <textarea 
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs"
                                 rows={4}
                                 placeholder="Jelaskan kendala Anda secara detail..."
                                 required
@@ -144,14 +144,14 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                             <button 
                                 type="button"
                                 onClick={() => setIsCreating(false)}
-                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 text-xs"
                             >
                                 Batal
                             </button>
                             <button 
                                 type="submit"
                                 disabled={submitting}
-                                className="px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                                className="px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-xs"
                             >
                                 {submitting ? 'Mengirim...' : 'Kirim Tiket'}
                             </button>
@@ -169,7 +169,7 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                             placeholder="Cari tiket..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs"
                         />
                     </div>
                 </div>
@@ -184,40 +184,40 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                     </div>
                 ) : (
                     <table className="w-full text-left">
-                        <thead className="bg-gray-50 text-gray-600 text-sm">
+                        <thead className="bg-gray-50 text-gray-600 text-xs">
                             <tr>
-                                <th className="px-6 py-3">Subjek</th>
-                                {userRole === 'Admin' && <th className="px-6 py-3">Pengguna</th>}
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3">Terakhir Update</th>
-                                <th className="px-6 py-3">Aksi</th>
+                                <th className="px-6 py-3 font-normal">Subjek</th>
+                                {userRole === 'Admin' && <th className="px-6 py-3 font-normal">Pengguna</th>}
+                                <th className="px-6 py-3 font-normal">Status</th>
+                                <th className="px-6 py-3 font-normal">Terakhir Update</th>
+                                <th className="px-6 py-3 font-normal">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                             {filteredTickets.map(ticket => (
                                 <tr key={ticket.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4">
-                                        <div className="font-medium text-gray-900">{ticket.subject}</div>
-                                        <div className="text-xs text-gray-500">ID: #{ticket.id}</div>
+                                        <div className="text-gray-900 text-xs">{ticket.subject}</div>
+                                        <div className="text-[10px] text-gray-500">ID: #{ticket.id}</div>
                                     </td>
                                     {userRole === 'Admin' && (
                                         <td className="px-6 py-4">
-                                            <div className="text-gray-900">{ticket.user_name || 'Unknown'}</div>
-                                            <div className="text-xs text-gray-500">{ticket.user_email}</div>
+                                            <div className="text-gray-900 text-xs">{ticket.user_name || 'Unknown'}</div>
+                                            <div className="text-[10px] text-gray-500">{ticket.user_email}</div>
                                         </td>
                                     )}
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                                        <span className={`px-2 py-1 rounded-full text-[10px] ${getStatusColor(ticket.status)}`}>
                                             {ticket.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                    <td className="px-6 py-4 text-xs text-gray-500">
                                         {new Date(ticket.updated_at).toLocaleString('id-ID')}
                                     </td>
                                     <td className="px-6 py-4">
                                         <button 
                                             onClick={() => navigate(`/tickets/${ticket.id}`)}
-                                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1"
+                                            className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center gap-1"
                                         >
                                             <MessageSquare size={16} />
                                             Lihat Detail

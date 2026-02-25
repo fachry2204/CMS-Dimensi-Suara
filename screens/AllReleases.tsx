@@ -191,10 +191,10 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                 </div>
                 <button
                     onClick={() => navigate('/new-release')}
-                    className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-[13px] font-semibold shadow-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-[11px] font-normal shadow-sm"
                     title="Create New Release"
                 >
-                    <Plus size={16} />
+                    <Plus size={14} />
                     New Release
                 </button>
             </div>

@@ -8,15 +8,15 @@ interface Props {
 
 export const ReleaseTypeSelection: React.FC<Props> = ({ onSelect }) => {
   return (
-    <div className="h-full min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in-up">
+    <div className="h-full min-h-[80vh] flex flex-col items-center justify-start pt-16 p-6 animate-fade-in-up">
       <div className="text-center mb-10">
-         <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-600 text-xs font-bold tracking-wide uppercase mb-4 shadow-sm">
+         <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-medium tracking-wide uppercase mb-4 shadow-sm">
             Start Your Journey
          </span>
-         <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-3 tracking-tight">
+         <h1 className="text-2xl md:text-3xl font-medium text-slate-800 mb-3 tracking-tight">
             What are you releasing?
          </h1>
-         <p className="text-slate-500 text-base">Select the format that matches your music.</p>
+         <p className="text-slate-500 text-sm">Select the format that matches your music.</p>
       </div>
       
       <div className="flex flex-col md:flex-row gap-6 w-full max-w-3xl justify-center">

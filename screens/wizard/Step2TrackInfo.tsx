@@ -36,7 +36,7 @@ const AudioPreview: React.FC<{ file: File | string }> = ({ file }) => {
     if (!url) return null;
 
     return (
-        <audio controls className="w-full mt-2 h-8">
+        <audio controls className="w-full h-8">
             <source src={url} type={typeof file === 'string' ? 'audio/mpeg' : file.type} />
             Your browser does not support the audio element.
         </audio>
@@ -506,24 +506,24 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
 
   return (
     <div className="w-full max-w-5xl mx-auto relative">
-       <div className="flex justify-between items-end mb-8 border-b border-gray-100 pb-6">
+       <div className="flex justify-between items-end mb-5 border-b border-gray-100 pb-4">
         <div>
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">Tracklist</h2>
-            <p className="text-slate-500">Upload audio and fill in details for each track.</p>
+            <h2 className="text-sm font-medium text-slate-800 mb-1">Tracklist</h2>
+            <p className="text-[10px] text-slate-500">Upload audio and fill in details for each track.</p>
         </div>
         
         {releaseType === 'ALBUM' && (
           <button 
               onClick={addTrack}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 text-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-sm transition-all hover:-translate-y-0.5 text-[10px]"
           >
-              <PlusCircle size={18} />
+              <PlusCircle size={12} />
               Add Track
           </button>
         )}
       </div>
       
-      <div className="space-y-6">
+      <div className="space-y-4">
         {data.tracks.map((track, index) => {
             const isExpanded = releaseType === 'SINGLE' || expandedTrackId === track.id;
             const isProcessingAudio = processingState[`${track.id}-audioFile`];
@@ -533,21 +533,21 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             const isTrimmerActive = trimmerState.isOpen && trimmerState.trackId === track.id && trimmerState.rawFile;
 
             return (
-                <div key={track.id} className={`bg-white rounded-2xl border transition-all duration-300 ${isExpanded ? 'border-blue-200 shadow-xl ring-1 ring-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
+                <div key={track.id} className={`bg-white rounded-xl border transition-all duration-300 ${isExpanded ? 'border-blue-200 shadow-sm ring-1 ring-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
                     {/* Header */}
                     <div 
-                        className={`flex items-center justify-between p-5 ${releaseType === 'SINGLE' ? '' : 'cursor-pointer'}`}
+                        className={`flex items-center justify-between p-3 ${releaseType === 'SINGLE' ? '' : 'cursor-pointer'}`}
                         onClick={() => releaseType !== 'SINGLE' && toggleExpand(track.id)}
                     >
-                        <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm ${isExpanded ? 'bg-blue-500 text-white' : 'bg-gray-100 text-slate-500'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-xs ${isExpanded ? 'bg-blue-500 text-white' : 'bg-gray-100 text-slate-500'}`}>
                                 {track.trackNumber}
                             </div>
                             <div>
-                                <h3 className={`font-bold text-lg ${track.title ? 'text-slate-800' : 'text-slate-400 italic'}`}>
-                                    {track.title || "Untitled Track"}
-                                </h3>
-                                <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                                <h3 className={`font-medium text-[10px] ${track.title ? 'text-slate-800' : 'text-slate-400 italic'}`}>
+                                {track.title || "Untitled Track"}
+                            </h3>
+                                <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
                                     {isProcessingAudio ? (
                                         <span className="flex items-center gap-1 text-blue-600 font-medium">
                                             <Loader2 size={12} className="animate-spin" /> Converting...
@@ -587,116 +587,156 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         <div className="p-6 pt-2 border-t border-gray-100 animate-fade-in">
                             
                             {/* 1. File Uploads */}
-                            <div className="bg-slate-50 rounded-xl p-5 mb-8 border border-slate-100">
-                                <h4 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
-                                    <FileAudio size={16} /> Files
+                            <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-100">
+                                <h4 className="text-[10px] font-medium text-slate-700 mb-2 uppercase tracking-wider flex items-center gap-2">
+                                    <FileAudio size={14} /> Files
                                 </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* FULL AUDIO */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
+                                    <div className="md:col-span-2 space-y-2">
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1 flex items-center justify-between">
                                             <span>Full Audio (WAV 24-bit / 48kHz) <span className="text-red-500">*</span></span>
                                             {isProcessingAudio && (
-                                              <span className="text-xs text-blue-500 flex items-center gap-2">
-                                                <Loader2 size={12} className="animate-spin"/>
-                                                <span>Uploading...</span>
-                                                <span className="inline-flex items-center w-32 h-2 bg-blue-100 rounded-full overflow-hidden">
-                                                  <span
-                                                    className="h-2 bg-blue-500"
-                                                    style={{ width: `${Math.min(100, Math.max(0, (convertProgress[track.id]?.audio || 0)))}%` }}
-                                                  />
-                                                </span>
-                                                <span>{Math.round(convertProgress[track.id]?.audio || 0)}%</span>
+                                              <span className="text-[10px] text-blue-500 flex items-center gap-2">
+                                                <Loader2 size={10} className="animate-spin"/>
+                                                <span>Uploading {Math.round(convertProgress[track.id]?.audio || 0)}%</span>
                                               </span>
                                             )}
                                         </label>
-                                        <div className="relative">
+                                        
+                                        <label className={`
+                                            relative flex flex-row items-center justify-between w-full px-4 py-2
+                                            border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 group
+                                            ${track.audioFile ? 'border-blue-300 bg-blue-50/50' : 'border-gray-300 bg-white hover:bg-gray-50 hover:border-blue-300'}
+                                            ${isProcessingAudio ? 'opacity-50 cursor-not-allowed' : ''}
+                                        `}>
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                {track.audioFile ? (
+                                                    <>
+                                                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+                                                            <FileAudio size={14} />
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <p className="text-[10px] font-medium text-blue-900 truncate">
+                                                                {typeof track.audioFile === 'string' ? 'Existing Audio' : track.audioFile.name}
+                                                            </p>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] text-blue-500">Uploaded</span>
+                                                                <div className="scale-75 origin-left w-32">
+                                                                    <AudioPreview file={track.audioFile} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 group-hover:bg-blue-100 group-hover:text-blue-500 transition-colors flex-shrink-0">
+                                                            <FileAudio size={14} />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <p className="text-[10px] font-medium text-gray-600 group-hover:text-blue-600 transition-colors">Click to upload Full Audio</p>
+                                                            <p className="text-[10px] text-gray-400">WAV 24-bit / 48kHz</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                            
+                                            {!track.audioFile && (
+                                                <div className="hidden sm:block">
+                                                    <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-[10px] font-medium border border-gray-200">Select File</span>
+                                                </div>
+                                            )}
+
                                             <input 
                                                 type="file" 
                                                 accept="audio/*"
+                                                className="hidden" 
                                                 disabled={isProcessingAudio}
                                                 onChange={(e) => handleFileChange(track.id, 'audioFile', e.target.files?.[0] || null)}
-                                                className={`block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold cursor-pointer border border-gray-200 rounded-lg bg-white
-                                                    ${isProcessingAudio ? 'opacity-50 cursor-not-allowed' : 'file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200'}
-                                                `}
                                             />
-                                            {track.audioFile ? (
-                                                <div className="mt-2">
-                                                    <p className={`text-[10px] font-bold mb-1 truncate ${typeof track.audioFile === 'string' ? 'text-green-600' : 'text-yellow-600'}`}>
-                                                        {typeof track.audioFile === 'string' ? 'Server: Existing Audio' : `Local: ${track.audioFile.name}`}
-                                                    </p>
-                                                    {typeof track.audioFile !== 'string' && (
-                                                        <p className="text-[10px] text-yellow-600">Will upload at final submit</p>
-                                                    )}
-                                                    <AudioPreview file={track.audioFile} />
-                                                </div>
-                                            ) : (
-                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">
-                                                    Pastikan file sudah di-export dari DAW sebagai WAV 24-bit / 48kHz sebelum upload.
-                                                </p>
-                                            )}
-                                        </div>
+                                        </label>
                                     </div>
                                     
                                     {/* AUDIO CLIP */}
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
+                                    <div className="md:col-span-2 space-y-2">
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1 flex items-center justify-between">
                                             <span>Audio Clip (60s, 24-bit / 48kHz) <span className="text-red-500">*</span></span>
                                             {isProcessingClip && (
-                                              <span className="text-xs text-orange-500 flex items-center gap-2">
-                                                <Loader2 size={12} className="animate-spin"/>
-                                                <span>Processing...</span>
-                                                <span className="inline-flex items-center w-32 h-2 bg-orange-100 rounded-full overflow-hidden">
-                                                  <span
-                                                    className="h-2 bg-orange-500"
-                                                    style={{ width: `${Math.min(100, Math.max(0, (convertProgress[track.id]?.clip || 0)))}%` }}
-                                                  />
-                                                </span>
-                                                <span>{Math.round(convertProgress[track.id]?.clip || 0)}%</span>
+                                              <span className="text-[10px] text-orange-500 flex items-center gap-2">
+                                                <Loader2 size={10} className="animate-spin"/>
+                                                <span>Processing {Math.round(convertProgress[track.id]?.clip || 0)}%</span>
                                               </span>
                                             )}
                                         </label>
-                                        <div className="relative">
+                                        
+                                        <label className={`
+                                            relative flex flex-row items-center justify-between w-full px-4 py-2
+                                            border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 group
+                                            ${track.audioClip ? 'border-orange-300 bg-orange-50/50' : 'border-gray-300 bg-white hover:bg-gray-50 hover:border-orange-300'}
+                                            ${isProcessingClip ? 'opacity-50 cursor-not-allowed' : ''}
+                                        `}>
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                {track.audioClip ? (
+                                                    <>
+                                                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 flex-shrink-0">
+                                                            <Scissors size={14} />
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <p className="text-[10px] font-medium text-orange-900 truncate">
+                                                                {typeof track.audioClip === 'string' ? 'Existing Clip' : track.audioClip.name}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 w-full">
+                                                                <span className="text-[10px] text-orange-500 whitespace-nowrap">Ready</span>
+                                                                <div className="scale-75 origin-left w-[133%]">
+                                                                    <AudioPreview file={track.audioClip} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 group-hover:bg-orange-100 group-hover:text-orange-500 transition-colors flex-shrink-0">
+                                                            <Scissors size={14} />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <p className="text-[10px] font-medium text-gray-600 group-hover:text-orange-600 transition-colors">Click to upload Audio Clip</p>
+                                                            <p className="text-[10px] text-gray-400">Opens Trimmer Tool on upload</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            {!track.audioClip && (
+                                                <div className="hidden sm:block">
+                                                    <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-[10px] font-medium border border-gray-200">Select File</span>
+                                                </div>
+                                            )}
+
                                             <input 
                                                 type="file" 
                                                 accept="audio/*"
+                                                className="hidden" 
                                                 disabled={isProcessingClip}
                                                 onChange={(e) => handleFileChange(track.id, 'audioClip', e.target.files?.[0] || null)}
-                                                className={`block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold cursor-pointer border border-gray-200 rounded-lg bg-white
-                                                    ${isProcessingClip ? 'opacity-50 cursor-not-allowed' : 'file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200'}
-                                                `}
                                             />
-                                            {track.audioClip ? (
-                                                <div className="mt-2">
-                                                    <p className={`text-[10px] font-bold mb-1 truncate ${typeof track.audioClip === 'string' ? 'text-green-600' : 'text-orange-600'}`}>
-                                                        {typeof track.audioClip === 'string' ? 'Server: Existing Clip' : `Local: ${track.audioClip.name}`}
-                                                    </p>
-                                                    {typeof track.audioClip !== 'string' && (
-                                                        <p className="text-[10px] text-orange-600">Will upload at final submit</p>
-                                                    )}
-                                                    <AudioPreview file={track.audioClip} />
-                                                </div>
-                                            ) : (
-                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">Opens Trimmer Tool on upload</p>
-                                            )}
-                                        </div>
+                                        </label>
 
                                         {/* INLINE TRIMMER UI */}
                                         {isTrimmerActive && (
                                             <div className="mt-4 p-4 bg-white rounded-xl border-2 border-blue-100 shadow-sm animate-fade-in">
                                                 <div className="flex justify-between items-center mb-4">
-                                                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                                                        <Scissors size={18} className="text-blue-500" />
+                                                    <h3 className="text-[10px] font-medium text-slate-800 flex items-center gap-2">
+                                                        <Scissors size={14} className="text-blue-500" />
                                                         Trim Audio Clip
                                                     </h3>
                                                     <button onClick={closeTrimmer} className="text-slate-400 hover:text-slate-600">
-                                                        <X size={20} />
+                                                        <X size={16} />
                                                     </button>
                                                 </div>
 
                                                 <div className="bg-slate-50 rounded-xl p-3 mb-4 border border-slate-200">
                                                     <div className="text-center mb-3">
-                                                        <div className="text-xl font-mono font-bold text-blue-600">
+                                                        <div className="text-sm font-mono font-medium text-blue-600">
                                                             {new Date(trimmerState.startTime * 1000).toISOString().substr(14, 5)} - {new Date((trimmerState.startTime + 60) * 1000).toISOString().substr(14, 5)}
                                                         </div>
                                                         <p className="text-[10px] text-slate-400 mt-1">Duration: 60 Seconds</p>
@@ -756,17 +796,17 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                     {/* IPL Document (if required by version) */}
                                     {['Cover','Remix','Remastered'].includes(data.version) && (
                                       <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-semibold text-slate-600 flex items-center justify-between">
+                                        <label className="text-[10px] font-medium text-slate-600 flex items-center justify-between">
                                             <span>IPL Document (Izin Penggunaan Lagu)</span>
-                                            <Info size={14} className="text-slate-400" />
+                                            <Info size={12} className="text-slate-400" />
                                         </label>
                                         <input 
                                             type="file"
                                             onChange={(e) => handleFileChange(track.id, 'iplFile', e.target.files?.[0] || null)}
-                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold cursor-pointer border border-gray-200 rounded-lg bg-white file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200"
+                                            className="block w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-medium cursor-pointer border border-gray-200 rounded-lg bg-white file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200"
                                         />
                                         {track.iplFile && (
-                                          <p className="text-[10px] text-amber-600 font-bold mt-1 truncate">
+                                          <p className="text-[10px] text-amber-600 font-medium mt-1 truncate">
                                             📄 Attached: {typeof track.iplFile === 'string' ? 'Existing Document' : track.iplFile.name}
                                           </p>
                                         )}
@@ -775,259 +815,255 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                 </div>
                             </div>
 
-                            <hr className="border-gray-100 mb-8" />
-
                             {/* 2. Basic Metadata */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                                {releaseType === 'ALBUM' && (
-                                  <div>
-                                      <label className="block text-sm font-semibold text-slate-700 mb-2">Track Number <span className="text-red-500">*</span></label>
-                                      <input 
-                                          value={track.trackNumber}
-                                          onChange={(e) => updateTrack(track.id, { trackNumber: e.target.value })}
-                                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                          placeholder="1"
-                                      />
-                                  </div>
-                                )}
-                                {/* Release Date Field Removed as per request */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">ISRC Code (Jika sudah rilis sebelumnya)</label>
-                                    <input 
-                                        value={track.isrc}
-                                        onChange={(e) => updateTrack(track.id, { isrc: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none bg-gray-50 placeholder-gray-400"
-                                        placeholder="e.g. USABC1234567"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Track Title <span className="text-red-500">*</span></label>
-                                    <input 
-                                        value={track.title}
-                                        onChange={(e) => updateTrack(track.id, { title: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                        placeholder="Enter song title"
-                                    />
+                            <div className="border border-gray-200 rounded-lg p-3 mb-4 relative">
+                                <h4 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Track Metadata</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {releaseType === 'ALBUM' && (
+                                      <div>
+                                          <label className="block text-[10px] font-medium text-slate-700 mb-1">Track Number <span className="text-red-500">*</span></label>
+                                          <input 
+                                              value={track.trackNumber}
+                                              onChange={(e) => updateTrack(track.id, { trackNumber: e.target.value })}
+                                              className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
+                                              placeholder="1"
+                                          />
+                                      </div>
+                                    )}
+                                    {/* Release Date Field Removed as per request */}
+                                    <div>
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1">ISRC Code (Jika sudah rilis sebelumnya)</label>
+                                        <input 
+                                            value={track.isrc}
+                                            onChange={(e) => updateTrack(track.id, { isrc: e.target.value })}
+                                            className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none bg-gray-50 placeholder-gray-400"
+                                            placeholder="e.g. USABC1234567"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1">Track Title <span className="text-red-500">*</span></label>
+                                        <input 
+                                            value={track.title}
+                                            onChange={(e) => updateTrack(track.id, { title: e.target.value })}
+                                            className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
+                                            placeholder="Enter song title"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
                             {/* 3. Artists */}
-                            <div className="mb-8">
-                                <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                    Artists <span className="text-red-500">*</span>
-                                    <span title="Add all main artists and featured artists here.">
-                                        <Info size={14} className="text-slate-400 cursor-help" />
-                                    </span>
-                                </label>
-                                <div className="space-y-3">
+                            <div className="border border-gray-200 rounded-lg p-3 mb-4 relative">
+                                <h4 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Artists</h4>
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-medium text-slate-700 mb-1 flex items-center gap-2">
+                                        Primary Artists <span className="text-red-500">*</span>
+                                    </label>
                                     {track.artists.map((artist, idx) => (
-                                        <div key={idx} className="flex gap-3">
+                                        <div key={idx} className="flex gap-2">
                                             <input 
                                                 value={artist.name}
                                                 onChange={(e) => handleArtistChange(track.id, idx, 'name', e.target.value)}
-                                                className="flex-[2] px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                                                className="flex-[2] px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
                                                 placeholder="Artist Name"
                                             />
                                             <div className="flex-1 relative">
                                                 <select 
                                                     value={artist.role}
                                                     onChange={(e) => handleArtistChange(track.id, idx, 'role', e.target.value)}
-                                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                                    className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
                                                 >
                                                     {ARTIST_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
                                                 </select>
                                                 <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
-                                                    <ChevronDown size={14} />
+                                                    <ChevronDown size={12} />
                                                 </div>
                                             </div>
                                             <button 
                                                 onClick={() => removeArtist(track.id, idx)}
-                                                className={`p-3 rounded-xl transition-colors ${track.artists.length > 1 ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-gray-300 bg-gray-50 cursor-not-allowed'}`}
+                                                className={`p-1.5 rounded transition-colors ${track.artists.length > 1 ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-gray-300 bg-gray-50 cursor-not-allowed'}`}
                                                 disabled={track.artists.length <= 1}
                                             >
-                                                <Trash2 size={20} />
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     ))}
                                 </div>
                                 <button 
                                     onClick={() => addArtist(track.id)}
-                                    className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    className="mt-2 text-[10px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
                                 >
-                                    <PlusCircle size={16} /> Add Artist
+                                    <PlusCircle size={14} /> Add Artist
                                 </button>
                             </div>
 
-                            <hr className="border-gray-100 mb-8" />
+                            <hr className="border-gray-100 mb-4" />
 
                             {/* 4. Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Instrumental <span className="text-red-500">*</span></label>
-                                    <div className="relative">
-                                        <select 
-                                            value={track.isInstrumental || 'No'}
-                                            onChange={(e) => {
-                                                const val = e.target.value as 'Yes' | 'No';
-                                                updateTrack(track.id, { 
-                                                    isInstrumental: val,
-                                                    explicitLyrics: val === 'Yes' ? 'No' : track.explicitLyrics,
-                                                    lyricist: val === 'Yes' ? '' : track.lyricist,
-                                                    lyrics: val === 'Yes' ? '' : track.lyrics
-                                                });
-                                            }}
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
-                                        >
-                                            <option value="No">No</option>
-                                            <option value="Yes">Yes</option>
-                                        </select>
-                                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
-                                            <ChevronDown size={14} />
-                                        </div>
-                                    </div>
-                                </div>
-                                {track.isInstrumental !== 'Yes' && (
-                                    <div className="transition-all duration-300 opacity-100">
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Explicit Lyrics <span className="text-red-500">*</span></label>
+                            <div className="border border-gray-200 rounded-lg p-3 mb-4 relative">
+                                <h4 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Track Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1">Instrumental <span className="text-red-500">*</span></label>
                                         <div className="relative">
                                             <select 
-                                                value={track.explicitLyrics}
-                                                onChange={(e) => updateTrack(track.id, { explicitLyrics: e.target.value })}
-                                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                                value={track.isInstrumental || 'No'}
+                                                onChange={(e) => {
+                                                    const val = e.target.value as 'Yes' | 'No';
+                                                    updateTrack(track.id, { 
+                                                        isInstrumental: val,
+                                                        explicitLyrics: val === 'Yes' ? 'No' : track.explicitLyrics,
+                                                        lyricist: val === 'Yes' ? '' : track.lyricist,
+                                                        lyrics: val === 'Yes' ? '' : track.lyrics
+                                                    });
+                                                }}
+                                                className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
                                             >
-                                                {EXPLICIT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
                                             </select>
                                             <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
-                                                <ChevronDown size={14} />
+                                                <ChevronDown size={12} />
                                             </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
+                                    {track.isInstrumental !== 'Yes' && (
+                                        <div className="transition-all duration-300 opacity-100">
+                                            <label className="block text-[10px] font-medium text-slate-700 mb-1">Explicit Lyrics <span className="text-red-500">*</span></label>
+                                            <div className="relative">
+                                                <select 
+                                                    value={track.explicitLyrics}
+                                                    onChange={(e) => updateTrack(track.id, { explicitLyrics: e.target.value })}
+                                                    className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                                >
+                                                    {EXPLICIT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                                </select>
+                                                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
+                                                    <ChevronDown size={12} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Genre <span className="text-red-500">*</span></label>
-                                    <div className="relative">
-                                        <select 
-                                            value={track.genre}
-                                            onChange={(e) => updateTrack(track.id, { genre: e.target.value, subGenre: "" })}
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
-                                        >
-                                            <option value="">Select Genre</option>
-                                            {TRACK_GENRES.map(g => <option key={g} value={g}>{g}</option>)}
-                                        </select>
-                                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
-                                            <ChevronDown size={14} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1">Genre <span className="text-red-500">*</span></label>
+                                        <div className="relative">
+                                            <select 
+                                                value={track.genre}
+                                                onChange={(e) => updateTrack(track.id, { genre: e.target.value, subGenre: "" })}
+                                                className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                            >
+                                                <option value="">Select Genre</option>
+                                                {TRACK_GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
+                                                <ChevronDown size={12} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1">Sub Genre</label>
+                                        <div className="relative">
+                                            <select 
+                                                value={track.subGenre || ""}
+                                                onChange={(e) => updateTrack(track.id, { subGenre: e.target.value })}
+                                                className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                            >
+                                                <option value="">Select Sub Genre</option>
+                                                {(SUB_GENRES_MAP[track.genre] || []).map(sg => (
+                                                    <option key={sg} value={sg}>{sg}</option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
+                                                <ChevronDown size={12} />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Sub Genre</label>
-                                    <div className="relative">
-                                        <select 
-                                            value={track.subGenre || ""}
-                                            onChange={(e) => updateTrack(track.id, { subGenre: e.target.value })}
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
-                                        >
-                                            <option value="">Select Sub Genre</option>
-                                            {(SUB_GENRES_MAP[track.genre] || []).map(sg => (
-                                                <option key={sg} value={sg}>{sg}</option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
-                                            <ChevronDown size={14} />
-                                        </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1">Composer <span className="text-red-500">*</span></label>
+                                        <input 
+                                            value={track.composer}
+                                            onChange={(e) => updateTrack(track.id, { composer: e.target.value })}
+                                            className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
+                                            placeholder="Full Name"
+                                        />
                                     </div>
+                                    {track.isInstrumental !== 'Yes' && (
+                                    <div>
+                                        <label className="block text-[10px] font-medium text-slate-700 mb-1">Lyricist <span className="text-red-500">*</span></label>
+                                        <input 
+                                            value={track.lyricist}
+                                            onChange={(e) => updateTrack(track.id, { lyricist: e.target.value })}
+                                            className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
+                                            placeholder="Full Name"
+                                        />
+                                    </div>
+                                    )}
                                 </div>
                             </div>
 
-
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Composer <span className="text-red-500">*</span></label>
-                                    <input 
-                                        value={track.composer}
-                                        onChange={(e) => updateTrack(track.id, { composer: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                        placeholder="Full Name"
-                                    />
-                                </div>
-                                {track.isInstrumental !== 'Yes' && (
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Lyricist <span className="text-red-500">*</span></label>
-                                    <input 
-                                        value={track.lyricist}
-                                        onChange={(e) => updateTrack(track.id, { lyricist: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                        placeholder="Full Name"
-                                    />
-                                </div>
-                                )}
-                            </div>
-
-                            {/* 5. Additional Contributors */}
+                            {/* 5. Lyrics & Contributors */}
                             {track.isInstrumental !== 'Yes' && (
-                              <div className="mb-8">
-                                  <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                                      <Mic2 size={16} /> Lyrics
-                                  </label>
+                              <div className="border border-gray-200 rounded-lg p-3 mb-4 relative">
+                                  <h4 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Lyrics</h4>
                                   <textarea 
                                       value={track.lyrics}
                                       onChange={(e) => updateTrack(track.id, { lyrics: e.target.value })}
-                                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none h-32 resize-y"
+                                      className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none h-24 resize-y"
                                       placeholder="Enter song lyrics here..."
                                   />
                               </div>
                             )}
 
-                            <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-                                <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                    Additional Contributors
-                                </label>
+                            <div className="border border-gray-200 rounded-lg p-3 mb-4 relative">
+                                <h4 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Additional Contributors</h4>
                                 
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {track.contributors.map((contrib, idx) => (
-                                        <div key={idx} className="flex flex-col md:flex-row gap-3">
+                                        <div key={idx} className="flex flex-col md:flex-row gap-2">
                                             <input 
                                                 value={contrib.name}
                                                 onChange={(e) => handleContributorChange(track.id, idx, 'name', e.target.value)}
-                                                className="flex-[2] px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                                                className="flex-[2] px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
                                                 placeholder="Name"
                                             />
                                             <div className="flex-1 relative">
                                                 <select 
                                                     value={contrib.type}
                                                     onChange={(e) => handleContributorChange(track.id, idx, 'type', e.target.value)}
-                                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                                    className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
                                                 >
                                                     {CONTRIBUTOR_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                                                 </select>
                                                 <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
-                                                    <ChevronDown size={14} />
+                                                    <ChevronDown size={12} />
                                                 </div>
                                             </div>
                                             <input 
                                                 value={contrib.role}
                                                 onChange={(e) => handleContributorChange(track.id, idx, 'role', e.target.value)}
-                                                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                                                className="flex-1 px-2.5 py-1.5 text-[10px] border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
                                                 placeholder="Role (e.g. Drums)"
                                             />
                                             <button 
                                                 onClick={() => removeContributor(track.id, idx)}
-                                                className="p-3 text-red-500 bg-white border border-gray-200 hover:bg-red-50 rounded-xl transition-colors"
+                                                className="p-1.5 text-red-500 bg-white border border-gray-200 hover:bg-red-50 rounded transition-colors"
                                             >
-                                                <Trash2 size={20} />
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     ))}
                                 </div>
                                 <button 
                                     onClick={() => addContributor(track.id)}
-                                    className="mt-4 text-sm font-medium text-slate-500 hover:text-blue-600 flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all bg-white"
+                                    className="mt-2 text-[10px] font-medium text-slate-500 hover:text-blue-600 flex items-center gap-2 px-3 py-1.5 border border-dashed border-gray-300 rounded hover:border-blue-400 transition-all bg-white"
                                 >
-                                    <UserPlus size={16} /> Add Contributor
+                                    <UserPlus size={12} /> Add Contributor
                                 </button>
                             </div>
 
@@ -1041,9 +1077,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       {releaseType === 'ALBUM' && (
         <button 
             onClick={addTrack}
-            className="w-full mt-6 py-4 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-medium hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center gap-2"
+            className="w-full mt-4 py-2.5 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 text-xs font-medium hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center gap-2"
         >
-            <PlusCircle size={20} />
+            <PlusCircle size={16} />
             Add Another Track
         </button>
       )}

@@ -56,8 +56,21 @@ app.use((err, req, res, next) => {
         console.error('Bad JSON:', err.message);
         return res.status(400).json({ error: 'Invalid JSON format' });
     }
-    next();
+    next(err);
 });
+
+// Final Error Handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err);
+    if (res.headersSent) {
+        return next(err);
+    }
+    res.status(err.status || 500).json({
+        error: err.message || 'Internal Server Error',
+        code: err.code || 'INTERNAL_ERROR'
+    });
+});
+
 
 // Static Files (Serve the React Frontend)
 // Serve from "public" (Vite outDir) at the project root

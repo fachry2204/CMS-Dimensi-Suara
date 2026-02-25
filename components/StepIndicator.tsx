@@ -39,23 +39,23 @@ export const StepIndicator: React.FC<Props> = ({ currentStep, onStepClick }) => 
               onClick={() => { if (canClick) onStepClick!(step.id); }}
             >
                <div 
-                  className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-300 border-4 
-                    ${isActive 
-                      ? 'bg-white border-blue-500 text-blue-600 scale-110' 
-                      : isCompleted 
-                        ? 'bg-gradient-to-br from-blue-500 to-cyan-500 border-white text-white' 
-                        : 'bg-white border-white text-gray-300'}`}
-               >
-                  {isCompleted ? <Check size={20} strokeWidth={3} /> : step.id}
-               </div>
-               <div className={`mt-3 text-center transition-all duration-300 ${isActive ? 'transform translate-y-0 opacity-100' : 'transform translate-y-1 opacity-70'}`}>
-                 <h4 className={`text-sm font-bold ${isActive ? 'text-blue-900' : 'text-gray-400'}`}>
-                   {step.label}
-                 </h4>
-                 <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium hidden sm:block">
-                   {step.desc}
-                 </p>
-               </div>
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium shadow-sm transition-all duration-300 border-2 
+                ${isActive 
+                  ? 'bg-white border-blue-500 text-blue-600 scale-110' 
+                  : isCompleted 
+                    ? 'bg-gradient-to-br from-blue-500 to-cyan-500 border-white text-white' 
+                    : 'bg-white border-white text-gray-300'}`}
+           >
+              {isCompleted ? <Check size={14} strokeWidth={2.5} /> : step.id}
+           </div>
+           <div className={`mt-1.5 text-center transition-all duration-300 ${isActive ? 'transform translate-y-0 opacity-100' : 'transform translate-y-1 opacity-70'}`}>
+             <h4 className={`text-[10px] font-medium ${isActive ? 'text-blue-900' : 'text-gray-400'}`}>
+               {step.label}
+             </h4>
+             <p className="text-[9px] uppercase tracking-wider text-gray-400 font-medium hidden sm:block">
+               {step.desc}
+             </p>
+           </div>
             </div>
           );
         })}

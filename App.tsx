@@ -32,6 +32,7 @@ import { MyProfile } from './screens/MyProfile';
 import { MyContracts } from './screens/MyContracts';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
+import { FloatingSupportBubble } from './components/FloatingSupportBubble';
 import { ReleaseType, ReleaseData, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X, Loader2 } from 'lucide-react';
 import { api, API_BASE_URL } from './utils/api';
@@ -1045,6 +1046,7 @@ const App: React.FC = () => {
             </div>
         )}
 
+        <FloatingSupportBubble />
       </main>
     </div>
   );

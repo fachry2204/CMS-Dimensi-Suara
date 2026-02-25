@@ -5,14 +5,14 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const TextInput: React.FC<InputProps> = ({ label, className, ...props }) => (
-  <div className="mb-5 group">
-    <label className="block text-sm font-semibold text-slate-700 mb-2 transition-colors group-focus-within:text-blue-600">
+  <div className="mb-3 group">
+    <label className="block text-[10px] font-medium text-slate-700 mb-1 transition-colors group-focus-within:text-blue-600">
       {label}
     </label>
     <input 
-      className={`w-full px-4 py-3 border border-gray-200 rounded-xl bg-white shadow-sm 
-      focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 
-      placeholder-gray-400 transition-all duration-200 hover:border-blue-300 ${className}`}
+      className={`w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded bg-white shadow-sm 
+      focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 
+      placeholder-gray-400 transition-all duration-200 hover:border-blue-400 ${className}`}
       {...props}
     />
   </div>
@@ -24,15 +24,15 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const SelectInput: React.FC<SelectProps> = ({ label, options, ...props }) => (
-  <div className="mb-5 group">
-    <label className="block text-sm font-semibold text-slate-700 mb-2 transition-colors group-focus-within:text-blue-600">
+  <div className="mb-3 group">
+    <label className="block text-[10px] font-medium text-slate-700 mb-1 transition-colors group-focus-within:text-blue-600">
       {label}
     </label>
     <div className="relative">
       <select 
-        className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white shadow-sm appearance-none
-        focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 
-        transition-all duration-200 hover:border-blue-300 cursor-pointer"
+        className="w-full px-2.5 py-1.5 text-[10px] border border-gray-300 rounded bg-white shadow-sm appearance-none
+        focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 
+        transition-all duration-200 hover:border-blue-400 cursor-pointer"
         {...props}
       >
         <option value="">Select an option...</option>

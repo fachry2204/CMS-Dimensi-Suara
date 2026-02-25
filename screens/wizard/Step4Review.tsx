@@ -338,35 +338,35 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
 
   if (successMsg) {
       return (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
-                  <CheckCircle size={48} className="text-green-500" />
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 animate-bounce">
+                  <CheckCircle size={32} className="text-green-500" />
               </div>
-              <h2 className="text-3xl font-bold text-slate-800 mb-2">Submission Successful!</h2>
-              <p className="text-slate-500 mt-2 text-lg">Your release has been submitted for review.</p>
+              <h2 className="text-base font-medium text-slate-800 mb-1">Submission Successful!</h2>
+              <p className="text-slate-500 mt-1 text-[10px]">Your release has been submitted for review.</p>
               
-              <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 text-left text-sm max-w-lg shadow-inner">
-                <p className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                    <AlertCircle size={16} /> Status Summary:
+              <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-left text-[10px] max-w-lg shadow-inner">
+                <p className="font-medium text-slate-700 mb-2 flex items-center gap-2">
+                    <AlertCircle size={14} /> Status Summary:
                 </p>
-                <ul className="space-y-2 text-slate-600">
+                <ul className="space-y-1 text-slate-600">
                     <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5"></span>
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1"></span>
                         Files uploaded to Server
                     </li>
                     <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5"></span>
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1"></span>
                         Metadata saved to Database
                     </li>
                     <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5"></span>
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1"></span>
                         Status: Pending Review
                     </li>
                 </ul>
               </div>
 
-              <div className="mt-10">
-                 <p className="text-slate-400 text-sm mb-4">You can view this in the "All Releases" tab.</p>
+              <div className="mt-6">
+                 <p className="text-slate-400 text-xs mb-4">You can view this in the "All Releases" tab.</p>
               </div>
           </div>
       )
@@ -374,22 +374,23 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">Final Review</h2>
-        <p className="text-slate-500">Please verify all information before submitting your release.</p>
+      <div className="text-center mb-6">
+        <h2 className="text-sm font-medium text-slate-800 mb-1">Final Review</h2>
+        <p className="text-[10px] text-slate-500">Please verify all information before submitting your release.</p>
       </div>
 
       {/* SECTION 1: RELEASE METADATA SUMMARY */}
-      <div className="mb-12 animate-fade-in-up">
-        <h3 className="font-bold text-xl text-slate-800 mb-6 flex items-center gap-2">
-            <FileText className="text-blue-500" /> 
-            Release Information
-        </h3>
+      <div className="mb-6 animate-fade-in-up pt-2">
+        <div className="border border-gray-200 rounded-lg p-4 relative">
+            <h3 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1 flex items-center gap-1">
+                <FileText size={12} className="text-blue-500" /> 
+                Release Information
+            </h3>
         
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row gap-8">
-            {/* Cover Art */}
-            <div className="w-full md:w-56 flex-shrink-0">
-                <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-md">
+            <div className="flex flex-col md:flex-row gap-3">
+                {/* Cover Art */}
+                <div className="w-full md:w-24 flex-shrink-0">
+                    <div className="aspect-square rounded overflow-hidden bg-gray-50 border border-gray-200 shadow-sm">
                     {data.coverArt ? (
                         <img
                             src={
@@ -405,57 +406,58 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                         />
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                            <Disc size={40} className="mb-2" />
-                            <span className="text-xs">No Cover</span>
+                            <Disc size={20} className="mb-1" />
+                            <span className="text-[9px]">No Cover</span>
                         </div>
                     )}
                 </div>
-                <div className="mt-3 text-center">
-                    <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-100">
+                <div className="mt-2 text-center">
+                    <span className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[9px] font-medium rounded-full border border-blue-100">
                         {data.tracks.length > 1 ? 'Album / EP' : 'Single'}
                     </span>
                 </div>
             </div>
 
             {/* Metadata Grid */}
-            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                <MetaItem label="Release Title" value={data.title} icon={<FileText size={14} />} />
-                <MetaItem label="Primary Artist" value={data.primaryArtists.join(", ")} icon={<User size={14} />} />
-                <MetaItem label="Label" value={data.label} icon={<Users size={14} />} />
+            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-2">
+                <MetaItem label="Release Title" value={data.title} icon={<FileText size={10} />} />
+                <MetaItem label="Primary Artist" value={data.primaryArtists.join(", ")} icon={<User size={10} />} />
+                <MetaItem label="Label" value={data.label} icon={<Users size={10} />} />
                 
-                <MetaItem label="Language" value={data.language} icon={<Globe size={14} />} />
-                <MetaItem label="Genre" value={data.tracks[0]?.genre || "Mixed"} icon={<Music2 size={14} />} />
-                <MetaItem label="Version" value={data.version} icon={<Tag size={14} />} />
+                <MetaItem label="Language" value={data.language} icon={<Globe size={10} />} />
+                <MetaItem label="Genre" value={data.tracks[0]?.genre || "Mixed"} icon={<Music2 size={10} />} />
+                <MetaItem label="Version" value={data.version} icon={<Tag size={10} />} />
                 
-                <MetaItem label="Release Date" value={data.plannedReleaseDate || "TBD"} icon={<Calendar size={14} />} />
-                <MetaItem label="UPC" value={data.upc || "Auto-Generated"} icon={<FileAudio size={14} />} />
+                <MetaItem label="Release Date" value={data.plannedReleaseDate || "TBD"} icon={<Calendar size={10} />} />
+                <MetaItem label="UPC" value={data.upc || "Auto-Generated"} icon={<FileAudio size={10} />} />
                 <MetaItem 
                     label="Distribution Type" 
                     value={data.isNewRelease ? "New Release" : `Re-release (Orig: ${data.originalReleaseDate})`} 
-                    icon={<Disc size={14} />} 
+                    icon={<Disc size={10} />} 
                 />
             </div>
         </div>
       </div>
+    </div>
 
       {/* SECTION 2: DETAILED TRACK METADATA */}
-      <div className="mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-        <h3 className="font-bold text-xl text-slate-800 mb-6 flex items-center gap-2">
-            <Music2 className="text-blue-500" /> 
-            Track Metadata Details
-        </h3>
+      <div className="mb-6 animate-fade-in-up pt-2" style={{ animationDelay: '0.1s' }}>
+        <div className="border border-gray-200 rounded-lg p-4 relative">
+            <h3 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1 flex items-center gap-1">
+                <Music2 size={12} className="text-blue-500" /> 
+                Track Metadata Details
+            </h3>
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left text-[10px]">
                     <thead className="bg-slate-50 border-b border-gray-100">
                         <tr>
-                            <th className="px-6 py-4 font-bold text-slate-600">#</th>
-                            <th className="px-6 py-4 font-bold text-slate-600">Title & File</th>
-                            <th className="px-6 py-4 font-bold text-slate-600">Credits (Comp/Lyr)</th>
-                            <th className="px-6 py-4 font-bold text-slate-600">Explicit</th>
-                            <th className="px-6 py-4 font-bold text-slate-600">ISRC</th>
-                            <th className="px-6 py-4 font-bold text-slate-600">Audio Clip</th>
+                            <th className="px-2 py-1.5 font-medium text-slate-600 w-8 text-center">#</th>
+                            <th className="px-2 py-1.5 font-medium text-slate-600">Title & File</th>
+                            <th className="px-2 py-1.5 font-medium text-slate-600">Credits</th>
+                            <th className="px-2 py-1.5 font-medium text-slate-600 w-16 text-center">Explicit</th>
+                            <th className="px-2 py-1.5 font-medium text-slate-600 font-mono text-[9px]">ISRC</th>
+                            <th className="px-2 py-1.5 font-medium text-slate-600 w-20 text-center">Clip</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -473,41 +475,43 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                               !!track.audioClip ||
                               (typeof anyTrack.tempClipPath === 'string' && anyTrack.tempClipPath.trim().length > 0);
                             return (
-                            <tr key={track.id} className="hover:bg-slate-50/50">
-                                <td className="px-6 py-4 font-bold text-slate-700">{track.trackNumber}</td>
-                                <td className="px-6 py-4">
-                                    <div className="font-bold text-slate-800">{track.title}</div>
-                                    <div className="text-xs text-blue-500 flex items-center gap-1 mt-1 truncate max-w-[200px]" title={audioSource || (track.audioFile instanceof File ? track.audioFile.name : undefined)}>
+                            <tr key={track.id} className="hover:bg-slate-50/50 group">
+                                <td className="px-2 py-1.5 font-medium text-slate-700 text-center">{track.trackNumber}</td>
+                                <td className="px-2 py-1.5">
+                                    <div className="font-medium text-slate-800 truncate max-w-[200px]">{track.title}</div>
+                                    <div className="text-[10px] text-blue-500 flex items-center gap-1 mt-0.5 truncate max-w-[150px]" title={audioSource || (track.audioFile instanceof File ? track.audioFile.name : undefined)}>
                                         <FileAudio size={10} />
                                         {audioDisplay}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
-                                    <div className="text-slate-600"><span className="text-slate-400 text-xs">C:</span> {track.composer}</div>
-                                    <div className="text-slate-600"><span className="text-slate-400 text-xs">L:</span> {track.lyricist}</div>
+                                <td className="px-2 py-1.5">
+                                    <div className="flex flex-col gap-0.5">
+                                        <div className="text-slate-600 truncate max-w-[150px]" title={track.composer}><span className="text-slate-400 text-[10px] mr-1">C:</span>{track.composer}</div>
+                                        <div className="text-slate-600 truncate max-w-[150px]" title={track.lyricist}><span className="text-slate-400 text-[10px] mr-1">L:</span>{track.lyricist}</div>
+                                    </div>
                                     {track.contributors.length > 0 && (
-                                        <div className="text-xs text-slate-400 mt-1">+{track.contributors.length} others</div>
+                                        <div className="text-[10px] text-slate-400 mt-0.5">+{track.contributors.length} others</div>
                                     )}
                                 </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold border ${
+                                <td className="px-2 py-1.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border inline-block min-w-[40px] text-center ${
                                         track.explicitLyrics === 'Yes' ? 'bg-red-50 text-red-600 border-red-100' : 
                                         track.explicitLyrics === 'Clean' ? 'bg-green-50 text-green-600 border-green-100' :
                                         'bg-slate-50 text-slate-600 border-slate-100'
                                     }`}>
-                                        {track.explicitLyrics}
+                                        {track.explicitLyrics === 'Yes' ? 'E' : track.explicitLyrics === 'Clean' ? 'C' : '-'}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 font-mono text-slate-500 text-xs">
+                                <td className="px-2 py-1.5 font-mono text-slate-500 text-[10px]">
                                     {track.isrc || "-"}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-2 py-1.5 text-center">
                                     {hasClip ? (
-                                        <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                                            <CheckCircle size={12} /> Trimmed
+                                        <span className="text-[10px] text-green-600 font-medium flex items-center justify-center gap-1 bg-green-50 px-1.5 py-0.5 rounded border border-green-100">
+                                            <CheckCircle size={10} /> OK
                                         </span>
                                     ) : (
-                                        <span className="text-xs text-orange-400">Missing</span>
+                                        <span className="text-[10px] text-orange-400 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">Missing</span>
                                     )}
                                 </td>
                             </tr>
@@ -518,11 +522,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             </div>
             {/* Lyrics Preview if any */}
             {data.tracks.some(t => t.lyrics) && (
-                 <div className="bg-slate-50 p-4 border-t border-gray-100">
-                    <div className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mb-2">
-                        <Mic2 size={12} /> Lyrics Detected
+                 <div className="bg-slate-50 p-3 border-t border-gray-100">
+                    <div className="text-[10px] font-medium text-slate-500 uppercase flex items-center gap-1 mb-1">
+                        <Mic2 size={10} /> Lyrics Detected
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-[10px] text-slate-400">
                         Lyrics data has been entered for {data.tracks.filter(t => t.lyrics).length} track(s) and will be submitted to stores.
                     </p>
                  </div>
@@ -530,40 +534,40 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         </div>
       </div>
 
-      <div className="mt-12 flex flex-col items-end border-t border-gray-100 pt-8 pb-12">
+      <div className="mt-8 flex flex-col items-end border-t border-gray-100 pt-4 pb-6">
         {isSubmitting && uploadTotal > 0 && (
-          <div className="w-full md:w-[480px] mb-6 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold text-slate-700">Uploading Files</div>
-              <div className="text-xs text-slate-500">{uploadDone}/{uploadTotal}</div>
+          <div className="w-full md:w-[400px] mb-4 bg-white border border-slate-200 rounded p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-[10px] font-medium text-slate-700">Uploading Files</div>
+              <div className="text-[10px] text-slate-500">{uploadDone}/{uploadTotal}</div>
             </div>
-        <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
             className="h-full rounded-full transition-all bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500"
                 style={{ width: `${Math.round((uploadDone / uploadTotal) * 100)}%` }}
               ></div>
             </div>
             {uploadLabel && (
-              <div className="mt-2 text-[12px] text-slate-500">Current: {uploadLabel}</div>
+              <div className="mt-1.5 text-[10px] text-slate-500">Current: {uploadLabel}</div>
             )}
-            <div className="mt-2">
-          <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+            <div className="mt-1.5">
+          <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div
               className="h-full rounded-full transition-all bg-gradient-to-r from-orange-500 to-yellow-400"
                   style={{ width: `${Math.max(0, Math.min(100, Math.round(fileProgress)))}%` }}
                 ></div>
               </div>
-              <div className="mt-1 text-[11px] text-slate-400">{Math.round(fileProgress)}%</div>
+              <div className="mt-0.5 text-[10px] text-slate-400">{Math.round(fileProgress)}%</div>
             </div>
             {uploadQueue.length > 0 && (
-              <div className="mt-3 space-y-2">
+              <div className="mt-2 space-y-1.5">
                 {uploadQueue.map(item => (
-                  <div key={item.key} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
+                  <div key={item.key} className="flex items-center justify-between text-[10px]">
+                    <div className="flex items-center gap-1.5">
                       <span className="font-medium text-slate-700">{item.label}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full border text-[11px] ${
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-1.5 py-0.5 rounded-full border text-[10px] ${
                         item.status === 'Done' ? 'bg-green-50 text-green-700 border-green-200' :
                         item.status === 'Uploading' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         'bg-slate-50 text-slate-600 border-slate-200'
@@ -574,7 +578,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 ))}
               </div>
             )}
-            <div className="mt-1 text-[11px] text-slate-400">
+            <div className="mt-1 text-[10px] text-slate-400">
               {(() => {
                 const elapsed = uploadStartTs ? Math.max(0, Math.floor((nowTs - uploadStartTs) / 1000)) : 0;
                 const fmt = (s: number) => {
@@ -592,12 +596,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             </div>
           </div>
         )}
-        <div className="flex gap-4 w-full md:w-auto">
+        <div className="flex gap-2 w-full md:w-auto">
             <button 
                 onClick={onBack}
-                className="w-full md:w-auto px-6 py-4 rounded-xl font-medium bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                className="w-full md:w-auto px-3 py-1.5 rounded font-medium bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-[10px] hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-1"
             >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={12} />
                 Back
             </button>
             
@@ -606,7 +610,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className={`
-                    w-full md:w-auto px-10 py-4 font-medium rounded-xl flex items-center justify-center gap-3 transition-all
+                    w-full md:w-auto px-4 py-1.5 font-medium rounded text-[10px] flex items-center justify-center gap-1.5 transition-all
                     ${isSubmitting 
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
                         : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-1'}
@@ -614,13 +618,13 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             >
                 {isSubmitting ? (
                     <>
-                        <Loader2 className="animate-spin" size={20} />
-                        Processing Release...
+                        <Loader2 className="animate-spin" size={12} />
+                        Processing...
                     </>
                 ) : (
                     <>
                         Submit Release
-                        <CheckCircle size={20} />
+                        <CheckCircle size={12} />
                     </>
                 )}
             </button>
@@ -630,38 +634,38 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
       {/* VALIDATION MODAL */}
       {showValidationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
-                <div className="bg-red-50 p-6 border-b border-red-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <AlertCircle className="text-red-500" size={24} />
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-red-50 p-4 border-b border-red-100 flex items-center gap-4">
+                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertCircle className="text-red-500" size={20} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-lg font-bold text-red-700">Incomplete Data</h3>
-                        <p className="text-sm text-red-600">Please fix the following issues before submitting:</p>
+                        <h3 className="text-[10px] font-medium text-red-700">Incomplete Data</h3>
+                        <p className="text-[10px] text-red-600">Please fix the following issues before submitting:</p>
                     </div>
                     <button 
                         onClick={() => setShowValidationModal(false)}
                         className="text-red-400 hover:text-red-600 transition-colors"
                     >
-                        <X size={24} />
+                        <X size={16} />
                     </button>
                 </div>
                 
-                <div className="p-6 max-h-[60vh] overflow-y-auto">
-                    <ul className="space-y-3">
+                <div className="p-4 max-h-[60vh] overflow-y-auto">
+                    <ul className="space-y-2">
                         {validationErrors.map((err, idx) => (
-                            <li key={idx} className="flex items-start gap-3 text-slate-700 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></span>
-                                <span className="text-sm font-medium leading-relaxed">{err}</span>
+                            <li key={idx} className="flex items-start gap-3 text-slate-700 bg-gray-50 p-2.5 rounded border border-gray-100">
+                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></span>
+                                <span className="text-[10px] font-medium leading-relaxed">{err}</span>
                             </li>
                         ))}
                     </ul>
                 </div>
 
-                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
+                <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
                     <button 
                         onClick={() => setShowValidationModal(false)}
-                        className="px-6 py-2 bg-slate-800 text-white font-medium rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200"
+                        className="px-4 py-1.5 bg-slate-800 text-white text-[10px] font-medium rounded hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200"
                     >
                         Understood
                     </button>
@@ -676,11 +680,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
 // --- Helper Components ---
 
 const MetaItem: React.FC<{ label: string; value: string; icon: React.ReactNode }> = ({ label, value, icon }) => (
-    <div className="flex flex-col">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-            {icon} {label}
+    <div className="flex flex-col border border-gray-200 rounded p-1.5 bg-slate-50/50">
+        <span className="text-[9px] font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1 mb-0.5">
+            {React.cloneElement(icon as React.ReactElement, { size: 10 })} {label}
         </span>
-        <span className="text-sm font-semibold text-slate-800 truncate" title={value}>
+        <span className="text-[10px] font-medium text-slate-700 truncate" title={value}>
             {value || "-"}
         </span>
     </div>
