@@ -124,7 +124,8 @@ export const UserManagement: React.FC = () => {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
+                          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (user.full_name && user.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (userTab === 'INTERNAL') {
         return matchesSearch && (user.role === 'Admin' || user.role === 'Operator');
@@ -232,6 +233,8 @@ export const UserManagement: React.FC = () => {
                     <thead>
                         <tr className="border-b border-gray-200">
                             <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">User</th>
+                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Aggregator %</th>
+                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Publishing %</th>
                             {userTab !== 'REGISTERED' && (
                               <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Role</th>
                             )}
@@ -249,13 +252,19 @@ export const UserManagement: React.FC = () => {
                                     <td className="py-2 px-3">
                                         <div className="flex items-center gap-3">
                                             <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                                {user.name.charAt(0).toUpperCase()}
+                                                {(user.full_name || user.name).charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <div className="font-medium text-slate-800 text-[11px]">{user.name}</div>
+                                                <div className="font-medium text-slate-800 text-[11px]">{user.full_name || user.name}</div>
                                                 <div className="text-[10px] text-slate-500">{user.email}</div>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                        {user.aggregator_percentage !== null && user.aggregator_percentage !== undefined ? `${user.aggregator_percentage}%` : '-'}
+                                    </td>
+                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                        {user.publishing_percentage !== null && user.publishing_percentage !== undefined ? `${user.publishing_percentage}%` : '-'}
                                     </td>
                                     {userTab !== 'REGISTERED' && (
                                       <td className="py-2 px-3">
@@ -312,7 +321,7 @@ export const UserManagement: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={userTab !== 'REGISTERED' ? 6 : 5} className="py-6 text-center text-slate-500 text-[11px]">
+                                <td colSpan={userTab !== 'REGISTERED' ? 9 : 8} className="py-6 text-center text-slate-500 text-[11px]">
                                     No users found matching your criteria.
                                 </td>
                             </tr>

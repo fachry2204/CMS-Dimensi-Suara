@@ -614,14 +614,19 @@ export const api = {
         return res.json();
     },
     
-    updateUserStatus: async (token, userId, status, reason?: string) => {
+    updateUserStatus: async (token, userId, status, reason?: string, aggregatorPercentage?: number, publishingPercentage?: number) => {
         const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ status, reason }),
+            body: JSON.stringify({ 
+                status, 
+                reason, 
+                aggregator_percentage: aggregatorPercentage, 
+                publishing_percentage: publishingPercentage 
+            }),
             credentials: 'include'
         });
         if (!res.ok) {

@@ -135,7 +135,8 @@ router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        const [users] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+        // Allow login with either username or email
+        const [users] = await db.query('SELECT * FROM users WHERE username = ? OR email = ?', [username, username]);
         if (users.length === 0) return res.status(400).json({ error: 'User not found' });
 
         const user = users[0];

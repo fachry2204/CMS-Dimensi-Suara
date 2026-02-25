@@ -46,7 +46,7 @@ export const UserDetailPage: React.FC = () => {
       return;
     }
     if (s === 'Approved') {
-        if (aggregatorPercentage === undefined || publishingPercentage === undefined) {
+        if (aggregatorPercentage === undefined || aggregatorPercentage === null || publishingPercentage === undefined || publishingPercentage === null) {
              alert('Persentase Aggregator dan Publishing wajib diisi untuk status Approved');
              return;
         }

@@ -166,11 +166,14 @@ router.get('/', authenticateToken, async (req, res) => {
             'id',
             'username as name',
             'email',
+            colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
             'role',
             hasStatus ? 'status' : `'Active' as status`,
             hasJoinedDate ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate',
             hasRegisteredAt ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
-            hasRejectedDate ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate'
+            hasRejectedDate ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate',
+            colNames.includes('aggregator_percentage') ? 'aggregator_percentage' : 'NULL as aggregator_percentage',
+            colNames.includes('publishing_percentage') ? 'publishing_percentage' : 'NULL as publishing_percentage'
         ];
 
         const orderBy = hasRegisteredAt ? 'registered_at DESC' : 'id DESC';
@@ -333,7 +336,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Block reason is required' });
         }
         if (status === 'Approved') {
-            if (aggregator_percentage === undefined || publishing_percentage === undefined) {
+            if (aggregator_percentage === undefined || aggregator_percentage === null || publishing_percentage === undefined || publishing_percentage === null) {
                 return res.status(400).json({ error: 'Aggregator and Publishing percentages are required for Approved status' });
             }
             if (aggregator_percentage < 0 || aggregator_percentage > 100) {

@@ -1,31 +1,25 @@
 
 import db from './server/config/db.js';
 
-async function checkAndAddColumns() {
+(async () => {
     try {
-        const [rows] = await db.query("SHOW COLUMNS FROM users");
-        const columns = rows.map(r => r.Field);
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        console.log('Columns in users table:', colNames);
         
-        if (!columns.includes('aggregator_percentage')) {
-            console.log('Adding aggregator_percentage column...');
-            await db.query("ALTER TABLE users ADD COLUMN aggregator_percentage DECIMAL(5,2) DEFAULT 0");
+        const missing = [];
+        if (!colNames.includes('aggregator_percentage')) missing.push('aggregator_percentage');
+        if (!colNames.includes('publishing_percentage')) missing.push('publishing_percentage');
+        
+        if (missing.length > 0) {
+            console.log('Missing columns:', missing);
+            process.exit(1);
         } else {
-            console.log('aggregator_percentage column exists.');
+            console.log('All required columns exist.');
+            process.exit(0);
         }
-
-        if (!columns.includes('publishing_percentage')) {
-            console.log('Adding publishing_percentage column...');
-            await db.query("ALTER TABLE users ADD COLUMN publishing_percentage DECIMAL(5,2) DEFAULT 0");
-        } else {
-            console.log('publishing_percentage column exists.');
-        }
-
-        console.log('Done.');
-        process.exit(0);
-    } catch (err) {
-        console.error(err);
+    } catch (e) {
+        console.error('Error:', e);
         process.exit(1);
     }
-}
-
-checkAndAddColumns();
+})();
