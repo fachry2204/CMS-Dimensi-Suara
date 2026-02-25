@@ -551,7 +551,7 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                 return res.status(404).json({ error: 'Release not found' });
             }
             const existingRelease = rows[0];
-            if (req.user.role === 'User' && existingRelease.user_id !== userId) {
+            if (req.user.role !== 'Admin' && existingRelease.user_id !== userId) {
                 return res.status(403).json({ error: 'Access denied' });
             }
         } else {
@@ -751,7 +751,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Release not found' });
         }
         const rel = rows[0];
-        if (req.user.role === 'User' && rel.user_id !== req.user.id) {
+        if (req.user.role !== 'Admin' && rel.user_id !== req.user.id) {
             return res.status(403).json({ error: 'Access denied' });
         }
         const releasesBase = path.join(__dirname, '../../uploads/releases');
@@ -786,7 +786,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
         let deleteWhere = 'id = ?';
         const deleteParams = [releaseId];
-        if (req.user.role === 'User') {
+        if (req.user.role !== 'Admin') {
             deleteWhere += ' AND user_id = ?';
             deleteParams.push(req.user.id);
         }
@@ -804,7 +804,7 @@ router.get('/', authenticateToken, async (req, res) => {
         let query = 'SELECT * FROM releases';
         const params = [];
 
-        if (req.user.role === 'User') {
+        if (req.user.role !== 'Admin') {
             query += ' WHERE user_id = ?';
             params.push(req.user.id);
         }
@@ -888,7 +888,7 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
         if (releases.length === 0) return res.status(404).json({ error: 'Release not found' });
         const release = releases[0];
 
-        if (req.user.role === 'User' && release.user_id !== req.user.id) {
+        if (req.user.role !== 'Admin' && release.user_id !== req.user.id) {
             return res.status(403).json({ error: 'Access denied' });
         }
 
@@ -951,7 +951,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         const release = releases[0];
 
         // Check ownership
-        if (req.user.role === 'User' && release.user_id !== req.user.id) {
+        if (req.user.role !== 'Admin' && release.user_id !== req.user.id) {
             return res.status(403).json({ error: 'Access denied' });
         }
 

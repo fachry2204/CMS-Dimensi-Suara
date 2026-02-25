@@ -151,7 +151,7 @@ router.put('/profile', authenticateToken, upload.single('profilePicture'), async
 // GET ALL USERS (Admin/Operator only)
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role === 'User') {
+        if (req.user.role !== 'Admin') {
             return res.status(403).json({ error: 'Access denied' });
         }
 
@@ -189,6 +189,9 @@ router.get('/', authenticateToken, async (req, res) => {
 // CREATE USER (Admin/Operator)
 router.post('/', authenticateToken, async (req, res) => {
     try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
         const { name, email, password, role, status } = req.body;
 
         if (!name || !email || !password) {
@@ -252,6 +255,9 @@ router.post('/', authenticateToken, async (req, res) => {
 // DELETE USER
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
         const userId = req.params.id;
         
         // Prevent deleting self (optional but recommended)
@@ -269,7 +275,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 // UPDATE USER DETAILS (Admin/Operator)
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role === 'User') {
+        if (req.user.role !== 'Admin') {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
@@ -320,7 +326,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // UPDATE USER STATUS (Admin/Operator)
 router.put('/:id/status', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role === 'User') {
+        if (req.user.role !== 'Admin') {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
@@ -433,7 +439,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
 // GET USER DETAIL (Admin/Operator)
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role === 'User') {
+        if (req.user.role !== 'Admin') {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;

@@ -50,10 +50,10 @@ router.get('/creators', authenticateToken, async (req, res) => {
         let sql = 'SELECT * FROM writers';
         const params = [];
 
-        // if (req.user.role !== 'admin' && req.user.role !== 'operator') {
-        //     sql += ' WHERE user_id = ?';
-        //     params.push(req.user.id);
-        // }
+        if (req.user.role !== 'Admin') {
+            sql += ' WHERE user_id = ?';
+            params.push(req.user.id);
+        }
         
         sql += ' ORDER BY created_at DESC';
 
@@ -77,7 +77,7 @@ router.post('/creators', authenticateToken, upload.fields([{ name: 'ktp', maxCou
         const ktp_path = req.files['ktp'] ? `/uploads/ktp/${req.files['ktp'][0].filename}` : null;
         const npwp_path = req.files['npwp'] ? `/uploads/npwp/${req.files['npwp'][0].filename}` : null;
 
-        const user_id = req.user.role === 'admin' ? (req.body.user_id || null) : req.user.id;
+        const user_id = req.user.role === 'Admin' ? (req.body.user_id || null) : req.user.id;
 
         const [result] = await db.query(
             `INSERT INTO writers (
@@ -114,12 +114,12 @@ router.put('/creators/:id', authenticateToken, upload.fields([{ name: 'ktp', max
         if (req.files['npwp']) updates.npwp_path = `/uploads/npwp/${req.files['npwp'][0].filename}`;
 
         // Security check
-        // if (req.user.role !== 'admin' && req.user.role !== 'operator') {
-        //      const [check] = await db.query('SELECT user_id FROM writers WHERE id = ?', [id]);
-        //      if (check.length === 0 || check[0].user_id !== req.user.id) {
-        //          return res.status(403).json({ message: 'Forbidden' });
-        //      }
-        // }
+        if (req.user.role !== 'Admin') {
+             const [check] = await db.query('SELECT user_id FROM writers WHERE id = ?', [id]);
+             if (check.length === 0 || check[0].user_id !== req.user.id) {
+                 return res.status(403).json({ message: 'Forbidden' });
+             }
+        }
 
         // Construct dynamic query
         const fields = [];
@@ -148,12 +148,12 @@ router.delete('/creators/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         
-        // if (req.user.role !== 'admin' && req.user.role !== 'operator') {
-        //     const [check] = await db.query('SELECT user_id FROM writers WHERE id = ?', [id]);
-        //     if (check.length === 0 || check[0].user_id !== req.user.id) {
-        //         return res.status(403).json({ message: 'Forbidden' });
-        //     }
-        // }
+        if (req.user.role !== 'Admin') {
+            const [check] = await db.query('SELECT user_id FROM writers WHERE id = ?', [id]);
+            if (check.length === 0 || check[0].user_id !== req.user.id) {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+        }
 
         await db.query('DELETE FROM writers WHERE id = ?', [id]);
         res.json({ message: 'Writer deleted' });
@@ -179,10 +179,10 @@ router.get('/songs', authenticateToken, async (req, res) => {
         `;
         const params = [];
 
-        // if (req.user.role !== 'admin' && req.user.role !== 'operator') {
-        //     sql += ' AND s.user_id = ?';
-        //     params.push(req.user.id);
-        // }
+        if (req.user.role !== 'Admin') {
+            sql += ' AND s.user_id = ?';
+            params.push(req.user.id);
+        }
 
         sql += ' ORDER BY s.created_at DESC';
 
@@ -212,7 +212,7 @@ router.post('/songs', authenticateToken, upload.single('lyrics'), async (req, re
 
         const lyrics_file = req.file ? `/uploads/lyrics/${req.file.filename}` : null;
         const user_id = req.user.id;
-        const status = req.user.role === 'admin' ? (req.body.status || 'accepted') : 'pending';
+        const status = req.user.role === 'Admin' ? (req.body.status || 'accepted') : 'pending';
 
         const [result] = await connection.query(
             `INSERT INTO songs (
@@ -254,9 +254,9 @@ router.post('/songs', authenticateToken, upload.single('lyrics'), async (req, re
 router.put('/songs/:id/status', authenticateToken, async (req, res) => {
     try {
         console.log('Update status request:', req.body);
-        // if (req.user.role !== 'admin' && req.user.role !== 'operator') {
-        //     return res.status(403).json({ message: 'Forbidden' });
-        // }
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
         
         const { status, rejection_reason, song_id } = req.body;
         const { id } = req.params;
@@ -299,13 +299,13 @@ router.put('/songs/:id', authenticateToken, upload.single('lyrics'), async (req,
         } = req.body;
 
         // Security check
-        // if (req.user.role !== 'admin' && req.user.role !== 'operator') {
-        //     const [check] = await connection.query('SELECT user_id FROM songs WHERE id = ?', [id]);
-        //     if (check.length === 0 || check[0].user_id !== req.user.id) {
-        //         await connection.rollback();
-        //         return res.status(403).json({ message: 'Forbidden' });
-        //     }
-        // }
+        if (req.user.role !== 'Admin') {
+            const [check] = await connection.query('SELECT user_id FROM songs WHERE id = ?', [id]);
+            if (check.length === 0 || check[0].user_id !== req.user.id) {
+                await connection.rollback();
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+        }
 
         let updates = [];
         let params = [];
@@ -375,13 +375,13 @@ router.delete('/songs/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
 
         // Security check
-        // if (req.user.role !== 'admin' && req.user.role !== 'operator') {
-        //     const [check] = await connection.query('SELECT user_id FROM songs WHERE id = ?', [id]);
-        //     if (check.length === 0 || check[0].user_id !== req.user.id) {
-        //         await connection.rollback();
-        //         return res.status(403).json({ message: 'Forbidden' });
-        //     }
-        // }
+        if (req.user.role !== 'Admin') {
+            const [check] = await connection.query('SELECT user_id FROM songs WHERE id = ?', [id]);
+            if (check.length === 0 || check[0].user_id !== req.user.id) {
+                await connection.rollback();
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+        }
 
         // Delete related data first (though CASCADE might handle it, let's be safe)
         await connection.query('DELETE FROM song_writers WHERE song_id = ?', [id]);
@@ -407,6 +407,9 @@ router.delete('/songs/:id', authenticateToken, async (req, res) => {
 // Upload Report (Excel)
 router.post('/reports/upload', authenticateToken, upload.single('report'), async (req, res) => {
     try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
         const workbook = xlsx.readFile(req.file.path);
@@ -493,7 +496,7 @@ router.get('/reports', authenticateToken, async (req, res) => {
         if (month) { sql += ' AND month = ?'; params.push(month); }
         if (year) { sql += ' AND year = ?'; params.push(year); }
 
-        if (req.user.role !== 'admin' && req.user.role !== 'operator') {
+        if (req.user.role !== 'Admin') {
             // Only show reports for songs owned by user
             sql += ' AND song_id IN (SELECT id FROM songs WHERE user_id = ?)';
             params.push(req.user.id);
@@ -514,7 +517,7 @@ router.get('/reports', authenticateToken, async (req, res) => {
 
 router.get('/analytics/stats', authenticateToken, async (req, res) => {
     try {
-        const userId = (req.user.role === 'admin' || req.user.role === 'operator') ? null : req.user.id;
+        const userId = (req.user.role === 'Admin') ? null : req.user.id;
         
         // 1. Total Revenue
         let revSql = 'SELECT SUM(sub_pub_share) as total FROM publishing_reports';

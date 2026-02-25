@@ -7,7 +7,20 @@ const router = express.Router();
 // GET REPORTS
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM reports ORDER BY period DESC');
+        let sql = 'SELECT * FROM reports';
+        const params = [];
+
+        if (req.user.role !== 'Admin') {
+            sql += ` WHERE 
+                (upc IN (SELECT upc FROM releases WHERE user_id = ?))
+                OR 
+                (isrc IN (SELECT t.isrc FROM tracks t JOIN releases r ON t.release_id = r.id WHERE r.user_id = ?))`;
+            params.push(req.user.id, req.user.id);
+        }
+
+        sql += ' ORDER BY period DESC';
+        
+        const [rows] = await db.query(sql, params);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -17,6 +30,9 @@ router.get('/', authenticateToken, async (req, res) => {
 // IMPORT REPORTS (Batch Insert)
 router.post('/import', authenticateToken, async (req, res) => {
     try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
         const { data } = req.body; // Array of report objects
         if (!Array.isArray(data) || data.length === 0) {
             return res.status(400).json({ error: 'No data provided' });
