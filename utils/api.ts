@@ -25,7 +25,7 @@ const parseResponse = async (res: Response) => {
             throw err;
         } catch {
             const t = await res.text().catch(() => '');
-            const err: any = new Error(t || 'Request failed');
+            const err: any = new Error(t || `Request failed (${res.status})`);
             (err as any).status = res.status;
             throw err;
         }

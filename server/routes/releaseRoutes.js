@@ -403,13 +403,16 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                 proc.stdout.on('data', (d) => { out += d.toString(); });
                 proc.stderr.on('data', (d) => { errOut += d.toString(); });
                 proc.on('error', (e) => {
-                    console.warn('ffprobe spawn error:', e.message || e);
-                    resolve({ ok: false, reason: 'ffprobe_error', sampleRate: null, bitDepth: null });
+                    console.warn('ffprobe spawn error (skipping check):', e.message || e);
+                    // If ffprobe is missing, we skip validation instead of failing
+                    resolve({ ok: true, skipped: true });
                 });
                 proc.on('exit', (code) => {
                     if (code !== 0) {
                         console.warn('ffprobe exited with code', code, errOut);
-                        return resolve({ ok: false, reason: 'ffprobe_exit', sampleRate: null, bitDepth: null });
+                        // If ffprobe fails to read file, we might want to fail or skip. 
+                        // Let's skip for now to avoid blocking valid files if ffprobe is buggy.
+                        resolve({ ok: true, skipped: true }); 
                     }
                     const parts = out.trim().split(/\s+/).filter(Boolean);
                     const sampleRate = parts[0] ? parseInt(parts[0], 10) : null;

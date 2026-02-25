@@ -318,10 +318,18 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         
     } catch (error: any) {
         console.error("Submission failed:", error);
-        let message = error?.message || "Please try again.";
+        // Prioritize payload error message from server if available
+        let message = error?.payload?.error || error?.message || "Please try again.";
+        
         if (error?.status === 413 || message === 'UPLOAD_TOO_LARGE' || /content too large|payload too large|413/i.test(message)) {
             message = "Total ukuran file (cover + audio + clip) terlalu besar untuk dikirim. Coba kompres atau perkecil ukuran file, atau kurangi jumlah track per sekali upload.";
         }
+        
+        // Show clearer error if available
+        if (error?.payload?.details && Array.isArray(error.payload.details)) {
+             message += '\nDetails: ' + error.payload.details.join(', ');
+        }
+
         alert(`Upload failed: ${message}`);
     } finally {
         setIsSubmitting(false);
