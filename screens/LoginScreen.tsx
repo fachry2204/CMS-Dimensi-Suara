@@ -144,7 +144,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         )}
 
         <div className="space-y-2">
-          <label className="text-sm font-bold text-slate-700 ml-1">Email</label>
+          <label className="text-sm font-medium text-slate-700 ml-1">Email</label>
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
               <Mail size={18} />
@@ -153,7 +153,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
               type="email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-slate-700 placeholder:text-slate-400"
+              className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-normal text-slate-700 placeholder:text-slate-400"
               placeholder="Enter email"
               required
             />
@@ -161,7 +161,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-bold text-slate-700 ml-1">Password</label>
+          <label className="text-sm font-medium text-slate-700 ml-1">Password</label>
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
               <Lock size={18} />
@@ -170,7 +170,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-slate-700 placeholder:text-slate-400"
+              className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-normal text-slate-700 placeholder:text-slate-400"
               placeholder="Enter password"
               required
             />
