@@ -87,6 +87,13 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     }
   }, []);
 
+  // Ensure only 1 track for Single Release
+  useEffect(() => {
+    if (releaseType === 'SINGLE' && data.tracks.length > 1) {
+      updateData(prev => ({ tracks: [prev.tracks[0]] }));
+    }
+  }, [releaseType, data.tracks.length]);
+
   // Sync Track Data for Single Release
   useEffect(() => {
     if (releaseType === 'SINGLE' && data.tracks.length > 0) {
@@ -233,9 +240,17 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   };
 
   const addTrack = () => {
+    // Optimistic check to prevent unnecessary updates
     if (releaseType === 'SINGLE' && data.tracks.length >= 1) return;
 
+    const newTrackId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+
     updateData(prev => {
+      // Strict check inside updater to prevent race conditions (e.g. React Strict Mode)
+      if (releaseType === 'SINGLE' && prev.tracks.length >= 1) {
+          return {};
+      }
+
       let initialArtists: TrackArtist[] = [{ name: "", role: "MainArtist" }];
       let initialTitle = "";
 
@@ -251,7 +266,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       }
 
       const newTrack: Track = {
-        id: Date.now().toString(),
+        id: newTrackId,
         title: initialTitle,
         trackNumber: (prev.tracks.length + 1).toString(),
         duration: "",
@@ -266,9 +281,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         artists: initialArtists,
         contributors: [],
       };
-      setExpandedTrackId(newTrack.id);
+      
       return { tracks: [...prev.tracks, newTrack] };
     });
+    
+    // Set expanded outside the updater
+    setExpandedTrackId(newTrackId);
   };
 
   const removeTrack = (id: string) => {
@@ -497,7 +515,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         {releaseType === 'ALBUM' && (
           <button 
               onClick={addTrack}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 text-sm"
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 text-sm"
           >
               <PlusCircle size={18} />
               Add Track
@@ -522,7 +540,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         onClick={() => toggleExpand(track.id)}
                     >
                         <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isExpanded ? 'bg-blue-500 text-white' : 'bg-gray-100 text-slate-500'}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm ${isExpanded ? 'bg-blue-500 text-white' : 'bg-gray-100 text-slate-500'}`}>
                                 {track.trackNumber}
                             </div>
                             <div>
@@ -717,13 +735,13 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                 <div className="flex gap-3 justify-end">
                                                     <button 
                                                         onClick={closeTrimmer}
-                                                        className="px-4 py-2 text-slate-500 font-bold text-xs hover:bg-slate-100 rounded-lg transition-colors"
+                                                        className="px-4 py-2 text-slate-500 font-medium text-xs hover:bg-slate-100 rounded-lg transition-colors"
                                                     >
                                                         Cancel
                                                     </button>
                                                     <button 
                                                         onClick={saveTrimmedAudio}
-                                                        className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                                                        className="px-4 py-2 bg-blue-600 text-white font-medium text-xs rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                                                     >
                                                         <Check size={14} />
                                                         Crop 60s Clip
@@ -832,7 +850,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                 </div>
                                 <button 
                                     onClick={() => addArtist(track.id)}
-                                    className="mt-3 text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
                                 >
                                     <PlusCircle size={16} /> Add Artist
                                 </button>
@@ -1005,7 +1023,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                 </div>
                                 <button 
                                     onClick={() => addContributor(track.id)}
-                                    className="mt-4 text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all bg-white"
+                                    className="mt-4 text-sm font-medium text-slate-500 hover:text-blue-600 flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-all bg-white"
                                 >
                                     <UserPlus size={16} /> Add Contributor
                                 </button>
@@ -1021,7 +1039,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       {releaseType === 'ALBUM' && (
         <button 
             onClick={addTrack}
-            className="w-full mt-6 py-4 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-bold hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center gap-2"
+            className="w-full mt-6 py-4 border-2 border-dashed border-blue-200 rounded-2xl text-blue-500 font-medium hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center gap-2"
         >
             <PlusCircle size={20} />
             Add Another Track

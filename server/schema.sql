@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
     kemenkumham_doc_path VARCHAR(255),
     ktp_doc_path VARCHAR(255),
     npwp_doc_path VARCHAR(255),
+    signature_doc_path VARCHAR(255),
     profile_json JSON
 );
 
@@ -89,7 +90,7 @@ CREATE TABLE IF NOT EXISTS tracks (
 
 -- 5. Publishing Registrations (Removed)
 
--- 6. Reports (Revenue/Analytics)
+-- 6. Reports (Distribution Revenue)
 CREATE TABLE IF NOT EXISTS reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     period VARCHAR(20), -- YYYY-MM
@@ -114,4 +115,88 @@ CREATE TABLE IF NOT EXISTS notifications (
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 8. Publishing Module
+
+CREATE TABLE IF NOT EXISTS writers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    nik VARCHAR(50),
+    birth_place VARCHAR(100),
+    birth_date DATE,
+    address TEXT,
+    religion VARCHAR(50),
+    marital_status VARCHAR(50),
+    occupation VARCHAR(100),
+    nationality VARCHAR(100),
+    ktp_path VARCHAR(255),
+    npwp_path VARCHAR(255),
+    bank_name VARCHAR(100),
+    bank_account_name VARCHAR(255),
+    bank_account_number VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS songs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    song_id VARCHAR(100), -- Custom ID or from user
+    title VARCHAR(255) NOT NULL,
+    other_title VARCHAR(255),
+    authorized_rights VARCHAR(255),
+    performer VARCHAR(255),
+    duration VARCHAR(20),
+    genre VARCHAR(100),
+    language VARCHAR(50),
+    region VARCHAR(100),
+    iswc VARCHAR(50),
+    isrc VARCHAR(50),
+    note TEXT,
+    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+    rejection_reason TEXT,
+    lyrics_file VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS song_writers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    song_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    share_percent DECIMAL(5, 2) DEFAULT 0,
+    role VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS publishing_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    song_id INT,
+    custom_id VARCHAR(100),
+    title VARCHAR(255),
+    writer VARCHAR(255),
+    source VARCHAR(100),
+    gross_revenue DECIMAL(15, 2) DEFAULT 0,
+    deduction DECIMAL(15, 2) DEFAULT 0,
+    net_revenue DECIMAL(15, 2) DEFAULT 0,
+    sub_pub_share DECIMAL(15, 2) DEFAULT 0,
+    tbw_share DECIMAL(15, 2) DEFAULT 0,
+    month INT,
+    year INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS import_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    file_name VARCHAR(255),
+    month INT,
+    year INT,
+    period VARCHAR(50),
+    total_records INT,
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

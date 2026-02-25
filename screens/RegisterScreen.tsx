@@ -37,20 +37,22 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [npwpFile, setNpwpFile] = useState<File | null>(null);
   const [nibFile, setNibFile] = useState<File | null>(null);
   const [kemenkumhamFile, setKemenkumhamFile] = useState<File | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
 
   const [docPaths, setDocPaths] = useState({
     ktpDocPath: '',
     npwpDocPath: '',
     nibDocPath: '',
-    kemenkumhamDocPath: ''
+    kemenkumhamDocPath: '',
+    signatureDocPath: ''
   });
 
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [docError, setDocError] = useState('');
-  const [docPreviews, setDocPreviews] = useState<{ ktp?: string; npwp?: string; nib?: string; kemenkumham?: string }>({});
+  const [docPreviews, setDocPreviews] = useState<{ ktp?: string; npwp?: string; nib?: string; kemenkumham?: string; signature?: string }>({});
   const [previewModal, setPreviewModal] = useState<{ url: string; title: string } | null>(null);
 
-  const [cropField, setCropField] = useState<'ktp' | 'npwp' | 'nib' | 'kemenkumham' | null>(null);
+  const [cropField, setCropField] = useState<'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature' | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [cropScale, setCropScale] = useState(1);
@@ -319,13 +321,14 @@ export const RegisterScreen: React.FC<Props> = () => {
     setRegError('');
   };
 
-  const handleDocChange = async (field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham', file: File | null) => {
+  const handleDocChange = async (field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature', file: File | null) => {
     setDocError('');
     if (!file) return;
     if (field === 'ktp') setKtpFile(file);
     if (field === 'npwp') setNpwpFile(file);
     if (field === 'nib') setNibFile(file);
     if (field === 'kemenkumham') setKemenkumhamFile(file);
+    if (field === 'signature') setSignatureFile(file);
     try {
       setIsUploadingDoc(true);
       const res = await api.uploadUserDoc(null, field, file);
@@ -335,7 +338,8 @@ export const RegisterScreen: React.FC<Props> = () => {
         ktpDocPath: field === 'ktp' ? path : prev.ktpDocPath,
         npwpDocPath: field === 'npwp' ? path : prev.npwpDocPath,
         nibDocPath: field === 'nib' ? path : prev.nibDocPath,
-        kemenkumhamDocPath: field === 'kemenkumham' ? path : prev.kemenkumhamDocPath
+        kemenkumhamDocPath: field === 'kemenkumham' ? path : prev.kemenkumhamDocPath,
+        signatureDocPath: field === 'signature' ? path : prev.signatureDocPath
       }));
     } catch (e: any) {
       setDocError(e.message || 'Gagal upload dokumen');
@@ -344,7 +348,7 @@ export const RegisterScreen: React.FC<Props> = () => {
     }
   };
 
-  const handleFileSelect = (field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham', file: File | null) => {
+  const handleFileSelect = (field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature', file: File | null) => {
     setDocError('');
     if (!file) return;
     if (file.type && file.type.startsWith('image/')) {
@@ -484,8 +488,8 @@ export const RegisterScreen: React.FC<Props> = () => {
       return true;
     }
     if (currentStep === 3) {
-      if (!ktpFile || !docPaths.ktpDocPath || !npwpFile || !docPaths.npwpDocPath) {
-        setRegError('KTP dan NPWP wajib diupload.');
+      if (!ktpFile || !docPaths.ktpDocPath || !npwpFile || !docPaths.npwpDocPath || !signatureFile || !docPaths.signatureDocPath) {
+        setRegError('KTP, NPWP, dan Tanda Tangan wajib diupload.');
         setRegErrorModalOpen(true);
         return false;
       }
@@ -613,7 +617,8 @@ export const RegisterScreen: React.FC<Props> = () => {
         ktpDocPath: docPaths.ktpDocPath,
         npwpDocPath: docPaths.npwpDocPath,
         nibDocPath: docPaths.nibDocPath,
-        kemenkumhamDocPath: docPaths.kemenkumhamDocPath
+        kemenkumhamDocPath: docPaths.kemenkumhamDocPath,
+        signatureDocPath: docPaths.signatureDocPath
       };
       await api.register(payload);
       navigate('/user-status');
@@ -633,7 +638,7 @@ export const RegisterScreen: React.FC<Props> = () => {
     }
   };
 
-  const renderDocUploadItem = (label: string, field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham', file: File | null, required: boolean) => (
+  const renderDocUploadItem = (label: string, field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature', file: File | null, required: boolean) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-semibold text-slate-700">
@@ -1053,13 +1058,30 @@ export const RegisterScreen: React.FC<Props> = () => {
   );
 
   const renderStep3 = () => (
-    <div className="space-y-5">
-      {accountType === 'COMPANY' && renderDocUploadItem('Upload NIB', 'nib', nibFile, true)}
-      {accountType === 'COMPANY' && renderDocUploadItem('Upload Dokumen Kemenkumham', 'kemenkumham', kemenkumhamFile, true)}
-      {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload KTP Direktur' : 'Upload KTP', 'ktp', ktpFile, true)}
-      {renderDocUploadItem('Upload NPWP', 'npwp', npwpFile, true)}
-      {docError && <p className="text-xs text-red-500">{docError}</p>}
-      {isUploadingDoc && <p className="text-xs text-slate-400">Mengupload dokumen...</p>}
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {accountType === 'COMPANY' && (
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            {renderDocUploadItem('Upload NIB', 'nib', nibFile, true)}
+          </div>
+        )}
+        {accountType === 'COMPANY' && (
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            {renderDocUploadItem('Upload Dokumen Kemenkumham', 'kemenkumham', kemenkumhamFile, true)}
+          </div>
+        )}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload KTP Direktur' : 'Upload KTP', 'ktp', ktpFile, true)}
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload NPWP Perusahaan' : 'Upload NPWP', 'npwp', npwpFile, true)}
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload Tanda Tangan Direktur' : 'Upload Tanda Tangan', 'signature', signatureFile, true)}
+        </div>
+      </div>
+      {docError && <p className="text-xs text-red-500 font-medium bg-red-50 p-2 rounded-lg border border-red-100">{docError}</p>}
+      {isUploadingDoc && <p className="text-xs text-blue-500 font-medium animate-pulse">Sedang mengupload dokumen...</p>}
     </div>
   );
 
@@ -1115,9 +1137,14 @@ export const RegisterScreen: React.FC<Props> = () => {
           {!docPreviews.ktp && <span>{ktpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
         </div>
         <div className="flex items-center gap-2">
-          <p className="flex-1">NPWP:</p>
+          <p className="flex-1">{accountType === 'COMPANY' ? 'NPWP Perusahaan:' : 'NPWP:'}</p>
           {docPreviews.npwp && <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.npwp} alt="NPWP" className="w-full h-full object-contain cursor-zoom-in" onClick={() => setPreviewModal({ url: docPreviews.npwp!, title: 'NPWP' })} /></div>}
           {!docPreviews.npwp && <span>{npwpFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <p className="flex-1">{accountType === 'COMPANY' ? 'Tanda Tangan Direktur:' : 'Tanda Tangan:'}</p>
+          {docPreviews.signature && <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100"><img src={docPreviews.signature} alt="Tanda Tangan" className="w-full h-full object-contain cursor-zoom-in" onClick={() => setPreviewModal({ url: docPreviews.signature!, title: 'Tanda Tangan' })} /></div>}
+          {!docPreviews.signature && <span>{signatureFile ? 'Sudah diupload' : 'Belum diupload'}</span>}
         </div>
       </div>
     </div>

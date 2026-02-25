@@ -84,7 +84,7 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData }) => {
                   <img src={opt.logo} alt={opt.label} className="w-8 h-8 object-contain" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-bold text-slate-800">{opt.label}</div>
+                  <div className="font-medium text-slate-800">{opt.label}</div>
                   <div className="text-[11px] text-slate-400">{selected ? 'Dipilih' : 'Klik untuk pilih'}</div>
                 </div>
                 <div className={`w-5 h-5 rounded border ${selected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'} flex items-center justify-center`}>

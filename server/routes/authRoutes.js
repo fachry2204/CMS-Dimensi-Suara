@@ -31,7 +31,8 @@ router.post('/register', async (req, res) => {
             nibDocPath,
             kemenkumhamDocPath,
             ktpDocPath,
-            npwpDocPath
+            npwpDocPath,
+            signatureDocPath
         } = req.body;
 
         const username = rawUsername || email;
@@ -102,6 +103,7 @@ router.post('/register', async (req, res) => {
             ['kemenkumham_doc_path', kemenkumhamDocPath || null],
             ['ktp_doc_path', ktpDocPath || null],
             ['npwp_doc_path', npwpDocPath || null],
+            ['signature_doc_path', signatureDocPath || null],
         ];
 
         for (const [col, val] of extendedMap) {

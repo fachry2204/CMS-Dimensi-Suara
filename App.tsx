@@ -5,11 +5,15 @@ import { Footer } from './components/Footer';
 import { ReleaseTypeSelection } from './screens/ReleaseTypeSelection';
 import { ReleaseWizard } from './screens/ReleaseWizard';
 import { AllReleases } from './screens/AllReleases';
+import { AggregatorDashboard } from './screens/AggregatorDashboard';
 import { Dashboard } from './screens/Dashboard'; 
 import { Statistics } from './screens/Statistics'; 
 import { ReleaseDetailsPage } from './screens/ReleaseDetailsPage';
 import { SingleReleasePage } from './screens/SingleReleasePage';
-// import { Publishing } from './screens/Publishing';
+import { PublishingWriter } from './screens/publishing/PublishingWriter';
+import { PublishingSongs } from './screens/publishing/PublishingSongs';
+import { PublishingAnalytics } from './screens/publishing/PublishingAnalytics';
+import { PublishingReports } from './screens/publishing/PublishingReports';
 import { Settings } from './screens/Settings';
 import { UserManagement } from './screens/UserManagement';
 import { RoleUserPage } from './screens/RoleUserPage';
@@ -595,6 +599,7 @@ const App: React.FC = () => {
   const getPageTitle = () => {
       const path = location.pathname;
       if (path === '/dashboard') return "Overview";
+      if (path === '/aggregator') return "Aggregator";
       if (path === '/new-release') return "Music Distribution";
       if (path === '/releases') return "Catalog Manager";
       if (path === '/settings') return "System Settings";
@@ -603,7 +608,7 @@ const App: React.FC = () => {
       if (path === '/import-reports') return "Import Laporan";
       if (path === '/revenue') return "Pendapatan";
       if (path === '/statistics') return "Analytics & Reports";
-      // if (path.startsWith('/publishing')) return "Publishing";
+      if (path.startsWith('/publishing')) return "Publishing";
       return "Dashboard";
   };
 
@@ -642,6 +647,15 @@ const App: React.FC = () => {
                     </span>
                     <span className="text-[11px] text-slate-500">
                         Welcome back, here is your catalog overview.
+                    </span>
+                </div>
+            ) : location.pathname === '/aggregator' ? (
+                <div className="hidden md:flex flex-col leading-tight">
+                    <span className="text-sm text-slate-800 tracking-tight">
+                        Aggregator Overview
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                        Detailed statistics for your releases.
                     </span>
                 </div>
             ) : location.pathname === '/releases' ? (
@@ -755,7 +769,7 @@ const App: React.FC = () => {
                     onClick={() => setShowProfileModal(true)}
                 >
                     <div className="text-right hidden sm:block">
-                        <div className="text-sm font-bold text-slate-800 capitalize">{currentUser}</div>
+                        <div className="text-sm font-bold text-slate-800 capitalize">{currentUserData?.full_name || currentUserData?.name || currentUser}</div>
                         <div className="text-[10px] text-slate-500 font-medium">
                             {userRole === 'Admin' ? 'Super Administrator' : (userRole === 'Operator' ? 'Content Manager' : 'Artist / Label')}
                         </div>
@@ -795,7 +809,7 @@ const App: React.FC = () => {
                 {/* Logout Button */}
                 <button 
                     onClick={handleLogoutClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-bold text-xs transition-colors ml-2"
+                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium text-xs transition-colors ml-2"
                     title="Sign Out"
                 >
                     <LogOut size={16} />
@@ -825,12 +839,15 @@ const App: React.FC = () => {
               }
             />
             <Route path="/dashboard" element={
-                <Dashboard 
-                    releases={allReleases}
-                    onViewRelease={handleViewDetails}
-                    onNavigateToAll={() => navigate('/releases')}
-                />
-            } />
+            <Dashboard releases={allReleases} token={token} />
+        } />
+        <Route path="/aggregator" element={
+            <AggregatorDashboard 
+                releases={allReleases}
+                onViewRelease={handleViewDetails}
+                onNavigateToAll={() => navigate('/releases')}
+            />
+        } />
             <Route path="/new-release" element={
                 <NewReleaseFlow 
                     editingRelease={editingRelease}
@@ -895,27 +912,13 @@ const App: React.FC = () => {
                 } 
             />
             <Route path="/releases/:id/single" element={<SingleReleasePage />} />
-            {/* <Route path="/publishing/*" element={
-                 <Publishing 
-                    activeTab={location.pathname.includes('writer') ? 'PUBLISHING_WRITER' : 
-                               location.pathname.includes('add') ? 'PUBLISHING_ADD' : 
-                               location.pathname.includes('all') ? 'PUBLISHING_ALL' : 'PUBLISHING_REPORT'} 
-                    savedSongwriters={savedSongwriters}
-                    allPublishing={allPublishing}
-                    onAddSongwriter={async (data) => {
-                         if (token) {
-                             const newWriter = await api.createSongwriter(token, data);
-                             setSavedSongwriters(prev => [...prev, newWriter]);
-                         }
-                    }}
-                    onAddPublishing={async (data) => {
-                         if (token) {
-                             const newPub = await api.createPublishing(token, data);
-                             setAllPublishing(prev => [...prev, newPub]);
-                         }
-                    }}
-                />
-            } /> */}
+            
+            {/* Publishing Routes */}
+            <Route path="/publishing/writer" element={<PublishingWriter token={token} />} />
+            <Route path="/publishing/songs" element={<PublishingSongs token={token} />} />
+            <Route path="/publishing/analytics" element={<PublishingAnalytics token={token} />} />
+            <Route path="/publishing/reports" element={<PublishingReports token={token} />} />
+
             <Route path="/settings" element={
                  <Settings 
                     aggregators={aggregators} 
@@ -980,13 +983,13 @@ const App: React.FC = () => {
                         <div className="flex gap-3">
                             <button 
                                 onClick={cancelLogout}
-                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button 
                                 onClick={confirmLogout}
-                                className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
+                                className="flex-1 px-4 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
                             >
                                 Sign Out
                             </button>
@@ -1011,14 +1014,14 @@ const App: React.FC = () => {
                             <button 
                                 onClick={() => setReleaseToDelete(null)}
                                 disabled={isDeletingRelease}
-                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-60"
+                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-60"
                             >
                                 Batal
                             </button>
                             <button 
                                 onClick={handleConfirmDeleteRelease}
                                 disabled={isDeletingRelease}
-                                className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30 disabled:opacity-60 flex items-center justify-center gap-2"
+                                className="flex-1 px-4 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30 disabled:opacity-60 flex items-center justify-center gap-2"
                             >
                                 {isDeletingRelease && <Loader2 size={16} className="animate-spin" />}
                                 <span>Hapus</span>

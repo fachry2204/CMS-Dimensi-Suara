@@ -17,6 +17,32 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown');
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        // Use relative path to leverage Vite proxy
+        const res = await fetch('/api/health');
+        if (res.ok) {
+            const data = await res.json();
+            setServerStatus(data.status === 'online' ? 'online' : 'offline');
+            setDbStatus(data.database);
+        } else {
+            setServerStatus('offline');
+            setDbStatus('unknown');
+        }
+      } catch (e) {
+        setServerStatus('offline');
+        setDbStatus('unknown');
+      }
+    };
+    
+    checkHealth();
+    const interval = setInterval(checkHealth, 10000); // Check every 10s
+    return () => clearInterval(interval);
+  }, []);
 
   // register mode removed
 
@@ -161,7 +187,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <button
           type="submit"
           disabled={isLoading}
-          className={`w-full py-4 rounded-xl font-bold text-white shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95
+          className={`w-full py-4 rounded-xl font-medium text-white shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95
             ${isLoading 
               ? 'bg-slate-300 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:brightness-110 hover:-translate-y-1'
@@ -182,6 +208,22 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       </form>
 
       <div className="mt-8 text-center space-y-3">
+        <div className="flex justify-center gap-4 text-xs font-medium bg-slate-100 py-2 rounded-lg mb-2">
+            <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full ${serverStatus === 'online' ? 'bg-green-500 animate-pulse' : serverStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                <span className={`${serverStatus === 'online' ? 'text-green-700' : 'text-slate-500'}`}>
+                    Server: {serverStatus === 'checking' ? 'Checking...' : serverStatus.toUpperCase()}
+                </span>
+            </div>
+            {serverStatus === 'online' && (
+                 <div className="flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span className={`${dbStatus === 'connected' ? 'text-green-700' : 'text-red-500'}`}>
+                        DB: {dbStatus === 'connected' ? 'CONNECTED' : 'DISCONNECTED'}
+                    </span>
+                </div>
+            )}
+        </div>
         <p className="text-xs text-slate-400">
           Protected CMS Area. Authorized personnel only.
         </p>

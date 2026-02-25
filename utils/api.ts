@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL === '/api' ? '/api' : (import.meta.env.VITE_API_URL || '/api');
 
 const parseResponse = async (res: Response) => {
     if (res.status === 401 || res.status === 403) {
@@ -96,6 +96,113 @@ export const api = {
             credentials: 'include'
         });
         return parseResponse(res);
+    },
+
+    publishing: {
+        getCreators: async (token) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/creators`, { 
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include' 
+            });
+            return parseResponse(res);
+        },
+        createCreator: async (token, formData: FormData) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/creators`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: formData,
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        updateCreator: async (token, id: string, formData: FormData) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/creators/${id}`, {
+                method: 'PUT',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: formData,
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        deleteCreator: async (token, id: string) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/creators/${id}`, {
+                method: 'DELETE',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        getSongs: async (token) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/songs`, { 
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include' 
+            });
+            return parseResponse(res);
+        },
+        createSong: async (token, formData: FormData) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/songs`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: formData,
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        updateSong: async (token, id: number, formData: FormData) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/songs/${id}`, {
+                method: 'PUT',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: formData,
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        deleteSong: async (token, id: number) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/songs/${id}`, {
+                method: 'DELETE',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        updateSongStatus: async (token, id: string, status: string, songId?: string, reason?: string) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/songs/${id}/status`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ status, song_id: songId, rejection_reason: reason }),
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        uploadReport: async (token, formData: FormData) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/reports/upload`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: formData,
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        getReports: async (token, month?: number, year?: number) => {
+            const params = new URLSearchParams();
+            if (month) params.append('month', String(month));
+            if (year) params.append('year', String(year));
+            const res = await fetch(`${API_BASE_URL}/publishing/reports?${params.toString()}`, { 
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include' 
+            });
+            return parseResponse(res);
+        },
+        getAnalytics: async (token) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/analytics/stats`, { 
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include' 
+            });
+            return parseResponse(res);
+        }
     },
 
     // Releases
@@ -419,16 +526,7 @@ export const api = {
     },
 
     // Songwriters removed
-
-    // Publishing Registrations (Removed)
-    getPublishing: async (token) => {
-        return []; // Removed
-    },
-
-    createPublishing: async (token, data) => {
-        return {}; // Removed
-    },
-
+    
     // Settings
     getAggregators: async (token) => {
         const res = await fetch(`${API_BASE_URL}/settings/aggregators`, {
@@ -453,6 +551,22 @@ export const api = {
     },
 
     // User Management
+    updateUser: async (token, id, data) => {
+        const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+             const json = await res.json().catch(() => ({}));
+             throw new Error(json.error || 'Failed to update user');
+        }
+        return res.json();
+    },
+
     getUsers: async (token) => {
         const res = await fetch(`${API_BASE_URL}/users`, {
             headers: { 'Authorization': `Bearer ${token}` }

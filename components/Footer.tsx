@@ -9,7 +9,7 @@ export const Footer: React.FC = () => {
     <footer className="w-full py-6 px-8 border-t border-gray-200 bg-white/50 backdrop-blur-sm mt-auto">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="text-center md:text-left">
-           <p className="text-sm font-bold text-slate-600">
+           <p className="text-xs text-slate-600">
                &copy; {currentYear} Dimensi Suara
            </p>
            <p className="text-xs text-slate-400 mt-0.5">

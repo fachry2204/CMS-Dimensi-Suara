@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Disc, Music, Calendar, Eye, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Globe, ChevronLeft, ChevronRight, List, Plus } from 'lucide-react';
+import { Disc, Music, Calendar, Eye, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, Globe, ChevronLeft, ChevronRight, List, Plus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ReleaseData } from '../types';
 import { formatDMY } from '../utils/date';
@@ -128,7 +128,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
 
   const ThSortable = ({ label, sortKey, align = 'left' }: { label: string, sortKey: SortKey, align?: 'left'|'right' }) => (
       <th 
-        className={`px-6 py-4 text-[13px] text-slate-500 tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group text-${align}`}
+        className={`px-4 py-2 text-[10px] text-slate-500 tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group text-${align}`}
         onClick={() => handleSort(sortKey)}
       >
         <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
@@ -142,9 +142,9 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   const StatCard = ({ title, count, icon, colorClass, bgClass, subtext, cardClass }: any) => (
     <div className={`p-5 rounded-2xl shadow-sm border flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md ${cardClass || 'bg-white border-gray-100'}`}>
         <div>
-            <p className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">{title}</p>
+            <p className="text-slate-500 text-[10px] font-medium uppercase tracking-wider mb-1">{title}</p>
             <h3 className="text-2xl font-bold text-slate-800">{count}</h3>
-            <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{subtext}</p>
+            <p className="text-[9px] text-slate-400 mt-1.5 font-normal">{subtext}</p>
         </div>
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${bgClass} ${colorClass}`}>
             {icon}
@@ -153,10 +153,22 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   );
 
   // Meta stats
+  const uniqueArtists = new Set<string>();
+  releases.forEach(r => {
+      if (Array.isArray(r.primaryArtists)) {
+          r.primaryArtists.forEach(a => {
+              if (a) uniqueArtists.add(a.trim());
+          });
+      } else if (typeof r.primaryArtists === 'string') {
+          if (r.primaryArtists) uniqueArtists.add((r.primaryArtists as string).trim());
+      }
+  });
+
   const metaStats = {
     singles: releases.filter(r => r.type === 'SINGLE').length,
     albums: releases.filter(r => r.type === 'ALBUM').length,
-    tracks: releases.reduce((sum, r) => sum + (r.tracks?.length || 0), 0)
+    tracks: releases.reduce((sum, r) => sum + (r.tracks?.length || 0), 0),
+    artists: uniqueArtists.size
   };
 
   return (
@@ -164,7 +176,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div className="md:hidden">
                 <h1 className="text-[15px] text-slate-800 tracking-tight">All Releases</h1>
-                <p className="text-slate-500 mt-0.5 text-[11px]">Manage and track your music catalog status.</p>
+                <p className="text-slate-500 mt-0.5 text-[10px]">Manage and track your music catalog status.</p>
             </div>
             <div className="w-full md:w-auto flex items-center gap-3">
                 <div className="relative w-full md:w-80">
@@ -217,6 +229,15 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                 subtext="Tracks across catalog"
                 cardClass="bg-blue-50 border-blue-100"
             />
+            <StatCard 
+                title="Jumlah Artis" 
+                count={metaStats.artists} 
+                icon={<Users size={20} />} 
+                colorClass="text-emerald-600" 
+                bgClass="bg-emerald-100"
+                subtext="Total unique artists"
+                cardClass="bg-emerald-50 border-emerald-100"
+            />
             
         </div>
 
@@ -259,7 +280,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                         key={tab.id}
                         onClick={() => setActiveStatusTab(tab.id)}
                         className={`
-                            whitespace-nowrap px-4 py-2 rounded-full font-semibold text-[11px] transition-all flex items-center gap-2 border
+                            whitespace-nowrap px-4 py-2 rounded-full font-semibold text-[10px] transition-all flex items-center gap-2 border
                             ${baseColors}
                         `}
                     >
@@ -305,10 +326,10 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             <ThSortable label="Release" sortKey="title" />
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
-                            <th className="px-6 py-3 text-[13px] text-slate-500 tracking-wider">Submit Date</th>
+                            <th className="px-4 py-2 text-[10px] text-slate-500 tracking-wider">Submit Date</th>
                             <ThSortable label="Aggregator" sortKey="aggregator" />
                             <ThSortable label="Status" sortKey="status" />
-                            <th className="px-6 py-3 text-[13px] text-slate-500 tracking-wider text-right">Action</th>
+                            <th className="px-4 py-2 text-[10px] text-slate-500 tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -340,8 +361,8 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                 : undefined;
 
                             return (
-                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group text-[11px]">
-                                    <td className="px-6 py-4">
+                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group text-[10px]">
+                                    <td className="px-4 py-2">
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
@@ -363,30 +384,30 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             </div>
                                             <div className="min-w-[150px]">
                                                 <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{ownerName || "Unknown User"}</div>
-                                                <div className="font-bold text-slate-800 truncate max-w-[200px] text-[13px]" title={release.title}>{release.title || "Untitled Release"}</div>
-                                                <div className="text-[11px] text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
+                                                <div className="font-medium text-slate-800 truncate max-w-[200px] text-[11px]" title={release.title}>{release.title || "Untitled Release"}</div>
+                                                <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-3">
+                                    <td className="px-4 py-2">
                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white text-slate-600 border border-gray-200 whitespace-nowrap shadow-sm">
                                             <Music size={10} />
                                             {type}
                                         </span>
                                     </td>
-                                <td className="px-6 py-3 text-[11px] text-slate-600 whitespace-nowrap">
+                                <td className="px-4 py-2 text-[11px] text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
                                             <Calendar size={12} className="text-slate-400" />
                                             {formatDMY(displayDateRaw)}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-3 text-[11px] text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-2 text-[11px] text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
                                             <Calendar size={12} className="text-slate-400" />
                                             {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-3 text-[11px]">
+                                    <td className="px-4 py-2 text-[11px]">
                                         {release.aggregator ? (
                                             <div className="flex items-center gap-1 text-[10px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
                                                 <Globe size={10} />
@@ -396,7 +417,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             <span className="text-[10px] text-slate-300 italic">Not set</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-3">
+                                    <td className="px-4 py-2">
                                         <div className="flex flex-col items-start gap-1">
                                             <span 
                                                 title={rejectionTooltip}
@@ -406,7 +427,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-3 text-right">
+                                    <td className="px-4 py-2 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button 
                                                 onClick={() => {
@@ -432,7 +453,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                         <Filter size={24} className="text-slate-300" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-700 mb-1">{error ? "Connection Failed" : "No releases found"}</h3>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-slate-400 text-xs">
                         {error 
                             ? "We couldn't load your releases. Please check the error message above."
                             : (activeStatusTab === 'ALL' && searchQuery === ''
@@ -445,7 +466,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             {/* Pagination Footer */}
             <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
                 <div className="flex items-center gap-4">
-                     <span className="text-sm text-slate-500">
+                     <span className="text-[11px] text-slate-500">
                         Showing {displayedReleases.length} of {totalItems} results
                      </span>
                      <button 

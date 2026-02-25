@@ -874,6 +874,7 @@ router.get('/', authenticateToken, async (req, res) => {
         res.json(processedReleases);
 
     } catch (err) {
+        console.error('Get Releases Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

@@ -151,7 +151,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         <div className="flex justify-between items-center px-2">
             <button 
                 onClick={handlePrev}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all"
             >
                 <ChevronLeft size={20} />
                 Back
@@ -159,7 +159,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
             
             <button 
                 onClick={handleNext}
-                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all duration-200"
+                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all duration-200"
             >
                 Next Step
                 <ChevronRight size={20} />
@@ -199,13 +199,13 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                     <div className="flex gap-3 justify-end">
                         <button
                             onClick={() => setShowExitModal(false)}
-                            className="px-4 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                            className="px-4 py-2 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
                         >
                             Tidak
                         </button>
                         <button
                             onClick={handleConfirmExit}
-                            className="px-4 py-2 rounded-xl font-bold bg-yellow-500 text-white hover:bg-yellow-600 shadow-lg shadow-yellow-500/30 transition-all"
+                            className="px-4 py-2 rounded-xl font-medium bg-yellow-500 text-white hover:bg-yellow-600 shadow-lg shadow-yellow-500/30 transition-all"
                         >
                             Ya
                         </button>
@@ -236,7 +236,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                     <div className="flex justify-end">
                         <button
                             onClick={() => setShowAudioProcessingWarning(false)}
-                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                            className="px-4 py-2 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
                         >
                             Mengerti
                         </button>
@@ -270,7 +270,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                     <div className="flex justify-end mt-6">
                         <button
                             onClick={() => setShowAudioMissingWarning(false)}
-                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                            className="px-4 py-2 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
                         >
                             Mengerti
                         </button>
@@ -310,7 +310,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                     <div className="flex justify-end">
                         <button
                             onClick={() => setShowTrackWarning(false)}
-                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                            className="px-4 py-2 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
                         >
                             Mengerti
                         </button>
@@ -345,7 +345,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                     <div className="flex justify-end">
                         <button
                             onClick={() => setShowArtistWarning(false)}
-                            className="px-4 py-2 rounded-xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
+                            className="px-4 py-2 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all"
                         >
                             Mengerti
                         </button>

@@ -160,7 +160,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                 <button 
                   type="button"
                   onClick={addArtist}
-                  className="mt-3 flex items-center text-blue-600 font-bold text-sm hover:underline"
+                  className="mt-3 flex items-center text-blue-600 font-medium text-sm hover:underline"
                 >
                   <UserPlus size={16} className="mr-2" />
                   Add Another Artist
@@ -190,7 +190,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                       <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
                         <ImagePlus size={28} className="text-blue-500" />
                       </div>
-                      <p className="text-sm font-bold text-blue-600 mb-1">Upload Cover Art</p>
+                      <p className="text-sm font-medium text-blue-600 mb-1">Upload Cover Art</p>
                       <p className="text-xs text-slate-400">Auto-convert to 3000x3000px JPG</p>
                     </div>
                   )}
@@ -202,7 +202,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                           e.stopPropagation();
                           removeCover();
                         }}
-                        className="px-4 py-2 bg-white text-red-500 rounded-full font-bold text-sm shadow-lg hover:bg-red-50"
+                        className="px-4 py-2 bg-white text-red-500 rounded-full font-medium text-sm shadow-lg hover:bg-red-50"
                       >
                         Change Image
                       </button>

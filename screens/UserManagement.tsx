@@ -11,7 +11,8 @@ import {
     Plus,
     Mail,
     Lock,
-    Trash2
+    Trash2,
+    Edit
 } from 'lucide-react';
 import { User } from '../types';
 import { api } from '../utils/api';
@@ -28,8 +29,9 @@ export const UserManagement: React.FC = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [statusDraft, setStatusDraft] = useState<User['status'] | null>(null);
   
-  // Add User Form State
+  // Add/Edit User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addUserContext, setAddUserContext] = useState<'INTERNAL' | 'REGISTERED'>('INTERNAL');
   const [newUser, setNewUser] = useState({
@@ -59,26 +61,54 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const handleAddUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.password) return;
+  const handleSaveUser = async () => {
+    if (!newUser.name || !newUser.email) return;
+    if (!editingUserId && !newUser.password) return;
     
     setIsSubmitting(true);
     try {
-        const payload = {
-            ...newUser,
-            role: addUserContext === 'REGISTERED' ? 'User' : newUser.role,
-            status: addUserContext === 'REGISTERED' ? 'Pending' : newUser.status
-        };
-        const response = await api.createUser(token, payload);
-        setUsers(prev => [response.user, ...prev]);
-        setShowAddUserModal(false);
-        setNewUser({ name: '', email: '', role: 'Operator', password: '', status: 'Active' });
-        alert('User created successfully');
+        if (editingUserId) {
+            const payload: any = { ...newUser };
+            if (!payload.password) delete payload.password;
+            
+            const response = await api.updateUser(token, editingUserId, payload);
+            setUsers(prev => prev.map(u => u.id === editingUserId ? response.user : u));
+            alert('User updated successfully');
+        } else {
+            const payload = {
+                ...newUser,
+                role: addUserContext === 'REGISTERED' ? 'User' : newUser.role,
+                status: addUserContext === 'REGISTERED' ? 'Pending' : newUser.status
+            };
+            const response = await api.createUser(token, payload);
+            setUsers(prev => [response.user, ...prev]);
+            alert('User created successfully');
+        }
+        closeModal();
     } catch (err: any) {
-        alert(`Failed to create user: ${err.message}`);
+        alert(`Failed to save user: ${err.message}`);
     } finally {
         setIsSubmitting(false);
     }
+  };
+
+  const handleEditUser = (user: User) => {
+      setEditingUserId(user.id);
+      setNewUser({
+          name: user.name,
+          email: user.email,
+          role: user.role as any,
+          password: '',
+          status: user.status as any
+      });
+      setAddUserContext(user.role === 'User' ? 'REGISTERED' : 'INTERNAL');
+      setShowAddUserModal(true);
+  };
+
+  const closeModal = () => {
+      setShowAddUserModal(false);
+      setEditingUserId(null);
+      setNewUser({ name: '', email: '', role: 'Operator', password: '', status: 'Active' });
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -150,17 +180,6 @@ export const UserManagement: React.FC = () => {
             {/* Tabs */}
             <div className="flex border-b border-gray-200 mb-6">
                 <button
-                    onClick={() => setUserTab('INTERNAL')}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                        userTab === 'INTERNAL' 
-                        ? 'border-blue-600 text-blue-600' 
-                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                    }`}
-                >
-                    <Shield size={16} />
-                    Internal Users (Admin/Operator)
-                </button>
-                <button
                     onClick={() => setUserTab('REGISTERED')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                         userTab === 'REGISTERED' 
@@ -170,6 +189,17 @@ export const UserManagement: React.FC = () => {
                 >
                     <UserIcon size={16} />
                     Registered Users
+                </button>
+                <button
+                    onClick={() => setUserTab('INTERNAL')}
+                    className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                        userTab === 'INTERNAL' 
+                        ? 'border-blue-600 text-blue-600' 
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    <Shield size={16} />
+                    Internal Users (Admin/Operator)
                 </button>
                 <button
                     onClick={() => setUserTab('ALL')}
@@ -198,38 +228,38 @@ export const UserManagement: React.FC = () => {
 
             {/* Table */}
             <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-left">
                     <thead>
                         <tr className="border-b border-gray-200">
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
+                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">User</th>
                             {userTab !== 'REGISTERED' && (
-                              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                              <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Role</th>
                             )}
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Joined Date</th>
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved</th>
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reject Date</th>
-                            <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
+                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Joined Date</th>
+                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Approved</th>
+                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Reject Date</th>
+                            <th className="text-right py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {filteredUsers.length > 0 ? (
                             filteredUsers.map((user) => (
                                 <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="py-3 px-4">
+                                    <td className="py-2 px-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
                                                 {user.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <div className="font-medium text-slate-800">{user.name}</div>
-                                                <div className="text-xs text-slate-500">{user.email}</div>
+                                                <div className="font-medium text-slate-800 text-[11px]">{user.name}</div>
+                                                <div className="text-[10px] text-slate-500">{user.email}</div>
                                             </div>
                                         </div>
                                     </td>
                                     {userTab !== 'REGISTERED' && (
-                                      <td className="py-3 px-4">
-                                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                      <td className="py-2 px-3">
+                                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
                                               user.role === 'Admin' ? 'bg-purple-100 text-purple-800' :
                                               user.role === 'Operator' ? 'bg-blue-100 text-blue-800' :
                                               'bg-gray-100 text-gray-800'
@@ -238,8 +268,8 @@ export const UserManagement: React.FC = () => {
                                           </span>
                                       </td>
                                     )}
-                                    <td className="py-3 px-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    <td className="py-2 px-3">
+                                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                                             user.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
                                             user.status === 'Review' ? 'bg-blue-100 text-blue-700' :
                                             user.status === 'Approved' ? 'bg-green-100 text-green-700' :
@@ -247,24 +277,24 @@ export const UserManagement: React.FC = () => {
                                             user.status === 'Active' ? 'bg-green-100 text-green-700' :
                                             user.status === 'Inactive' ? 'bg-gray-100 text-gray-700' : 'bg-slate-100 text-slate-700'
                                         }`}>
-                                            {user.status === 'Rejected' ? <XCircle size={12} /> : <CheckCircle size={12} />}
+                                            {user.status === 'Rejected' ? <XCircle size={10} /> : <CheckCircle size={10} />}
                                             {user.status}
                                         </span>
                                     </td>
-                                    <td className="py-3 px-4 text-sm text-slate-600">
+                                    <td className="py-2 px-3 text-[11px] text-slate-600">
                                         {user.registeredDate || '-'}
                                     </td>
-                                    <td className="py-3 px-4 text-sm text-slate-600">
+                                    <td className="py-2 px-3 text-[11px] text-slate-600">
                                         {user.joinedDate || '-'}
                                     </td>
-                                    <td className="py-3 px-4 text-sm text-slate-600">
+                                    <td className="py-2 px-3 text-[11px] text-slate-600">
                                         {user.rejectedDate || '-'}
                                     </td>
-                                    <td className="py-3 px-4 text-right">
+                                    <td className="py-2 px-3 text-right">
                                         <div className="flex justify-end items-center gap-2">
                                             <button
                                                 onClick={() => navigate(`/users/${user.id}`)}
-                                                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
+                                                className="px-2 py-1 text-[10px] rounded border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium"
                                                 title="View User"
                                             >
                                                 View
@@ -274,7 +304,7 @@ export const UserManagement: React.FC = () => {
                                                 className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors"
                                                 title="Delete User"
                                             >
-                                                <Trash2 size={16} />
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     </td>
@@ -282,7 +312,7 @@ export const UserManagement: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={userTab !== 'REGISTERED' ? 6 : 5} className="py-8 text-center text-slate-500 text-sm">
+                                <td colSpan={userTab !== 'REGISTERED' ? 6 : 5} className="py-6 text-center text-slate-500 text-[11px]">
                                     No users found matching your criteria.
                                 </td>
                             </tr>
@@ -298,9 +328,9 @@ export const UserManagement: React.FC = () => {
                 <div className="bg-white rounded-2xl shadow-xl w-[96vw] md:w-full max-w-6xl h-[90svh] overflow-hidden animate-scale-in flex flex-col">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                         <h3 className="text-lg font-bold text-slate-800">
-                            {addUserContext === 'INTERNAL' ? 'Add Internal User' : 'Add Registered User'}
+                            {editingUserId ? 'Edit User' : (addUserContext === 'INTERNAL' ? 'Add Internal User' : 'Add Registered User')}
                         </h3>
-                        <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-slate-600">
+                        <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
                             <XCircle size={24} />
                         </button>
                     </div>
@@ -355,7 +385,10 @@ export const UserManagement: React.FC = () => {
                             </div>
                         )}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Password
+                                {editingUserId && <span className="text-slate-400 text-xs font-normal ml-2">(Leave blank to keep unchanged)</span>}
+                            </label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input 
@@ -370,16 +403,24 @@ export const UserManagement: React.FC = () => {
                     </div>
                     <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-slate-50">
                         <button 
-                            onClick={() => setShowAddUserModal(false)}
+                            onClick={closeModal}
                             className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors"
                         >
                             Cancel
                         </button>
                         <button 
-                            onClick={handleAddUser}
-                            className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+                            onClick={handleSaveUser}
+                            disabled={isSubmitting}
+                            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
-                            Create User
+                            {isSubmitting ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                editingUserId ? 'Update User' : 'Create User'
+                            )}
                         </button>
                     </div>
                 </div>
@@ -390,24 +431,28 @@ export const UserManagement: React.FC = () => {
        {showUserViewModal && selectedUser && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-scale-in">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
-                        <h3 className="text-lg font-bold text-slate-800">User Detail</h3>
-                        <button onClick={() => setShowUserViewModal(false)} className="text-slate-400 hover:text-slate-600">
-                            <XCircle size={24} />
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                        <h3 className="text-base font-bold text-slate-800">User Detail</h3>
+                        <button onClick={() => {
+                            setShowUserViewModal(false);
+                            setStatusDraft(null);
+                            setRejectReason('');
+                        }} className="text-slate-400 hover:text-slate-600">
+                            <XCircle size={20} />
                         </button>
                     </div>
-                    <div className="p-6 space-y-4">
-                        <div className="space-y-4">
+                    <div className="p-4 space-y-3">
+                        <div className="space-y-3">
                             <div>
-                                <div className="font-medium text-slate-800">{selectedUser.name}</div>
-                                <div className="text-xs text-slate-500">{selectedUser.email}</div>
-                                <div className="text-xs text-slate-500">Role: {selectedUser.role}</div>
-                                <div className="text-xs text-slate-500">Joined: {selectedUser.registeredDate}</div>
+                                <div className="font-medium text-slate-800 text-sm">{selectedUser.name}</div>
+                                <div className="text-[10px] text-slate-500">{selectedUser.email}</div>
+                                <div className="text-[10px] text-slate-500">Role: {selectedUser.role}</div>
+                                <div className="text-[10px] text-slate-500">Joined: {selectedUser.registeredDate}</div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="rounded-xl border border-slate-200 overflow-hidden">
-                                    <table className="w-full text-sm">
-                                        <tbody className="[&>tr>td]:py-2 [&>tr>td]:px-3 [&>tr:nth-child(even)]:bg-slate-50">
+                                    <table className="w-full text-[11px]">
+                                        <tbody className="[&>tr>td]:py-1.5 [&>tr>td]:px-2.5 [&>tr:nth-child(even)]:bg-slate-50">
                                             <tr><td className="text-slate-600">Account Type</td><td className="font-medium">{selectedUser.account_type || '-'}</td></tr>
                                             {(selectedUser.account_type === 'COMPANY') && (
                                                 <tr><td className="text-slate-600">Company</td><td className="font-medium">{selectedUser.company_name || '-'}</td></tr>
@@ -439,9 +484,9 @@ export const UserManagement: React.FC = () => {
                                         </tbody>
                                     </table>
                                 </div>
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-semibold text-slate-800">Documents</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-slate-800">Documents</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {selectedUser.ktp_doc_path && (
                                             <div className="border border-slate-200 rounded-xl p-3">
                                                 <div className="text-xs font-medium mb-2">KTP</div>

@@ -115,7 +115,8 @@ const initDb = async () => {
             { name: 'nib_doc_path', type: "VARCHAR(255)" },
             { name: 'kemenkumham_doc_path', type: "VARCHAR(255)" },
             { name: 'ktp_doc_path', type: "VARCHAR(255)" },
-            { name: 'npwp_doc_path', type: "VARCHAR(255)" }
+            { name: 'npwp_doc_path', type: "VARCHAR(255)" },
+            { name: 'signature_doc_path', type: "VARCHAR(255)" }
         ];
 
         for (const col of userProfileColumns) {
@@ -181,6 +182,24 @@ const initDb = async () => {
             console.warn('Registered_at backfill/constraint warning:', err.message);
         }
 
+        // 3e. Rename 'password' to 'password_hash' if needed
+        try {
+            const [rows] = await connection.query("SHOW COLUMNS FROM users LIKE 'password'");
+            if (rows.length > 0) {
+                console.log("⚠️ Renaming column: password -> password_hash in users table");
+                await connection.query("ALTER TABLE users CHANGE COLUMN password password_hash VARCHAR(255) NOT NULL");
+            } else {
+                 // Check if password_hash exists
+                 const [hashRows] = await connection.query("SHOW COLUMNS FROM users LIKE 'password_hash'");
+                 if (hashRows.length === 0) {
+                     console.log("⚠️ Adding missing column: password_hash to users table");
+                     await connection.query("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NOT NULL");
+                 }
+            }
+        } catch (err) {
+            console.warn('Password column migration warning:', err.message);
+        }
+
         // 4. Check 'cover_art' in 'releases'
         try {
             await connection.query('SELECT cover_art FROM releases LIMIT 1');
@@ -203,6 +222,7 @@ const initDb = async () => {
 
         // 6. Check other missing columns in 'releases'
         const releaseColumns = [
+            { name: 'submission_date', type: "DATE" },
             { name: 'release_type', type: "ENUM('SINGLE', 'ALBUM')" },
             { name: 'version', type: "VARCHAR(50)" },
             { name: 'is_new_release', type: "BOOLEAN" },
@@ -264,6 +284,17 @@ const initDb = async () => {
                 }
             }
         }
+
+        // 9. Check missing columns in 'songs'
+        try {
+            await connection.query('SELECT song_id FROM songs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: song_id to songs table');
+                await connection.query('ALTER TABLE songs ADD COLUMN song_id VARCHAR(100)');
+            }
+        }
+
         
         // Remove publishing/songwriter related table if present
         try {

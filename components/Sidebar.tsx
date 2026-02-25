@@ -25,16 +25,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg shadow-blue-500/30">
           <Music4 size={20} />
         </div>
-        <span className="font-bold text-lg text-slate-800 tracking-tight">Dimensi Suara</span>
+        <span className="font-bold text-lg text-slate-800 tracking-tight">Aggregator Musik</span>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-6 px-4 space-y-6 overflow-y-auto">
         
-        {/* Main Menu */}
+        {/* Dashboard Menu */}
         <div>
           <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            Menu Utama
+            Dashboard
           </h3>
           <ul className="space-y-2">
             <li>
@@ -47,12 +47,80 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 )}
               </NavLink>
             </li>
+          </ul>
+        </div>
+
+        {/* Aggregator Menu */}
+        <div>
+          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Aggregator
+          </h3>
+          <ul className="space-y-2">
+            <li>
+              <NavLink to="/aggregator" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <BarChart3 size={20} className={getIconClass(isActive)} />
+                    Aggregator
+                  </>
+                )}
+              </NavLink>
+            </li>
             <li>
               <NavLink to={userRole === 'User' ? "/my-releases" : "/releases"} className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
                   <>
                     <ListMusic size={20} className={getIconClass(isActive)} />
                     {userRole === 'User' ? 'My Releases' : 'All Release'}
+                  </>
+                )}
+              </NavLink>
+            </li>
+          </ul>
+        </div>
+
+        {/* Publishing Menu */}
+        <div>
+          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Publishing
+          </h3>
+          <ul className="space-y-2">
+            <li>
+              <NavLink to="/publishing/writer" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <UserPlus size={20} className={getIconClass(isActive)} />
+                    Data Pencipta
+                  </>
+                )}
+              </NavLink>
+            </li>
+             <li>
+              <NavLink to="/publishing/songs" className={({ isActive }) => getLinkClass(isActive)}>
+                 {({ isActive }) => (
+                  <>
+                    <ListMusic size={20} className={getIconClass(isActive)} />
+                    Data Lagu
+                  </>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/publishing/analytics" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <BarChart3 size={20} className={getIconClass(isActive)} />
+                    Analitik
+                  </>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/publishing/reports" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <ClipboardList size={20} className={getIconClass(isActive)} />
+                    Report
                   </>
                 )}
               </NavLink>
@@ -140,57 +208,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         </div>
         )}
 
-        {/* Publishing Category - ONLY FOR 'fachry' */}
-        {/* {currentUser === 'fachry' && (
-          <div className="animate-fade-in">
-            <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              Publishing
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <NavLink to="/publishing/writer" className={({ isActive }) => getLinkClass(isActive)}>
-                  {({ isActive }) => (
-                    <>
-                      <UserPlus size={20} className={getIconClass(isActive)} />
-                      Add Song Writer
-                    </>
-                  )}
-                </NavLink>
-              </li>
-               <li>
-                <NavLink to="/publishing/add" className={({ isActive }) => getLinkClass(isActive)}>
-                   {({ isActive }) => (
-                    <>
-                      <FileText size={20} className={getIconClass(isActive)} />
-                      Add Publishing
-                    </>
-                  )}
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/publishing/all" className={({ isActive }) => getLinkClass(isActive)}>
-                  {({ isActive }) => (
-                    <>
-                      <Library size={20} className={getIconClass(isActive)} />
-                      All Publishing
-                    </>
-                  )}
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/publishing/report" className={({ isActive }) => getLinkClass(isActive)}>
-                  {({ isActive }) => (
-                    <>
-                      <PieChart size={20} className={getIconClass(isActive)} />
-                      Report Publishing
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            </ul>
-          </div>
-        )} */}
-
         {/* System / Settings Section */}
         {userRole !== 'User' && (
         <div>
@@ -215,18 +232,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                   <>
                     <Users size={20} className={getIconClass(isActive)} />
                     User Management
-                  </>
-                )}
-              </NavLink>
-            </li>
-            )}
-            {(userRole === 'Admin' || userRole === 'Operator') && (
-            <li>
-              <NavLink to="/roles/user" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <Shield size={20} className={getIconClass(isActive)} />
-                    Role User
                   </>
                 )}
               </NavLink>

@@ -126,13 +126,17 @@ export interface User {
   name: string;
   email: string;
   role: 'Admin' | 'Operator' | 'User'; // User = Registered User
-  status: 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved' | 'Rejected';
+  status: 'Active' | 'Inactive' | 'Pending' | 'Review' | 'Approved' | 'Rejected' | 'Blocked';
   joinedDate: string;
   registeredDate?: string;
   rejectedDate?: string;
+  blockedAt?: string;
   password?: string; // Optional for UI display
   profilePicture?: string;
   rejection_reason?: string;
+  block_reason?: string;
+  aggregator_percentage?: number;
+  publishing_percentage?: number;
   account_type?: 'PERSONAL' | 'COMPANY';
   company_name?: string;
   nik?: string;
@@ -152,6 +156,7 @@ export interface User {
   kemenkumham_doc_path?: string;
   ktp_doc_path?: string;
   npwp_doc_path?: string;
+  signature_doc_path?: string;
 }
 
 export interface Notification {

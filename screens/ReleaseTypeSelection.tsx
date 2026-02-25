@@ -31,12 +31,12 @@ export const ReleaseTypeSelection: React.FC<Props> = ({ onSelect }) => {
              <Music size={28} className="text-blue-500 group-hover:scale-110 transition-transform duration-300" />
           </div>
           
-          <h2 className="text-xl font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">Single Song</h2>
+          <h2 className="text-base font-medium text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">Single Song</h2>
           <p className="text-slate-500 mb-6 text-center leading-relaxed text-sm">
             Upload a single track. Perfect for your latest hit or a standalone release.
           </p>
           
-          <div className="mt-auto flex items-center text-blue-500 font-bold text-xs opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+          <div className="mt-auto flex items-center text-blue-500 font-medium text-xs opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
             Select Single <ArrowRight size={16} className="ml-2" />
           </div>
         </button>
@@ -52,12 +52,12 @@ export const ReleaseTypeSelection: React.FC<Props> = ({ onSelect }) => {
              <Disc size={28} className="text-purple-500 group-hover:scale-110 transition-transform duration-300" />
           </div>
 
-          <h2 className="text-xl font-bold text-slate-800 mb-1 group-hover:text-purple-600 transition-colors">EP / Album</h2>
+          <h2 className="text-base font-medium text-slate-800 mb-1 group-hover:text-purple-600 transition-colors">EP / Album</h2>
           <p className="text-slate-500 mb-6 text-center leading-relaxed text-sm">
              Compile two or more tracks. Ideal for EPs, full albums, or compilations.
           </p>
 
-           <div className="mt-auto flex items-center text-purple-600 font-bold text-xs opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+           <div className="mt-auto flex items-center text-purple-600 font-medium text-xs opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
             Select Album <ArrowRight size={16} className="ml-2" />
           </div>
         </button>
