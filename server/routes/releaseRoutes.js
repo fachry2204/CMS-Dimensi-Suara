@@ -407,7 +407,7 @@ router.post('/tmp/preview-clip', authenticateToken, async (req, res) => {
 // If `Step4Review` sends JSON, it cannot send File objects.
 // Let's check `api.createRelease`. 
 
-router.post('/', authenticateToken, upload.any(), async (req, res) => {
+router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res) => {
     try {
         // Parse JSON payload from 'data' field when using multipart/form-data
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
@@ -419,7 +419,19 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         // Folder name: Artist - Release Title
         const releaseDirName = sanitizeName(`${primaryArtist} - ${releaseData.title}`).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
-        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+        
+        // Ensure directories exist with correct permissions
+        if (!fs.existsSync(UPLOADS_ROOT)) fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
+        if (!fs.existsSync(RELEASES_DIR)) fs.mkdirSync(RELEASES_DIR, { recursive: true });
+        if (!fs.existsSync(targetDir)) {
+            try {
+                fs.mkdirSync(targetDir, { recursive: true, mode: 0o755 });
+            } catch (mkdirErr) {
+                console.error('Failed to create target dir:', mkdirErr);
+                // Continue if dir exists (race condition), else throw
+                if (!fs.existsSync(targetDir)) throw mkdirErr;
+            }
+        }
 
         // Move uploaded files into targetDir and collect public paths
         const files = Array.isArray(req.files) ? req.files : [];

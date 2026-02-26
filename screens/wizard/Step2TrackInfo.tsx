@@ -566,7 +566,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                 <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                                     {isProcessingAudio ? (
                                         <span className="flex items-center gap-1 text-blue-600 font-medium">
-                                            <Loader2 size={16} className="animate-spin" /> Converting...
+                                            <Loader2 size={16} className="animate-spin" /> Uploading...
                                         </span>
                                     ) : track.audioFile ? (
                                         typeof track.audioFile === 'string' ? (
