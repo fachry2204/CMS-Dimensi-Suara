@@ -200,6 +200,22 @@ const initDb = async () => {
             console.warn('Password column migration warning:', err.message);
         }
 
+        // 3f. Ensure percentage columns in 'users'
+        const percentageCols = [
+            { name: 'aggregator_percentage', type: "DECIMAL(5,2) DEFAULT 0.00" },
+            { name: 'publishing_percentage', type: "DECIMAL(5,2) DEFAULT 0.00" }
+        ];
+        for (const col of percentageCols) {
+            try {
+                await connection.query(`SELECT \`${col.name}\` FROM users LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to users table`);
+                    await connection.query(`ALTER TABLE users ADD COLUMN \`${col.name}\` ${col.type}`);
+                }
+            }
+        }
+
         // 4. Check 'cover_art' in 'releases'
         try {
             await connection.query('SELECT cover_art FROM releases LIMIT 1');
@@ -302,6 +318,56 @@ const initDb = async () => {
         }
 
         
+        // 10. Check 'reports' table
+        try {
+            await connection.query('SELECT 1 FROM reports LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: reports');
+                await connection.query(`
+                    CREATE TABLE reports (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        period DATE NOT NULL,
+                        upc VARCHAR(50),
+                        isrc VARCHAR(50),
+                        title VARCHAR(255),
+                        artist VARCHAR(255),
+                        platform VARCHAR(100),
+                        country VARCHAR(100),
+                        quantity INT DEFAULT 0,
+                        revenue DECIMAL(15, 2) DEFAULT 0.00,
+                        original_file_name VARCHAR(255),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                `);
+            }
+        }
+        
+        // 11. Check missing columns in 'reports' (if table exists but old schema)
+        const reportColumns = [
+            { name: 'period', type: "DATE" },
+            { name: 'upc', type: "VARCHAR(50)" },
+            { name: 'isrc', type: "VARCHAR(50)" },
+            { name: 'title', type: "VARCHAR(255)" },
+            { name: 'artist', type: "VARCHAR(255)" },
+            { name: 'platform', type: "VARCHAR(100)" },
+            { name: 'country', type: "VARCHAR(100)" },
+            { name: 'quantity', type: "INT DEFAULT 0" },
+            { name: 'revenue', type: "DECIMAL(15, 2) DEFAULT 0.00" },
+            { name: 'original_file_name', type: "VARCHAR(255)" }
+        ];
+
+        for (const col of reportColumns) {
+            try {
+                await connection.query(`SELECT \`${col.name}\` FROM reports LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to reports table`);
+                    await connection.query(`ALTER TABLE reports ADD COLUMN \`${col.name}\` ${col.type}`);
+                }
+            }
+        }
+
         // Remove publishing/songwriter related table if present
         try {
             await connection.query('DROP TABLE IF EXISTS songwriters');
