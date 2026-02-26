@@ -862,8 +862,8 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
         // Return more detailed error for debugging on hosting
         res.status(500).json({ 
             error: errorMsg, 
-            code: (err as any)?.code,
-            sqlMessage: (err as any)?.sqlMessage,
+            code: err?.code,
+            sqlMessage: err?.sqlMessage,
             details: 'Check server logs for full stack trace'
         });
     }
