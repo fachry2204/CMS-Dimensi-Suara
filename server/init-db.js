@@ -229,6 +229,7 @@ const initDb = async () => {
             { name: 'original_release_date', type: "DATE" },
             { name: 'planned_release_date', type: "DATE" },
             { name: 'genre', type: "VARCHAR(100)" },
+            { name: 'sub_genre', type: "VARCHAR(100)" },
             { name: 'p_line', type: "VARCHAR(255)" },
             { name: 'c_line', type: "VARCHAR(255)" },
             { name: 'language', type: "VARCHAR(50)" },
@@ -263,15 +264,20 @@ const initDb = async () => {
             { name: 'track_number', type: "VARCHAR(10)" },
             { name: 'duration', type: "VARCHAR(20)" },
             { name: 'genre', type: "VARCHAR(100)" },
+            { name: 'sub_genre', type: "VARCHAR(100)" },
             { name: 'lyrics', type: "TEXT" },
             { name: 'contributors', type: "JSON" },
             { name: 'version', type: "VARCHAR(100)" },
             { name: 'isrc', type: "VARCHAR(50)" },
             { name: 'explicit', type: "BOOLEAN" },
+            { name: 'explicit_lyrics', type: "BOOLEAN" },
             { name: 'primary_artists', type: "JSON" },
+            { name: 'featured_artists', type: "JSON" },
             { name: 'writer', type: "JSON" },
             { name: 'composer', type: "JSON" },
-            { name: 'producer', type: "JSON" }
+            { name: 'lyricist', type: "JSON" },
+            { name: 'producer', type: "JSON" },
+            { name: 'preview_start', type: "INT DEFAULT 0" }
         ];
 
         for (const col of trackColumns) {
