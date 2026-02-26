@@ -184,7 +184,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       if (!trimmerState.rawFile || !trimmerState.trackId) return;
       
       const track = data.tracks.find(t => t.id === trimmerState.trackId);
-      const trackTitle = track?.title || `Track-${track?.trackNumber}`;
       const processKey = `${trimmerState.trackId}-audioClip`;
 
       setProcessingState(prev => ({ ...prev, [processKey]: true }));
@@ -196,13 +195,25 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         if (token) {
             const trackIndex = data.tracks.findIndex(t => t.id === trimmerState.trackId);
             if (trackIndex >= 0) {
+                // 1. Crop audio locally to avoid uploading huge file
+                const croppedFile = await cropAndConvertAudio(
+                    trimmerState.rawFile,
+                    trimmerState.startTime,
+                    60, // duration
+                    trimmerState.rawFile.name,
+                    (p) => {
+                         // Update progress if needed
+                    }
+                );
+
                 const fieldName = `track_${trackIndex}_clip`;
                 try {
+                    // 2. Upload the small cropped file
                     const resp = await api.uploadTmpReleaseFile(
                         token,
                         { title: data.title, primaryArtists: data.primaryArtists },
                         fieldName,
-                        trimmerState.rawFile
+                        croppedFile
                     );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
@@ -211,14 +222,18 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp.url) ||
                       (resp && resp[fieldName]) ||
                       '';
+                    
                     if (candidate) {
-                        const prev = await api.generateClipPreview(token, candidate, trimmerState.startTime, 60);
-                        const previewPath = prev.previewPath || candidate;
-                        updateTrack(trimmerState.trackId, { tempClipPath: candidate, audioClip: previewPath, previewStart: trimmerState.startTime });
+                        // 3. Update track with the uploaded path
+                        updateTrack(trimmerState.trackId, { 
+                            tempClipPath: candidate, 
+                            audioClip: candidate, 
+                            previewStart: 0 // It's already cropped, so preview starts at 0
+                        });
                     }
                 } catch (e) {
                     console.error('Upload tmp audio clip failed:', e);
-                    // Keep local clip and defer upload to final submit
+                    alert("Failed to upload clipped audio. Please try again.");
                 }
             }
         }

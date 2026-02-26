@@ -215,14 +215,14 @@ app.get('/api/wilayah/postal-code', async (req, res) => {
     }
 });
 
-// Test Database Connection Route
-app.get('/api/health', async (req, res) => {
+// Additional DB health (normalized shape, avoid duplicate /api/health route)
+app.get('/api/health/db', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT 1 as val');
-        res.json({ status: 'OK', db: 'Connected', val: rows[0].val });
+        res.json({ status: 'online', database: 'connected', val: rows[0].val });
     } catch (err) {
         console.error('Database Health Check Failed:', err);
-        res.status(500).json({ status: 'Error', error: err.message });
+        res.status(500).json({ status: 'offline', database: 'disconnected', error: err.message });
     }
 });
 
