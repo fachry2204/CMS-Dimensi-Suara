@@ -858,7 +858,14 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
     } catch (err) {
         console.error("Create Release Error:", err);
         const errorMsg = err instanceof Error ? err.message : (typeof err === 'string' ? err : 'Unknown Server Error');
-        res.status(500).json({ error: errorMsg || 'Internal Server Error' });
+        
+        // Return more detailed error for debugging on hosting
+        res.status(500).json({ 
+            error: errorMsg, 
+            code: (err as any)?.code,
+            sqlMessage: (err as any)?.sqlMessage,
+            details: 'Check server logs for full stack trace'
+        });
     }
 });
 
