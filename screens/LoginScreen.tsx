@@ -126,60 +126,60 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   const renderLogin = () => (
     <>
-      <div className="text-center mb-10">
-        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg shadow-blue-500/30">
-          <Music4 size={32} />
+      <div className="text-center mb-6">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-blue-500/30">
+          <Music4 size={24} />
         </div>
         
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dimensi Suara CMS</h1>
-        <p className="text-slate-500 text-sm mt-1">Sign in to manage your music distribution</p>
+        <h1 className="text-xl font-bold text-slate-800 tracking-tight">Dimensi Suara CMS</h1>
+        <p className="text-slate-500 text-xs mt-1">Sign in to manage your music distribution</p>
       </div>
 
-      <form onSubmit={handleLogin} className="space-y-6">
+      <form onSubmit={handleLogin} className="space-y-4">
         {error && (
-          <div className="bg-red-50 text-red-600 text-sm p-4 rounded-xl flex items-center gap-2 border border-red-100 animate-pulse">
-            <AlertCircle size={16} />
+          <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg flex items-center gap-2 border border-red-100 animate-pulse">
+            <AlertCircle size={14} />
             {error}
           </div>
         )}
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 ml-1">Email</label>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-slate-700 ml-1">Email</label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-              <Mail size={18} />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+              <Mail size={16} />
             </div>
             <input
               type="email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-normal text-slate-700 placeholder:text-slate-400"
+              className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400"
               placeholder="Enter email"
               required
             />
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 ml-1">Password</label>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-slate-700 ml-1">Password</label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-              <Lock size={18} />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+              <Lock size={16} />
             </div>
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-normal text-slate-700 placeholder:text-slate-400"
+              className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400"
               placeholder="Enter password"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
@@ -187,7 +187,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <button
           type="submit"
           disabled={isLoading}
-          className={`w-full py-4 rounded-xl font-medium text-white shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95
+          className={`w-full py-3 rounded-lg font-medium text-white shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 text-xs
             ${isLoading 
               ? 'bg-slate-300 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:brightness-110 hover:-translate-y-1'
@@ -195,42 +195,42 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         >
           {isLoading ? (
             <>
-              <Loader2 size={20} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin" />
               Signing In...
             </>
           ) : (
             <>
               Sign In
-              <ArrowRight size={20} />
+              <ArrowRight size={16} />
             </>
           )}
         </button>
       </form>
 
-      <div className="mt-8 text-center space-y-3">
-        <div className="flex justify-center gap-4 text-xs font-medium bg-slate-100 py-2 rounded-lg mb-2">
-            <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${serverStatus === 'online' ? 'bg-green-500 animate-pulse' : serverStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+      <div className="mt-6 text-center space-y-3">
+        <div className="flex justify-center gap-3 text-[10px] font-medium bg-slate-100 py-1.5 rounded-md mb-2">
+            <div className="flex items-center gap-1.5">
+                <div className={`w-2 h-2 rounded-full ${serverStatus === 'online' ? 'bg-green-500 animate-pulse' : serverStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'}`} />
                 <span className={`${serverStatus === 'online' ? 'text-green-700' : 'text-slate-500'}`}>
                     Server: {serverStatus === 'checking' ? 'Checking...' : serverStatus.toUpperCase()}
                 </span>
             </div>
             {serverStatus === 'online' && (
-                 <div className="flex items-center gap-2">
-                    <div className={`w-2.5 h-2.5 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+                 <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
                     <span className={`${dbStatus === 'connected' ? 'text-green-700' : 'text-red-500'}`}>
                         DB: {dbStatus === 'connected' ? 'CONNECTED' : 'DISCONNECTED'}
                     </span>
                 </div>
             )}
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-[10px] text-slate-400">
           Protected CMS Area. Authorized personnel only.
         </p>
         <button
           type="button"
           onClick={() => navigate('/register')}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+          className="text-[10px] font-semibold text-blue-600 hover:text-blue-700"
         >
           Belum punya akun? Daftar di sini
         </button>
@@ -258,7 +258,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-8 md:p-10 animate-fade-in-up">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl shadow-blue-900/10 border border-white p-6 md:p-8 animate-fade-in-up">
         {renderLogin()}
       </div>
 

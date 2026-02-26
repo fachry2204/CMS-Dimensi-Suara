@@ -148,7 +148,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
        {/* RECENT ACTIVITY TABLE */}
        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-xs text-slate-800 flex items-center gap-2 font-bold uppercase tracking-wider">
+                <h3 className="text-[11px] text-slate-800 flex items-center gap-2 font-bold uppercase tracking-wider">
                     <LayoutDashboard size={16} className="text-slate-400" />
                     Recent Activity (Pending & Processing)
                 </h3>

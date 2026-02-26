@@ -60,7 +60,8 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
   const handleNext = () => {
     if (currentStep === Step.INFO) {
         const artists = (data.primaryArtists || []).map(a => (a || '').trim()).filter(a => a.length > 0);
-        if (artists.length === 0) {
+        // Check mandatory fields: title, primaryArtists, version, language (territory)
+        if (artists.length === 0 || !data.title || !data.title.trim() || !data.version || !data.language) {
             setShowArtistWarning(true);
             return;
         }
@@ -114,7 +115,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
     switch (currentStep) {
         case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} releaseType={type} />;
         case Step.TRACKS: return <Step2TrackInfo data={data} updateData={updateData} releaseType={type} />;
-        case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} />;
+        case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} releaseType={type} />;
         case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} onBack={handlePrev} />;
         default: return null;
     }
@@ -327,8 +328,8 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                         <AlertTriangle className="text-red-600" size={16} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-xs font-medium text-red-800">Peringatan</h3>
-                        <p className="text-[10px] text-red-700">Primary Artist(s) wajib diisi</p>
+                        <h3 className="text-xs font-medium text-red-800">Data Belum Lengkap</h3>
+                        <p className="text-[10px] text-red-700">Mohon lengkapi semua field bertanda bintang (*)</p>
                     </div>
                     <button 
                         onClick={() => setShowArtistWarning(false)}
@@ -340,7 +341,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                 
                 <div className="p-4">
                     <p className="text-slate-600 mb-3 font-medium text-[10px]">
-                        Isi setidaknya satu nama artis di kolom Primary Artist(s) sebelum lanjut ke Step 2.
+                        Pastikan Release Title, Primary Artist, Version, dan Territory sudah terisi sebelum lanjut.
                     </p>
                     <div className="flex justify-end">
                         <button

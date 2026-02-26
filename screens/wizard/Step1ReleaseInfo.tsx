@@ -140,31 +140,24 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="text-center mb-6">
-        <h2 className="text-base font-medium text-slate-800 mb-1">Basic Information</h2>
-        <p className="text-[10px] text-slate-500">Let's start with the essentials of your release.</p>
+        <h2 className="text-xs font-bold text-slate-800 mb-2">Basic Information</h2>
+        <p className="text-xs text-slate-500">Let's start with the essentials of your release.</p>
       </div>
       
       <div className="flex flex-col gap-6 items-start w-full">
           {/* Group 1: Main Info */}
-          <div className="w-full bg-white border border-gray-200 rounded-lg p-4 relative mt-2">
-              <h3 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Release Identity</h3>
+          <div className="w-full bg-white border border-gray-200 rounded p-6 relative mt-4">
+              <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 absolute -top-2 left-4 bg-white px-2">Release Identity</h3>
               
-              <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex flex-col md:flex-row gap-8">
                 {/* Left Column: Text Inputs */}
-                <div className="flex-1 space-y-3">
-                  {/* UPC Field */}
-                  <div>
-                      <TextInput 
-                        label="Kode UPC (Jika pernah rilis sebelumnya)" 
-                        value={data.upc} 
-                        onChange={(e) => updateData({ upc: e.target.value })} 
-                        placeholder="Leave blank to auto-generate"
-                      />
-                  </div>
+                <div className="flex-1 space-y-4">
+                  {/* UPC Field Removed - Moved to Step 3 */}
+
 
                   <div>
                       <TextInput 
-                        label="Release Title" 
+                        label={<>Release Title <span className="text-red-500">*</span></>}
                         value={data.title} 
                         onChange={(e) => updateData({ title: e.target.value })} 
                         placeholder="e.g. Midnight Memories"
@@ -173,23 +166,23 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
 
                   {/* Primary Artists (Multiple) */}
                   <div>
-                    <label className="block text-[10px] font-medium text-slate-700 mb-1">Primary Artist(s)</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Primary Artist(s) <span className="text-red-500">*</span></label>
                     <div className="space-y-2">
                       {data.primaryArtists.map((artist, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <input 
                             value={artist}
                             onChange={(e) => handleArtistChange(index, e.target.value)}
-                            className="flex-1 px-2.5 py-1.5 border border-gray-300 rounded bg-white text-[10px] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
                             placeholder="Artist Name"
                           />
                           {data.primaryArtists.length > 1 && (
                             <button 
                               type="button"
                               onClick={() => removeArtist(index)}
-                              className="p-1.5 text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                              className="p-2 text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={16} />
                             </button>
                           )}
                         </div>
@@ -198,18 +191,18 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                     <button 
                       type="button"
                       onClick={addArtist}
-                      className="mt-2 flex items-center text-blue-600 font-medium text-[10px] hover:underline"
+                      className="mt-2 flex items-center text-blue-600 font-medium text-xs hover:underline"
                     >
-                      <UserPlus size={12} className="mr-1" />
+                      <UserPlus size={16} className="mr-1" />
                       Add Another Artist
                     </button>
                   </div>
                 </div>
 
                 {/* Right Column: Cover Art */}
-                <div className="w-full md:w-48 flex-shrink-0">
-                  <div className="mb-1">
-                    <label className="block text-[10px] font-medium text-slate-700 mb-2">Cover Art</label>
+                <div className="w-full md:w-56 flex-shrink-0">
+                  <div className="mb-2">
+                    <label className="block text-xs font-medium text-slate-700 mb-2">Cover Art</label>
                     <div className="flex flex-col gap-2">
                         <div
                           className="w-full aspect-square bg-blue-50 rounded flex items-center justify-center overflow-hidden border-2 border-dashed border-blue-200 relative group hover:border-blue-400 transition-colors cursor-pointer"
@@ -217,8 +210,8 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                         >
                           {isProcessingImg ? (
                             <div className="flex flex-col items-center text-blue-500">
-                              <Loader2 size={20} className="animate-spin mb-1" />
-                              <span className="text-[10px] font-medium">Processing...</span>
+                              <Loader2 size={24} className="animate-spin mb-2" />
+                              <span className="text-xs font-medium">Processing...</span>
                             </div>
                           ) : data.coverArt ? (
                             <img
@@ -227,10 +220,10 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="flex flex-col items-center p-2 text-center">
-                              <ImagePlus size={24} className="text-blue-500 mb-1" />
-                              <p className="text-[10px] font-medium text-blue-600">Upload Cover</p>
-                              <p className="text-[9px] text-slate-400 mt-1">3000x3000px</p>
+                            <div className="flex flex-col items-center p-4 text-center">
+                              <ImagePlus size={32} className="text-blue-500 mb-2" />
+                              <p className="text-xs font-medium text-blue-600">Upload Cover</p>
+                              <p className="text-[10px] text-slate-400 mt-1">3000x3000px</p>
                             </div>
                           )}
                           {data.coverArt && !isProcessingImg && (
@@ -241,16 +234,16 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                                   e.stopPropagation();
                                   removeCover();
                                 }}
-                                className="p-1 bg-white text-red-500 rounded-full shadow-lg hover:bg-red-50"
+                                className="p-2 bg-white text-red-500 rounded-full shadow hover:bg-red-50"
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={20} />
                               </button>
                             </div>
                           )}
                         </div>
-                        <div className="text-[9px] text-slate-500 space-y-0.5">
+                        <div className="text-xs text-slate-500 space-y-1">
                             <p className="font-medium text-slate-700">Requirements:</p>
-                            <ul className="list-disc pl-3">
+                            <ul className="list-disc pl-4">
                                 <li>Format: JPG/PNG</li>
                                 <li>Size: 3000x3000px</li>
                                 <li>Ratio: 1:1</li>
@@ -270,8 +263,8 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
           </div>
 
           {/* Group 2: Publishing & Classification */}
-          <div className="w-full bg-white border border-gray-200 rounded-lg p-4 relative mt-2">
-              <h3 className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3 absolute -top-2 left-3 bg-white px-1">Details & Classification</h3>
+          <div className="w-full bg-white border border-gray-200 rounded p-6 relative mt-4">
+              <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 absolute -top-2 left-4 bg-white px-2">Details & Classification</h3>
               
               {(userType === 'Company' || userRole === 'Admin') && (
                 <>
@@ -319,13 +312,13 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                     </>
                   )}
                   <SelectInput 
-                    label="Language / Territory"
+                    label={<>Language / Territory <span className="text-red-500">*</span></>}
                     options={LANGUAGES}
                     value={data.language}
                     onChange={(e) => updateData({ language: e.target.value })}
                   />
                   <SelectInput 
-                    label="Release Version"
+                    label={<>Release Version <span className="text-red-500">*</span></>}
                     options={VERSIONS}
                     value={data.version}
                     onChange={(e) => updateData({ version: e.target.value })}

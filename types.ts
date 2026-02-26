@@ -89,6 +89,7 @@ export interface ReleaseData {
   coverArt: File | string | null;
   type?: 'SINGLE' | 'ALBUM'; // Added type
   upc: string;  
+  isrc?: string; // Added ISRC for Single releases in Step 3
   title: string;
   language: string; 
   primaryArtists: string[];
