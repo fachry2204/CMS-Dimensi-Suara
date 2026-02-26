@@ -196,6 +196,21 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                       <UserPlus size={16} className="mr-1" />
                       Add Another Artist
                     </button>
+                    
+                    <div className="grid grid-cols-1 gap-3 mt-4">
+                        <SelectInput 
+                          label={<>Release Version <span className="text-red-500">*</span></>}
+                          options={VERSIONS}
+                          value={data.version}
+                          onChange={(e) => updateData({ version: e.target.value })}
+                        />
+                        <SelectInput 
+                          label={<>Language / Territory <span className="text-red-500">*</span></>}
+                          options={LANGUAGES}
+                          value={data.language}
+                          onChange={(e) => updateData({ language: e.target.value })}
+                        />
+                    </div>
                   </div>
                 </div>
 
@@ -262,7 +277,8 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
               </div>
           </div>
 
-          {/* Group 2: Publishing & Classification */}
+          {/* Group 2: Publishing & Classification (Only for Album/Company) */}
+          {(releaseType === 'ALBUM' || userType === 'Company' || userRole === 'Admin') && (
           <div className="w-full bg-white border border-gray-200 rounded p-6 relative mt-4">
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 absolute -top-2 left-4 bg-white px-2">Details & Classification</h3>
               
@@ -311,20 +327,9 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                         />
                     </>
                   )}
-                  <SelectInput 
-                    label={<>Language / Territory <span className="text-red-500">*</span></>}
-                    options={LANGUAGES}
-                    value={data.language}
-                    onChange={(e) => updateData({ language: e.target.value })}
-                  />
-                  <SelectInput 
-                    label={<>Release Version <span className="text-red-500">*</span></>}
-                    options={VERSIONS}
-                    value={data.version}
-                    onChange={(e) => updateData({ version: e.target.value })}
-                  />
               </div>
           </div>
+          )}
       </div>
     </div>
   );

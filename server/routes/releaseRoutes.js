@@ -161,15 +161,22 @@ const uploadTmpChunk = multer({
     limits: { fileSize: Math.min(MAX_BYTES, 16 * 1024 * 1024) }
 });
 
-// Middleware wrapper to catch Multer errors
+// Middleware wrapper to catch Multer errors with JSON response
 const handleUpload = (uploader) => (req, res, next) => {
     uploader(req, res, (err) => {
         if (err) {
             console.error('Multer Upload Error:', err);
+            // Ensure JSON response
             if (err instanceof multer.MulterError) {
-                return res.status(400).json({ error: `Upload Error: ${err.message} (${err.code})` });
+                return res.status(400).json({ 
+                    error: `Upload Error: ${err.message}`, 
+                    code: err.code 
+                });
             } else if (err) {
-                return res.status(500).json({ error: `Server Upload Error: ${err.message}` });
+                return res.status(500).json({ 
+                    error: `Server Upload Error: ${err.message}`,
+                    details: 'Multer failed to process file'
+                });
             }
         }
         next();
@@ -183,7 +190,18 @@ router.post('/upload', authenticateToken, handleUpload(upload.any()), async (req
         const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
         const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
-        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+        
+        // Ensure parent directories exist
+        if (!fs.existsSync(UPLOADS_ROOT)) fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
+        if (!fs.existsSync(RELEASES_DIR)) fs.mkdirSync(RELEASES_DIR, { recursive: true });
+        if (!fs.existsSync(targetDir)) {
+            try {
+                fs.mkdirSync(targetDir, { recursive: true, mode: 0o755 });
+            } catch (mkdirErr) {
+                console.error('Failed to create upload dir:', mkdirErr);
+                return res.status(500).json({ error: 'Failed to create upload directory. Check permissions.' });
+            }
+        }
 
         const files = Array.isArray(req.files) ? req.files : [];
         const paths = {};
