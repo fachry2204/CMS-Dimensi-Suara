@@ -195,25 +195,18 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               setUploadLabel(`Track ${i + 1} Audio`);
               setFileProgress(0);
               setQ(fieldName, 'Uploading', 0);
-              const useChunk = (t.audioFile?.size || 0) > (20 * 1024 * 1024);
-              const resp: any = useChunk
-                ? await api.uploadTmpReleaseFileChunked(
-                    token,
-                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
-                    `track_${i}_audio`,
-                    t.audioFile,
-                    10 * 1024 * 1024,
-                    (p: number) => {
-                      setFileProgress(p);
-                      setQ(fieldName, 'Uploading', p);
-                    }
-                  )
-                : await api.uploadTmpReleaseFile(
-                    token,
-                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
-                    `track_${i}_audio`,
-                    t.audioFile
-                  );
+              // Always chunk for reliability, especially for full tracks
+              const resp: any = await api.uploadTmpReleaseFileChunked(
+                token,
+                { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                `track_${i}_audio`,
+                t.audioFile,
+                10 * 1024 * 1024,
+                (p: number) => {
+                  setFileProgress(p);
+                  setQ(fieldName, 'Uploading', p);
+                }
+              );
               const candidate =
                 (resp && resp.paths && resp.paths[`track_${i}_audio`]) ||
                 (resp && resp.paths && resp.paths['file']) ||
@@ -237,25 +230,18 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
               setUploadLabel(`Track ${i + 1} Clip`);
               setFileProgress(0);
               setQ(fieldName, 'Uploading', 0);
-              const useChunk = (t.audioClip?.size || 0) > (20 * 1024 * 1024);
-              const resp: any = useChunk
-                ? await api.uploadTmpReleaseFileChunked(
-                    token,
-                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
-                    `track_${i}_clip`,
-                    t.audioClip,
-                    10 * 1024 * 1024,
-                    (p: number) => {
-                      setFileProgress(p);
-                      setQ(fieldName, 'Uploading', p);
-                    }
-                  )
-                : await api.uploadTmpReleaseFile(
-                    token,
-                    { title: prepped.title, primaryArtists: prepped.primaryArtists },
-                    `track_${i}_clip`,
-                    t.audioClip
-                  );
+              // Always chunk for reliability
+              const resp: any = await api.uploadTmpReleaseFileChunked(
+                token,
+                { title: prepped.title, primaryArtists: prepped.primaryArtists },
+                `track_${i}_clip`,
+                t.audioClip,
+                10 * 1024 * 1024,
+                (p: number) => {
+                  setFileProgress(p);
+                  setQ(fieldName, 'Uploading', p);
+                }
+              );
               const candidate =
                 (resp && resp.paths && resp.paths[`track_${i}_clip`]) ||
                 (resp && resp.paths && resp.paths['file']) ||

@@ -208,12 +208,13 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
 
                 const fieldName = `track_${trackIndex}_clip`;
                 try {
-                    // 2. Upload the small cropped file
-                    const resp = await api.uploadTmpReleaseFile(
+                    // 2. Upload the small cropped file (chunked)
+                    const resp = await api.uploadTmpReleaseFileChunked(
                         token,
                         { title: data.title, primaryArtists: data.primaryArtists },
                         fieldName,
-                        croppedFile
+                        croppedFile,
+                        10 * 1024 * 1024 // 10MB chunk
                     );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||

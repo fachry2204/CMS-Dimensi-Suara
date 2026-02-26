@@ -473,14 +473,20 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                  const ext = path.extname(absTmp) || path.extname(tmpCover) || '.jpg';
                  const outName = `${artistDirName} - ${releaseDirName}-cover${ext}`;
                  const outAbs = path.join(targetDir, outName);
-                 if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-                 try {
-                     fs.copyFileSync(absTmp, outAbs);
-                     try { fs.unlinkSync(absTmp); } catch {}
-                     pathMap['coverArt'] = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
-                 } catch (e) {
-                     console.warn('Cover art move failed:', e);
-                 }
+                if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+                
+                // Delete existing file if replacing
+                if (fs.existsSync(outAbs)) {
+                    try { fs.unlinkSync(outAbs); } catch (e) { console.warn('Failed to unlink existing file:', e); }
+                }
+
+                try {
+                    fs.copyFileSync(absTmp, outAbs);
+                    try { fs.unlinkSync(absTmp); } catch {}
+                    pathMap['coverArt'] = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                } catch (e) {
+                    console.warn('Cover art move failed:', e);
+                }
              }
         }
         const checkAudioFormat24_48 = (inPath) => {
@@ -583,16 +589,22 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                                 );
                             } else {
                                 const ext = path.extname(absTmp) || '.wav';
-                                const outName = `${baseName}-track${trackIdx}${ext}`;
-                                const outAbs = path.join(targetDir, outName);
-                                if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-                                try {
-                                    fs.copyFileSync(absTmp, outAbs);
-                                    try { fs.unlinkSync(absTmp); } catch {}
-                                    audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
-                                } catch (copyErr) {
-                                    console.warn('Audio copy failed:', copyErr.message || copyErr);
-                                }
+                            const outName = `${baseName}-track${trackIdx}${ext}`;
+                            const outAbs = path.join(targetDir, outName);
+                            if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+                            
+                            // Delete existing file if replacing
+                            if (fs.existsSync(outAbs)) {
+                                try { fs.unlinkSync(outAbs); } catch (e) { console.warn('Failed to unlink existing track:', e); }
+                            }
+
+                            try {
+                                fs.copyFileSync(absTmp, outAbs);
+                                try { fs.unlinkSync(absTmp); } catch {}
+                                audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                            } catch (copyErr) {
+                                console.warn('Audio copy failed:', copyErr.message || copyErr);
+                            }
                             }
                         }
                     }
@@ -602,6 +614,12 @@ router.post('/', authenticateToken, upload.any(), async (req, res) => {
                             const outName = `${baseName}-track${trackIdx}-clip.wav`;
                             const outAbs = path.join(targetDir, outName);
                             if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+                            
+                            // Delete existing file if replacing
+                            if (fs.existsSync(outAbs)) {
+                                try { fs.unlinkSync(outAbs); } catch (e) { console.warn('Failed to unlink existing clip:', e); }
+                            }
+
                             const startSec = Number(t.previewStart || 0);
                             let convertedClip = false;
                             try {
