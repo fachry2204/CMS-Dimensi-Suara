@@ -9,11 +9,12 @@ interface Props {
   data: ReleaseData;
   updateData: (updates: Partial<ReleaseData> | ((prev: ReleaseData) => Partial<ReleaseData>)) => void;
   releaseType: ReleaseType;
+  isProcessingCover: boolean;
+  setIsProcessingCover: (val: boolean) => void;
 }
 
-export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseType }) => {
+export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseType, isProcessingCover, setIsProcessingCover }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isProcessingImg, setIsProcessingImg] = useState(false);
   const [userType, setUserType] = useState<'Company' | 'Personal' | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -83,7 +84,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setIsProcessingImg(true);
+      setIsProcessingCover(true);
       try {
         const processedFile = await processImage(e.target.files[0]);
         const token = localStorage.getItem('cms_token') || '';
@@ -109,7 +110,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
         console.error("Image processing failed", error);
         alert("Failed to process image.");
       } finally {
-        setIsProcessingImg(false);
+        setIsProcessingCover(false);
       }
     }
   };
@@ -221,9 +222,9 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                     <div className="flex flex-col gap-2">
                         <div
                           className="w-full aspect-square bg-blue-50 rounded flex items-center justify-center overflow-hidden border-2 border-dashed border-blue-200 relative group hover:border-blue-400 transition-colors cursor-pointer"
-                          onClick={() => !data.coverArt && !isProcessingImg && fileInputRef.current?.click()}
+                          onClick={() => !data.coverArt && !isProcessingCover && fileInputRef.current?.click()}
                         >
-                          {isProcessingImg ? (
+                          {isProcessingCover ? (
                             <div className="flex flex-col items-center text-blue-500">
                               <Loader2 size={24} className="animate-spin mb-2" />
                               <span className="text-xs font-medium">Processing...</span>
@@ -241,7 +242,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                               <p className="text-[10px] text-slate-400 mt-1">3000x3000px</p>
                             </div>
                           )}
-                          {data.coverArt && !isProcessingImg && (
+                          {data.coverArt && !isProcessingCover && (
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                               <button
                                 type="button"

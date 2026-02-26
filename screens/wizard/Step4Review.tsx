@@ -16,6 +16,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [uploadTotal, setUploadTotal] = useState(0);
   const [uploadDone, setUploadDone] = useState(0);
   const [uploadLabel, setUploadLabel] = useState<string | null>(null);
@@ -291,6 +292,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
           return norm;
         });
         const result = await api.createRelease(token, prepped);
+
+        if (result.isDuplicate) {
+            setShowDuplicateModal(true);
+            return;
+        }
 
         const normalizedId = String(result.id ?? data.id ?? Date.now());
         const finalizedData: ReleaseData = {
@@ -655,6 +661,47 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                         className="px-6 py-2.5 bg-slate-800 text-white text-xs font-medium rounded hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200"
                     >
                         Understood
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* DUPLICATE MODAL */}
+      {showDuplicateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-orange-50 p-5 border-b border-orange-100 flex items-center gap-4">
+                    <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertCircle className="text-orange-500" size={28} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-sm font-medium text-orange-800">Duplicate Release</h3>
+                        <p className="text-xs text-orange-700">This release already exists.</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowDuplicateModal(false)}
+                        className="text-orange-400 hover:text-orange-600 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+                
+                <div className="p-6">
+                    <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                        A release with the title <strong>"{data.title}"</strong> and version <strong>"{data.version}"</strong> has already been submitted.
+                    </p>
+                    <p className="text-xs text-slate-500 bg-slate-50 p-3 rounded border border-slate-100">
+                        Please change the <strong>Version</strong> (e.g., to "Remix" or "Radio Edit") or the <strong>Title</strong> to differentiate it from the existing release.
+                    </p>
+                </div>
+
+                <div className="p-5 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button 
+                        onClick={() => setShowDuplicateModal(false)}
+                        className="px-6 py-2.5 bg-orange-500 text-white text-xs font-medium rounded hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200"
+                    >
+                        Okay, I'll Change It
                     </button>
                 </div>
             </div>

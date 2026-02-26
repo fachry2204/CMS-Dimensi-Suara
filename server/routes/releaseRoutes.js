@@ -757,16 +757,35 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
         }
         let releaseId;
         if (!isUpdate) {
-            cols.unshift('user_id');
-            vals.unshift(userId);
-            cols.push('submission_date'); vals.push(new Date());
-            cols.push('status'); vals.push('Pending');
-            const placeholders = `(${cols.map(() => '?').join(', ')})`;
-            const [releaseResult] = await db.query(
-                `INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`,
-                vals
+            // Check for existing release with same title/version by this user
+            const [existing] = await db.query(
+                'SELECT id FROM releases WHERE user_id = ? AND title = ? AND version = ? AND status != "Rejected"',
+                [userId, releaseData.title, releaseData.version || '']
             );
-            releaseId = releaseResult.insertId;
+            
+            if (existing.length > 0) {
+                // If exists, inform frontend it's a duplicate instead of silently updating
+                // This allows the user to decide whether to change title/version or confirm overwrite (if we want to support that later)
+                // But per user request: "informasikan ke user dengan modal data sudah ada"
+                return res.status(200).json({ 
+                    message: 'Release already exists', 
+                    id: existing[0].id,
+                    isDuplicate: true,
+                    duplicateTitle: releaseData.title,
+                    duplicateVersion: releaseData.version || 'Original'
+                });
+            } else {
+                cols.unshift('user_id');
+                vals.unshift(userId);
+                cols.push('submission_date'); vals.push(new Date());
+                cols.push('status'); vals.push('Pending');
+                const placeholders = `(${cols.map(() => '?').join(', ')})`;
+                const [releaseResult] = await db.query(
+                    `INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`,
+                    vals
+                );
+                releaseId = releaseResult.insertId;
+            }
         } else {
             const setParts = cols.map(col => `${col} = ?`);
             await db.query(

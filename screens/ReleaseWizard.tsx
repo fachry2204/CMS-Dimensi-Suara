@@ -6,7 +6,7 @@ import { Step1ReleaseInfo } from './wizard/Step1ReleaseInfo';
 import { Step2TrackInfo } from './wizard/Step2TrackInfo';
 import { Step3ReleaseDetail } from './wizard/Step3ReleaseDetail';
 import { Step4Review } from './wizard/Step4Review';
-import { ChevronLeft, ChevronRight, AlertTriangle, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { api } from '../utils/api';
 
 interface Props {
@@ -38,6 +38,9 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
   const [showExitModal, setShowExitModal] = useState(false);
   const [showTrackWarning, setShowTrackWarning] = useState(false);
   const [showArtistWarning, setShowArtistWarning] = useState(false);
+  const [showCoverMissingWarning, setShowCoverMissingWarning] = useState(false);
+  const [showCoverProcessingWarning, setShowCoverProcessingWarning] = useState(false);
+  const [isProcessingCover, setIsProcessingCover] = useState(false);
   const [showAudioProcessingWarning, setShowAudioProcessingWarning] = useState(false);
   const [showAudioMissingWarning, setShowAudioMissingWarning] = useState<string[] | false>(false);
   
@@ -59,6 +62,16 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
 
   const handleNext = () => {
     if (currentStep === Step.INFO) {
+        if (isProcessingCover) {
+             setShowCoverProcessingWarning(true);
+             return;
+        }
+
+        if (!data.coverArt) {
+             setShowCoverMissingWarning(true);
+             return;
+        }
+
         const artists = (data.primaryArtists || []).map(a => (a || '').trim()).filter(a => a.length > 0);
         // Check mandatory fields: title, primaryArtists, version, language (territory)
         if (artists.length === 0 || !data.title || !data.title.trim() || !data.version || !data.language) {
@@ -96,6 +109,9 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
 
   const handleConfirmExit = () => {
       setShowExitModal(false);
+      // Disable auto-cleanup on exit to prevent accidental data loss during navigation
+      // Users reported files disappearing when navigating back.
+      /*
       try {
         const token = localStorage.getItem('cms_token') || '';
         if (token && data.title && (data.primaryArtists || []).length > 0) {
@@ -108,12 +124,13 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
           })();
         }
       } catch {}
+      */
       onBack();
   };
 
   const renderStep = () => {
     switch (currentStep) {
-        case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} releaseType={type} />;
+        case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} releaseType={type} isProcessingCover={isProcessingCover} setIsProcessingCover={setIsProcessingCover} />;
         case Step.TRACKS: return <Step2TrackInfo data={data} updateData={updateData} releaseType={type} />;
         case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} releaseType={type} />;
         case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} onBack={handlePrev} />;
@@ -209,6 +226,72 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
                             className="px-3 py-1.5 rounded font-medium bg-yellow-500 text-white hover:bg-yellow-600 shadow-lg shadow-yellow-500/30 transition-all text-[10px]"
                         >
                             Ya
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+      {showCoverProcessingWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-blue-50 p-3 border-b border-blue-100 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Loader2 className="text-blue-600 animate-spin" size={16} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-[10px] font-medium text-blue-800">Proses Upload Berjalan</h3>
+                        <p className="text-[10px] text-blue-700">Cover Art sedang diunggah. Mohon tunggu sebentar.</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowCoverProcessingWarning(false)}
+                        className="text-blue-300 hover:text-blue-500 transition-colors"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+                <div className="p-4">
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowCoverProcessingWarning(false)}
+                            className="px-3 py-1.5 rounded font-medium bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 transition-all text-[10px]"
+                        >
+                            Baik, Saya Tunggu
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {showCoverMissingWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden transform transition-all scale-100 animate-fade-in-up">
+                <div className="bg-red-50 p-3 border-b border-red-100 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="text-red-600" size={16} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-[10px] font-medium text-red-800">Cover Art Belum Diupload</h3>
+                        <p className="text-[10px] text-red-700">Wajib upload Cover Art sebelum lanjut.</p>
+                    </div>
+                    <button 
+                        onClick={() => setShowCoverMissingWarning(false)}
+                        className="text-red-300 hover:text-red-500 transition-colors"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+                <div className="p-4">
+                    <p className="text-slate-600 mb-3 font-medium text-[10px]">
+                        Silakan upload gambar Cover Art (JPG/PNG, 3000x3000px).
+                    </p>
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setShowCoverMissingWarning(false)}
+                            className="px-3 py-1.5 rounded font-medium bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all text-[10px]"
+                        >
+                            Mengerti
                         </button>
                     </div>
                 </div>
