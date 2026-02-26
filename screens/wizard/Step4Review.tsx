@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ReleaseData } from '../../types';
 import { api } from '../../utils/api';
 import { assetUrl } from '../../utils/url';
-import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle, ChevronLeft, X } from 'lucide-react';
+import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle, ChevronLeft, X, Check } from 'lucide-react';
 
 interface Props {
   data: ReleaseData;
@@ -588,35 +588,30 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             </div>
           </div>
         )}
-        <div className="flex gap-4 w-full md:w-auto">
+        <div className="flex gap-4">
             <button 
                 onClick={onBack}
-                className="w-full md:w-auto px-6 py-3 rounded font-medium bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-sm hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <ChevronLeft size={20} />
                 Back
             </button>
             
             <button 
-                type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className={`
-                    w-full md:w-auto px-8 py-3 font-medium rounded text-xs flex items-center justify-center gap-2 transition-all
-                    ${isSubmitting 
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-1'}
-                `}
+                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-lg text-sm hover:shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isSubmitting ? (
                     <>
-                        <Loader2 className="animate-spin" size={20} />
+                        <Loader2 size={20} className="animate-spin" />
                         Processing...
                     </>
                 ) : (
                     <>
                         Submit Release
-                        <CheckCircle size={20} />
+                        <Check size={20} />
                     </>
                 )}
             </button>

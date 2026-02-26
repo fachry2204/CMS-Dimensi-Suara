@@ -152,18 +152,18 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         <div className="flex justify-between items-center px-1">
             <button 
                 onClick={handlePrev}
-                className="flex items-center gap-1.5 px-4 py-2 rounded font-medium bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all"
+                className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-sm hover:shadow-lg hover:shadow-orange-400/30 transform hover:-translate-y-0.5 transition-all"
             >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={20} />
                 Back
             </button>
             
             <button 
                 onClick={handleNext}
-                className="flex items-center gap-1.5 px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-medium rounded text-xs hover:shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all duration-200"
+                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-lg text-sm hover:shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-0.5 transition-all duration-200"
             >
                 Next Step
-                <ChevronRight size={16} />
+                <ChevronRight size={20} />
             </button>
         </div>
         )}
