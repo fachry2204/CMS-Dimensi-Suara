@@ -1034,7 +1034,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                   <textarea 
                                       value={track.lyrics}
                                       onChange={(e) => updateTrack(track.id, { lyrics: e.target.value })}
-                                      className="w-full px-2.5 py-1.5 text-[10px] font-['Arial'] border border-gray-300 rounded focus:border-blue-500 focus:outline-none h-24 resize-y"
+                                      className="w-full px-2.5 py-1.5 text-xs font-['Arial'] border border-gray-300 rounded focus:border-blue-500 focus:outline-none h-24 resize-y"
                                       placeholder="Enter song lyrics here..."
                                   />
                               </div>

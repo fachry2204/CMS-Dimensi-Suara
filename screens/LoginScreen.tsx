@@ -103,6 +103,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         return;
       }
       onLogin(user, data.token);
+      navigate('/');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Login gagal. Pastikan server berjalan.');

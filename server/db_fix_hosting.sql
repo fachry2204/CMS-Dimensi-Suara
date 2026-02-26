@@ -9,6 +9,7 @@ ALTER TABLE `tracks` ADD COLUMN `audio_clip` VARCHAR(1024) NULL;
 ALTER TABLE `tracks` ADD COLUMN `ipl_file` VARCHAR(1024) NULL;
 ALTER TABLE `tracks` ADD COLUMN `is_instrumental` TINYINT(1) NULL DEFAULT 0;
 ALTER TABLE `tracks` ADD COLUMN `lyrics` MEDIUMTEXT NULL;
+ALTER TABLE `tracks` ADD COLUMN `preview_start` INT DEFAULT 0;
 
 -- 2. Tambahkan kolom yang hilang di tabel releases
 ALTER TABLE `releases` ADD COLUMN `cover_art` VARCHAR(1024) NULL;
