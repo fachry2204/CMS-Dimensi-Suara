@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ReleaseData, Track } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp, Edit3, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp, Edit3, Trash2, Upload, Camera } from 'lucide-react';
 import { formatDMY } from '../utils/date';
 import { assetUrl } from '../utils/url';
+import { api, API_BASE_URL } from '../utils/api';
 
 interface Props {
   release: ReleaseData;
@@ -15,17 +16,26 @@ interface Props {
   mode?: 'view' | 'edit';
   onEdit?: (release: ReleaseData) => void;
   onDelete?: (release: ReleaseData) => void;
+  userRole?: 'Admin' | 'Operator' | 'User' | string;
+  isUpdatingCoverArt?: boolean;
+  token?: string;
+  onCoverArtUpdated?: (newCoverArtUrl: string) => void;
 }
 
-export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators, mode = 'edit', onEdit, onDelete }) => {
+export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators, mode = 'edit', onEdit, onDelete, userRole, isUpdatingCoverArt, token, onCoverArtUpdated }) => {
   const [activeTab, setActiveTab] = useState<'INFO' | 'DISTRIBUTION'>('INFO');
-  
+
   // Accordion State for Tracklist
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
 
   // Audio Preview State
   // Keys: `${trackId}_full` or `${trackId}_clip`
   const [objectUrls, setObjectUrls] = useState<{ [key: string]: string }>({});
+  
+  // File Input Ref for Cover Art
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
 
   // Form State for Distribution
   const [status, setStatus] = useState(release.status || 'Pending');
@@ -105,6 +115,69 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
   const toggleTrackExpand = (trackId: string) => {
     setExpandedTrackId(prev => prev === trackId ? null : trackId);
+  };
+
+  const handleCoverArtUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check permissions if needed, but UI already restricts it
+    if (!token) {
+        alert("Session expired. Please login again.");
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        alert("Please upload a valid image file (JPEG, PNG).");
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        alert("File size exceeds 5MB limit.");
+        return;
+    }
+
+    setIsUploadingCover(true);
+    try {
+        const formData = new FormData();
+        formData.append('cover_art', file);
+
+        const response = await fetch(`${API_BASE_URL}/releases/${release.id}/cover-art`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ message: 'Upload failed' }));
+            throw new Error(err.message || 'Failed to upload cover art');
+        }
+
+        const data = await response.json();
+        
+        if (data.cover_art_url) {
+           const newUrl = assetUrl(data.cover_art_url);
+           // Update local preview immediately
+           setObjectUrls(prev => ({ ...prev, 'cover_art': newUrl }));
+           
+           if (onCoverArtUpdated) {
+               onCoverArtUpdated(data.cover_art_url);
+           }
+           alert("Cover art updated successfully!");
+        } else {
+           alert("Cover art uploaded. Please refresh to see changes.");
+        }
+        
+    } catch (error: any) {
+        console.error("Upload error:", error);
+        alert(error.message || "Failed to upload cover art");
+    } finally {
+        setIsUploadingCover(false);
+        // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   // AI Generation for Rejection
@@ -273,30 +346,32 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         <ArrowLeft size={20} />
                         Back to List
                     </button>
-                    <div className="flex gap-2">
-                        <button onClick={onClose} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">
-                            Discard
-                        </button>
-                        <button 
-                            onClick={handleSaveStatus}
-                            className={`px-5 py-2 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-all text-sm
-                                ${status === 'Rejected' 
-                                    ? 'bg-red-600 hover:bg-red-700 shadow-red-500/30' 
-                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}
-                            `}
-                        >
-                            <Save size={16} />
-                            {status === 'Rejected' ? 'Save Rejection' : 'Save Changes'}
-                        </button>
-                    </div>
+                    {userRole === 'Admin' && (
+                        <div className="flex gap-2">
+                            <button onClick={onClose} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">
+                                Discard
+                            </button>
+                            <button 
+                                onClick={handleSaveStatus}
+                                className={`px-5 py-2 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-all text-sm
+                                    ${status === 'Rejected' 
+                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-500/30' 
+                                        : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}
+                                `}
+                            >
+                                <Save size={16} />
+                                {status === 'Rejected' ? 'Save Rejection' : 'Save Changes'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
 
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
             <div className="flex flex-col md:flex-row gap-8 items-start mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="w-40 h-40 md:w-48 md:h-48 rounded-xl bg-gray-200 shadow-md overflow-hidden flex-shrink-0 border border-gray-300 flex flex-col">
-                    <div className="flex-1">
+                <div className="w-40 h-40 md:w-48 md:h-48 rounded-xl bg-gray-200 shadow-md overflow-hidden flex-shrink-0 border border-gray-300 flex flex-col relative group">
+                    <div className="flex-1 relative">
                         {release.coverArt ? (
                             <img 
                                 src={objectUrls['cover_art']} 
@@ -308,7 +383,31 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-400"><Disc size={40} /></div>
                         )}
+                        
+                        {/* Edit Overlay */}
+                        {(token && !isUpdatingCoverArt) && (
+                            <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${release.coverArt ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploadingCover}
+                                    className="p-3 bg-white/90 backdrop-blur-sm rounded-full text-slate-700 hover:text-blue-600 hover:scale-110 transition-all shadow-lg"
+                                    title="Change Cover Art"
+                                >
+                                    {isUploadingCover ? <Loader2 size={24} className="animate-spin text-blue-600" /> : <Camera size={24} />}
+                                </button>
+                            </div>
+                        )}
                     </div>
+                    
+                    {/* Hidden Input */}
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleCoverArtUpload} 
+                        accept="image/jpeg,image/png,image/webp" 
+                        className="hidden" 
+                    />
+
                     <button 
                         onClick={() => {
                             if (!release.coverArt) return;
@@ -341,7 +440,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                             {status === 'Rejected' && <AlertTriangle size={14} />}
                             <span className="uppercase tracking-wider">{status}</span>
                         </span>
-                        {release.aggregator && (
+                        {userRole === 'Admin' && release.aggregator && (
                             <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1.5">
                                 <Globe size={14} /> {release.aggregator}
                             </span>
@@ -405,17 +504,31 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                     </div>
 
                     <div className="mt-5 flex flex-wrap gap-2">
-                        {onEdit && (
+                        {userRole === 'Admin' && onEdit && (
                             <button
                                 onClick={() => onEdit(release)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
+                                disabled={!!isUpdatingCoverArt}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                 title="Edit Release"
                             >
                                 <Edit3 size={14} />
                                 Edit Release
                             </button>
                         )}
-                        {onDelete && (
+
+                        {userRole !== 'Admin' && token && (
+                             <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={!!isUpdatingCoverArt}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                title="Update Cover Art"
+                            >
+                                <Camera size={14} />
+                                Update Cover Art
+                            </button>
+                        )}
+                        
+                        {userRole === 'Admin' && onDelete && (
                             <button
                                 onClick={() => onDelete(release)}
                                 className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-200 hover:bg-red-100 transition-colors"
@@ -437,12 +550,14 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                 >
                     <FileText size={16} /> Metadata & Tracks
                 </button>
-                <button 
-                    onClick={() => setActiveTab('DISTRIBUTION')}
-                    className={`pb-4 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'DISTRIBUTION' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
-                >
-                    <Globe size={16} /> Distribution & Status
-                </button>
+                {userRole === 'Admin' && (
+                    <button 
+                        onClick={() => setActiveTab('DISTRIBUTION')}
+                        className={`pb-4 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'DISTRIBUTION' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                    >
+                        <Globe size={16} /> Distribution & Status
+                    </button>
+                )}
             </div>
 
             {/* Content Area */}
@@ -643,7 +758,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                 )}
 
                 {/* TAB 2: DISTRIBUTION ADMIN */}
-                {activeTab === 'DISTRIBUTION' && (
+                {userRole === 'Admin' && activeTab === 'DISTRIBUTION' && (
                     <div className="max-w-4xl mx-auto">
                         <div className="bg-white border border-gray-200 p-8 rounded-2xl shadow-sm mb-8 animate-fade-in-up">
                             <h3 className="font-bold text-xl text-slate-800 mb-2">Workflow Management</h3>
@@ -663,6 +778,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                         `}
                                     >
                                         <option value="Pending">Pending Review</option>
+                                        <option value="Request Edit">Request Edit</option>
                                         <option value="Processing">Processing (Aggregator)</option>
                                         <option value="Live">Released / Live</option>
                                         <option value="Rejected">Rejected</option>

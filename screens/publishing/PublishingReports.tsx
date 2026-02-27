@@ -50,7 +50,7 @@ export const PublishingReports: React.FC<Props> = ({ token }) => {
         if (!token) return;
         setIsLoading(true);
         try {
-            const data = await api.publishing.getReports(token, String(selectedMonth), String(selectedYear));
+            const data = await api.publishing.getReports(token, selectedMonth, selectedYear);
             setReports(data);
         } catch (error) {
             console.error('Failed to fetch reports', error);

@@ -26,7 +26,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
   // Calculate Stats
   const stats = {
     total: releases.length,
-    pending: releases.filter(r => r.status === 'Pending').length,
+    pending: releases.filter(r => (r.status || 'Pending') === 'Pending').length,
     processing: releases.filter(r => r.status === 'Processing').length,
     live: releases.filter(r => r.status === 'Live').length,
     rejected: releases.filter(r => r.status === 'Rejected').length,
@@ -41,7 +41,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
 
   // Filter Recent Activity: Only Pending & Processing
   const recentActivity = releases
-    .filter(r => r.status === 'Pending' || r.status === 'Processing')
+    .filter(r => (r.status || 'Pending') === 'Pending' || r.status === 'Processing')
     .slice(0, 5);
 
   const StatCard = ({ title, count, icon, colorClass, bgClass, subtext, cardClass }: any) => (

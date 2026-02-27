@@ -255,6 +255,18 @@ export const api = {
         return parseResponse(res);
     },
 
+    updateReleaseCoverArt: async (token, id, file) => {
+        const formData = new FormData();
+        formData.append('cover_art', file);
+        const res = await fetch(`${API_BASE_URL}/releases/${id}/cover-art`, {
+            method: 'POST',
+            headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+            body: formData,
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
     createRelease: async (token, data) => {
         const formData = new FormData();
 

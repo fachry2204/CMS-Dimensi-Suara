@@ -13,6 +13,7 @@ interface Props {
   availableAggregators?: string[];
   error?: string | null;
   onDelete?: (release: ReleaseData) => void;
+  userRole?: string;
 }
 
 type SortKey = 'title' | 'artist' | 'type' | 'date' | 'aggregator' | 'status';
@@ -23,7 +24,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availableAggregators, error }) => {
+export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availableAggregators, error, userRole }) => {
   const navigate = useNavigate();
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +46,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   const tabs = [
     { id: 'ALL', label: 'All Release', statusMap: null },
     { id: 'PENDING', label: 'Pending', statusMap: 'Pending' },
+    { id: 'REQUEST_EDIT', label: 'Request Edit', statusMap: 'Request Edit' },
     { id: 'PROCESSING', label: 'Proses', statusMap: 'Processing' },
     { id: 'RELEASED', label: 'Released', statusMap: 'Live' },
     { id: 'REJECTED', label: 'Reject', statusMap: 'Rejected' },
@@ -52,14 +54,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
 
   const getCount = (statusMap: string | null) => {
     if (statusMap === null) return releases.length;
-    return releases.filter(r => r.status === statusMap).length;
+    return releases.filter(r => (r.status || 'Pending') === statusMap).length;
   };
 
   // 1. Filter Logic
   const filteredReleases = releases.filter(release => {
     // Status Filter
     const currentTab = tabs.find(t => t.id === activeStatusTab);
-    const statusMatch = currentTab?.statusMap ? release.status === currentTab.statusMap : true;
+    const statusMatch = currentTab?.statusMap ? (release.status || 'Pending') === currentTab.statusMap : true;
     
     // Search Filter (Expanded to include Aggregator)
     const searchLower = searchQuery.toLowerCase();
@@ -327,7 +329,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
                             <th className="px-4 py-2 text-[10px] text-slate-500 tracking-wider">Submit Date</th>
-                            <ThSortable label="Aggregator" sortKey="aggregator" />
+                            {userRole === 'Admin' && <ThSortable label="Aggregator" sortKey="aggregator" />}
                             <ThSortable label="Status" sortKey="status" />
                             <th className="px-4 py-2 text-[10px] text-slate-500 tracking-wider text-right">Action</th>
                         </tr>
@@ -347,6 +349,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             if (status === 'Live') statusClass = "bg-green-100 text-green-700 border-green-200";
                             if (status === 'Processing') statusClass = "bg-blue-100 text-blue-700 border-blue-200";
                             if (status === 'Pending') statusClass = "bg-yellow-100 text-yellow-700 border-yellow-200";
+                            if (status === 'Request Edit') statusClass = "bg-orange-100 text-orange-700 border-orange-200";
                             if (status === 'Rejected') statusClass = "bg-red-100 text-red-700 border-red-200 cursor-help";
 
                             // ISRC Logic
@@ -407,6 +410,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
+                                    {userRole === 'Admin' && (
                                     <td className="px-4 py-2 text-[11px]">
                                         {release.aggregator ? (
                                             <div className="flex items-center gap-1 text-[10px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
@@ -417,6 +421,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             <span className="text-[10px] text-slate-300 italic">Not set</span>
                                         )}
                                     </td>
+                                    )}
                                     <td className="px-4 py-2">
                                         <div className="flex flex-col items-start gap-1">
                                             <span 

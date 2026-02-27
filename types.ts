@@ -76,7 +76,7 @@ export interface Track {
 
 export interface ReleaseData {
   id?: string; // Unique ID for the list
-  status?: 'Pending' | 'Processing' | 'Live' | 'Rejected' | 'Draft';
+  status?: 'Pending' | 'Request Edit' | 'Processing' | 'Live' | 'Rejected' | 'Draft';
   submissionDate?: string;
   aggregator?: string; // New Field
   distributionTargets?: { id: string; label: string; logo: string }[];

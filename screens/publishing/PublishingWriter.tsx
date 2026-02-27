@@ -3,6 +3,7 @@ import {
     Plus, Search, Edit2, Trash2, FileText, CreditCard, User, MapPin, Calendar, Briefcase, Eye, CheckCircle, AlertTriangle, XCircle
 } from 'lucide-react';
 import { api } from '../../utils/api';
+import { assetUrl } from '../../utils/url';
 
 interface Creator {
     id: number;
@@ -520,7 +521,7 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                     <div>
                                         <label className="text-xs text-slate-500 block mb-1">KTP</label>
                                         {previewCreator.ktp_path ? (
-                                            <a href={`${api.baseUrl}/${previewCreator.ktp_path}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-sm">
+                                            <a href={assetUrl(previewCreator.ktp_path)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-sm">
                                                 Lihat KTP
                                             </a>
                                         ) : (
@@ -530,7 +531,7 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                     <div>
                                         <label className="text-xs text-slate-500 block mb-1">NPWP</label>
                                         {previewCreator.npwp_path ? (
-                                            <a href={`${api.baseUrl}/${previewCreator.npwp_path}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-sm">
+                                            <a href={assetUrl(previewCreator.npwp_path)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-sm">
                                                 Lihat NPWP
                                             </a>
                                         ) : (

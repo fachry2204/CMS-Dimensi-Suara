@@ -45,7 +45,7 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
 
   // Calculate Release Stats
   const releaseStats = {
-    pending: releases.filter(r => r.status === 'Pending').length,
+    pending: releases.filter(r => (r.status || 'Pending') === 'Pending').length,
     processing: releases.filter(r => r.status === 'Processing').length,
     live: releases.filter(r => r.status === 'Live').length,
     rejected: releases.filter(r => r.status === 'Rejected').length,

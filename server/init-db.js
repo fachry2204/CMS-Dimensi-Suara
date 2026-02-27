@@ -266,6 +266,31 @@ const initDb = async () => {
         }
 
         try {
+            const [rows] = await connection.query("SHOW COLUMNS FROM releases LIKE 'status'");
+            if (rows.length === 0) {
+                console.log('⚠️ Adding missing column: status to releases table');
+                await connection.query("ALTER TABLE releases ADD COLUMN status VARCHAR(50) DEFAULT 'Pending'");
+            } else {
+                const type = String(rows[0].Type || '').toLowerCase();
+                const isEnum = type.startsWith('enum(');
+                const enumOk = !isEnum ? true : (
+                    type.includes("'pending'") &&
+                    type.includes("'processing'") &&
+                    type.includes("'live'") &&
+                    type.includes("'rejected'") &&
+                    type.includes("'request edit'")
+                );
+                const isVarcharLike = type.includes('varchar');
+                if ((isEnum && !enumOk) || (!isVarcharLike && !isEnum)) {
+                    console.log('🔧 Normalizing releases.status to VARCHAR(50)');
+                    await connection.query("ALTER TABLE releases MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'");
+                }
+            }
+        } catch (e) {
+            console.warn('status column alteration warning:', e.message);
+        }
+
+        try {
             const [rows] = await connection.query("SHOW COLUMNS FROM releases LIKE 'planned_release_date'");
             if (rows.length > 0) {
                 const nullable = String(rows[0].Null || '').toUpperCase() === 'YES';

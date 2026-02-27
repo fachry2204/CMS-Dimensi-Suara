@@ -1017,6 +1017,7 @@ const App: React.FC = () => {
                     releases={allReleases} 
                     onViewDetails={(r) => navigate(`/releases/${r.id}/view`)}
                     error={dataFetchError}
+                    userRole={userRole}
                 />
             } />
             <Route path="/my-releases" element={
@@ -1024,6 +1025,7 @@ const App: React.FC = () => {
                     releases={myReleases} 
                     onViewDetails={(r) => navigate(`/releases/${r.id}/view`)}
                     error={dataFetchError}
+                    userRole={userRole}
                  />
             } />
             <Route path="/user/reports/analytics" element={<UserAnalytics releases={allReleases} reportData={reportData} currentUserData={currentUserData} token={token} onAuthExpired={handleAuthExpired} />} />
@@ -1040,12 +1042,13 @@ const App: React.FC = () => {
                 element={
                     <ReleaseDetailsPage 
                         token={token} 
+                        userRole={userRole}
                         aggregators={aggregators} 
                         onReleaseUpdated={handleUpdateRelease}
-                        onEditRelease={handleEditRelease}
-                        onDeleteRelease={(release) => {
+                        onEditRelease={userRole === 'Admin' ? handleEditRelease : undefined}
+                        onDeleteRelease={userRole === 'Admin' ? (release) => {
                             setReleaseToDelete(release);
-                        }}
+                        } : undefined}
                         resolveOwnerName={resolveOwnerName}
                     />
                 } 
@@ -1180,8 +1183,31 @@ const App: React.FC = () => {
                 release={viewingRelease} 
                 isOpen={!!viewingRelease} 
                 onClose={() => setViewingRelease(null)} 
-                onEdit={handleEditRelease}
-                onDelete={(r) => { setReleaseToDelete(r); setViewingRelease(null); }}
+                onUpdate={async (r) => {
+                    try {
+                        await api.updateReleaseWorkflow(token, r);
+                        handleUpdateRelease(r);
+                        setViewingRelease(null);
+                    } catch (e: any) {
+                        alert(e?.message || 'Gagal menyimpan status release');
+                    }
+                }}
+                availableAggregators={aggregators}
+                mode="view"
+                onEdit={userRole === 'Admin' ? handleEditRelease : undefined}
+                onDelete={userRole === 'Admin' ? (r) => { setReleaseToDelete(r); setViewingRelease(null); } : undefined}
+                userRole={userRole}
+                token={token}
+                onCoverArtUpdated={(newUrl) => {
+                    if (viewingRelease) {
+                         const updated = { ...viewingRelease, coverArt: newUrl };
+                         // Reflect status change for non-admins (matching backend logic)
+                         if (userRole !== 'Admin') {
+                             updated.status = 'Request Edit';
+                         }
+                         handleUpdateRelease(updated);
+                    }
+                }}
             />
         )}
       </main>

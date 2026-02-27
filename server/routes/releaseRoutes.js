@@ -931,9 +931,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Release not found' });
         }
         const rel = rows[0];
-        if (req.user.role !== 'Admin' && rel.user_id !== req.user.id) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
+        if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Access denied' });
         const releasesBase = path.join(__dirname, '../../uploads/releases');
         const resolveDirFromPath = (p) => {
             if (!p || typeof p !== 'string') return null;
@@ -964,16 +962,65 @@ router.delete('/:id', authenticateToken, async (req, res) => {
                 console.warn('Failed to remove release folder:', e.message);
             }
         }
-        let deleteWhere = 'id = ?';
-        const deleteParams = [releaseId];
-        if (req.user.role !== 'Admin') {
-            deleteWhere += ' AND user_id = ?';
-            deleteParams.push(req.user.id);
-        }
-        await db.query(`DELETE FROM releases WHERE ${deleteWhere}`, deleteParams);
+        await db.query(`DELETE FROM releases WHERE id = ?`, [releaseId]);
         res.json({ message: 'Release deleted' });
     } catch (err) {
         console.error('Delete Release Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cover_art')), async (req, res) => {
+    const releaseId = req.params.id;
+    try {
+        const file = req.file;
+        if (!file) return res.status(400).json({ error: 'cover_art file is required' });
+
+        const [rows] = await db.query('SELECT id, user_id, title, primary_artists, status FROM releases WHERE id = ?', [releaseId]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Release not found' });
+        const rel = rows[0];
+
+        if (req.user.role !== 'Admin' && rel.user_id !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        let primaryArtists = [];
+        try {
+            primaryArtists = typeof rel.primary_artists === 'string' ? JSON.parse(rel.primary_artists) : (rel.primary_artists || []);
+        } catch {
+            primaryArtists = [];
+        }
+        const primaryArtist = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
+        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(`${primaryArtist} - ${rel.title}`).substring(0, 80) || 'Untitled_Release';
+        const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
+
+        if (!fs.existsSync(UPLOADS_ROOT)) fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
+        if (!fs.existsSync(RELEASES_DIR)) fs.mkdirSync(RELEASES_DIR, { recursive: true });
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true, mode: 0o755 });
+
+        const destName = file.filename;
+        const destPath = path.join(targetDir, destName);
+        if (file.path !== destPath) {
+            try {
+                fs.renameSync(file.path, destPath);
+            } catch (renameErr) {
+                if (renameErr.code === 'EXDEV') {
+                    fs.copyFileSync(file.path, destPath);
+                    fs.unlinkSync(file.path);
+                } else {
+                    throw renameErr;
+                }
+            }
+        }
+
+        const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
+        const nextStatus = req.user.role === 'Admin' ? rel.status : 'Request Edit';
+        await db.query('UPDATE releases SET cover_art = ?, status = ? WHERE id = ?', [publicPath, nextStatus, releaseId]);
+
+        res.json({ message: 'Cover art updated', coverArt: publicPath, status: nextStatus });
+    } catch (err) {
+        console.error('Update Cover Art Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -1068,9 +1115,7 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
         if (releases.length === 0) return res.status(404).json({ error: 'Release not found' });
         const release = releases[0];
 
-        if (req.user.role !== 'Admin' && release.user_id !== req.user.id) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
+        if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Access denied' });
 
         const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
         const releaseColNames = releaseCols.map(c => c.Field);

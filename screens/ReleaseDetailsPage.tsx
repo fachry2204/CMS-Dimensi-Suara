@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ReleaseData } from '../types';
 import { api } from '../utils/api';
@@ -6,6 +6,7 @@ import { ReleaseDetailModal } from '../components/ReleaseDetailModal';
 
 interface Props {
   token: string;
+  userRole: 'Admin' | 'Operator' | 'User' | string;
   aggregators: string[];
   onReleaseUpdated?: (release: ReleaseData) => void;
   onEditRelease?: (release: ReleaseData) => void;
@@ -13,12 +14,14 @@ interface Props {
   resolveOwnerName?: (raw: any) => string;
 }
 
-export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onReleaseUpdated, onEditRelease, onDeleteRelease, resolveOwnerName }) => {
+export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregators, onReleaseUpdated, onEditRelease, onDeleteRelease, resolveOwnerName }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [release, setRelease] = useState<ReleaseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUpdatingCoverArt, setIsUpdatingCoverArt] = useState(false);
+  const coverArtInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -104,23 +107,62 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, aggregators, onRele
   if (!release) return null;
 
   return (
-    <ReleaseDetailModal 
-      release={release}
-      isOpen={true}
-      onClose={() => navigate('/releases')}
-      onUpdate={async (r) => {
-        try {
-          await api.updateReleaseWorkflow(token, r);
-          if (onReleaseUpdated) onReleaseUpdated(r);
-          navigate('/releases');
-        } catch (e: any) {
-          alert(e?.message || 'Gagal menyimpan status release');
-        }
-      }}
-      availableAggregators={aggregators}
-      mode="view"
-      onEdit={onEditRelease}
-      onDelete={onDeleteRelease}
-    />
+    <>
+      <input
+        ref={coverArtInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0] || null;
+          e.target.value = '';
+          if (!file || !release?.id) return;
+          setIsUpdatingCoverArt(true);
+          try {
+            const resp: any = await api.updateReleaseCoverArt(token, release.id, file);
+            const next: ReleaseData = {
+              ...release,
+              coverArt: resp?.coverArt ?? resp?.cover_art ?? release.coverArt,
+              status: resp?.status ?? 'Request Edit'
+            };
+            setRelease(next);
+            if (onReleaseUpdated) onReleaseUpdated(next);
+            alert('Cover art berhasil diperbarui. Status berubah menjadi Request Edit.');
+          } catch (err: any) {
+            alert(err?.message || 'Gagal memperbarui cover art');
+          } finally {
+            setIsUpdatingCoverArt(false);
+          }
+        }}
+      />
+
+      <ReleaseDetailModal 
+        release={release}
+        isOpen={true}
+        onClose={() => navigate('/releases')}
+        onUpdate={async (r) => {
+          try {
+            await api.updateReleaseWorkflow(token, r);
+            if (onReleaseUpdated) onReleaseUpdated(r);
+            navigate('/releases');
+          } catch (e: any) {
+            alert(e?.message || 'Gagal menyimpan status release');
+          }
+        }}
+        availableAggregators={aggregators}
+        mode="view"
+        onEdit={(r) => {
+          if (userRole === 'Admin') {
+            onEditRelease?.(r);
+            return;
+          }
+          if (isUpdatingCoverArt) return;
+          coverArtInputRef.current?.click();
+        }}
+        onDelete={onDeleteRelease}
+        userRole={userRole}
+        isUpdatingCoverArt={isUpdatingCoverArt}
+      />
+    </>
   );
 };
