@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Download, Calendar, Clock, FileText, ChevronLeft, Search, User, XCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, Download, Calendar, Clock, ChevronLeft, Search, User, XCircle } from 'lucide-react';
 import { ReportData, ReleaseData } from '../types';
 import { formatDMY, formatHM } from '../utils/date';
 
@@ -12,7 +12,9 @@ interface ReportScreenProps {
   mode?: 'view' | 'import';
 }
 
-export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, releases, aggregators = [], mode = 'view' }) => {
+export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: propData, releases: propReleases, aggregators = [], mode = 'view' }) => {
+  const data = propData || [];
+  const releases = propReleases || [];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,18 +176,26 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
     return data.filter(d => d.originalFileName === selectedFile);
   }, [data, selectedFile]);
 
+  const totalRevenue = useMemo(() => {
+    try {
+        return data.reduce((acc, curr) => acc + (Number(curr?.revenue) || 0), 0);
+    } catch (e) {
+        return 0;
+    }
+  }, [data]);
+
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            {mode === 'import' ? 'Import Laporan' : 'Laporan'}
+          <h1 className="text-xl font-bold text-slate-800">
+            {mode === 'import' ? 'import laporan' : 'laporan'}
           </h1>
-          <p className="text-slate-500">
+          <p className="text-slate-500 text-sm">
             {mode === 'import' 
-                ? 'Upload laporan Excel (.xlsx) untuk memperbarui statistik dan pendapatan' 
-                : 'Ringkasan laporan dan statistik pendapatan'}
+                ? 'upload laporan excel (.xlsx) untuk memperbarui statistik dan pendapatan' 
+                : 'ringkasan laporan dan statistik pendapatan'}
           </p>
         </div>
         {mode === 'import' && !selectedFile && (
@@ -193,19 +203,19 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
                 <select
                     value={selectedAggregator}
                     onChange={(e) => setSelectedAggregator(e.target.value)}
-                    className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
-                    <option value="">Pilih Aggregator</option>
+                    <option value="">pilih aggregator</option>
                     {aggregators.map(agg => (
                         <option key={agg} value={agg}>{agg}</option>
                     ))}
                 </select>
                 <button 
                     onClick={downloadTemplate}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium text-xs"
                 >
-                    <Download size={18} />
-                    Download Template
+                    <Download size={16} />
+                    download template
                 </button>
                 <div className="relative">
                     <input 
@@ -218,14 +228,14 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
                     <button 
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isProcessing}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all font-medium text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isProcessing ? (
                             <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
                         ) : (
-                            <Upload size={18} />
+                            <Upload size={16} />
                         )}
-                        Import Excel
+                        import excel
                     </button>
                 </div>
             </div>
@@ -253,10 +263,10 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
               <div className="flex items-center gap-4 mb-2">
                   <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                      <FileSpreadsheet size={24} />
+                      <FileText size={24} />
                   </div>
                   <div>
-                      <div className="text-sm text-slate-500">Total Baris Data</div>
+                      <div className="text-xs font-medium text-slate-500">total baris data</div>
                       <div className="text-2xl font-bold text-slate-800">{data.length.toLocaleString()}</div>
                   </div>
               </div>
@@ -264,12 +274,12 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
               <div className="flex items-center gap-4 mb-2">
                   <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                      <FileSpreadsheet size={24} />
+                      <FileText size={24} />
                   </div>
                   <div>
-                      <div className="text-sm text-slate-500">Total Pendapatan Terimpor</div>
+                      <div className="text-xs font-medium text-slate-500">total pendapatan terimpor</div>
                       <div className="text-2xl font-bold text-slate-800">
-                          ${data.reduce((acc, curr) => acc + curr.revenue, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                   </div>
               </div>
@@ -280,27 +290,24 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
       {/* Content Area */}
       {mode === 'view' ? (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="font-bold text-slate-800">Preview Data Terakhir (100 Baris)</h3>
-            </div>
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50 text-slate-500 font-medium">
                         <tr>
-                            <th className="px-6 py-3">Period</th>
-                            <th className="px-6 py-3">UPC / ISRC</th>
-                            <th className="px-6 py-3">Title</th>
-                            <th className="px-6 py-3">Platform</th>
-                            <th className="px-6 py-3">Country</th>
-                            <th className="px-6 py-3 text-right">Qty</th>
-                            <th className="px-6 py-3 text-right">Revenue</th>
+                            <th className="px-6 py-3 font-normal">period</th>
+                            <th className="px-6 py-3 font-normal">upc / isrc</th>
+                            <th className="px-6 py-3 font-normal">title</th>
+                            <th className="px-6 py-3 font-normal">platform</th>
+                            <th className="px-6 py-3 font-normal">country</th>
+                            <th className="px-6 py-3 text-right font-normal">qty</th>
+                            <th className="px-6 py-3 text-right font-normal">revenue</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {data.length === 0 ? (
                              <tr>
                                 <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                                    Belum ada data yang diimpor. Silakan upload file Excel.
+                                    belum ada data yang diimpor. silakan upload file excel.
                                 </td>
                             </tr>
                         ) : (
@@ -330,24 +337,21 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
         <>
             {!selectedFile ? (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                        <h3 className="font-bold text-slate-800">Riwayat Upload File</h3>
-                    </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-xs text-left">
                             <thead className="bg-slate-50 text-slate-500 font-medium">
                                 <tr>
-                                    <th className="px-6 py-3">Nama File</th>
-                                    <th className="px-6 py-3">Tanggal Upload</th>
-                                    <th className="px-6 py-3">Jam Upload</th>
-                                    <th className="px-6 py-3">Status</th>
+                                    <th className="px-6 py-3 font-normal">nama file</th>
+                                    <th className="px-6 py-3 font-normal">tanggal upload</th>
+                                    <th className="px-6 py-3 font-normal">jam upload</th>
+                                    <th className="px-6 py-3 font-normal">status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {uploadHistory.length === 0 ? (
                                      <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                            Belum ada file yang diupload.
+                                            belum ada file yang diupload.
                                         </td>
                                     </tr>
                                 ) : (
@@ -402,7 +406,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
                             className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors"
                         >
                             <ChevronLeft size={20} />
-                            Kembali ke Daftar File
+                            kembali ke daftar file
                         </button>
                         <div className="flex items-center gap-3">
                             <h2 className="text-lg font-bold text-slate-800">{selectedFile}</h2>
@@ -412,50 +416,52 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data, rele
                             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all font-medium text-sm"
                         >
                             <Search size={18} />
-                            Cek UPC & ISRC
+                            cek upc & isrc
                         </button>
                     </div>
 
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
+                            <table className="w-full text-xs text-left">
                                 <thead className="bg-slate-50 text-slate-500 font-medium">
                                     <tr>
-                                        <th className="px-6 py-3">UPC / ISRC</th>
-                                        <th className="px-6 py-3">Title</th>
-                                        <th className="px-6 py-3">Artist</th>
-                                        <th className="px-6 py-3">Platform</th>
-                                        <th className="px-6 py-3 text-right">Revenue</th>
-                                        <th className="px-6 py-3">Status User</th>
+                                        <th className="px-6 py-3 font-normal">period</th>
+                                        <th className="px-6 py-3 font-normal">upc / isrc</th>
+                                        <th className="px-6 py-3 font-normal">title</th>
+                                        <th className="px-6 py-3 font-normal">platform</th>
+                                        <th className="px-6 py-3 font-normal">country</th>
+                                        <th className="px-6 py-3 text-right font-normal">qty</th>
+                                        <th className="px-6 py-3 text-right font-normal">revenue</th>
+                                        <th className="px-6 py-3 font-normal">status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {selectedFileData.map((row) => (
+                                    {selectedFileData.slice(0, 100).map((row) => (
                                         <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-3">{row.period}</td>
                                             <td className="px-6 py-3">
                                                 <div className="font-mono text-xs text-slate-600">{row.upc}</div>
                                                 <div className="font-mono text-xs text-slate-400">{row.isrc}</div>
                                             </td>
                                             <td className="px-6 py-3 font-medium text-slate-700">{row.title}</td>
-                                            <td className="px-6 py-3 text-slate-600">{row.artist}</td>
                                             <td className="px-6 py-3">{row.platform}</td>
+                                            <td className="px-6 py-3">{row.country}</td>
+                                            <td className="px-6 py-3 text-right">{row.quantity.toLocaleString()}</td>
                                             <td className="px-6 py-3 text-right font-medium text-green-600">
                                                 ${row.revenue.toFixed(4)}
                                             </td>
                                             <td className="px-6 py-3">
-                                                {row.verificationStatus === 'Valid' && (
-                                                    <div className="flex items-center gap-2 text-green-600">
-                                                        <CheckCircle2 size={16} />
-                                                        <span className="font-medium">Valid</span>
-                                                    </div>
-                                                )}
-                                                {row.verificationStatus === 'No User' && (
-                                                    <div className="flex items-center gap-2 text-red-500">
-                                                        <XCircle size={16} />
-                                                        <span className="font-medium">Tidak ada user</span>
-                                                    </div>
-                                                )}
-                                                {(!row.verificationStatus || row.verificationStatus === 'Unchecked') && (
+                                                {row.verificationStatus === 'Valid' ? (
+                                                    <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-lg text-xs font-medium border border-green-100 w-fit">
+                                                        <CheckCircle2 size={12} />
+                                                        valid
+                                                    </span>
+                                                ) : row.verificationStatus === 'No User' ? (
+                                                    <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-1 rounded-lg text-xs font-medium border border-amber-100 w-fit">
+                                                        <AlertCircle size={12} />
+                                                        no user
+                                                    </span>
+                                                ) : (
                                                     <span className="text-slate-400">-</span>
                                                 )}
                                             </td>

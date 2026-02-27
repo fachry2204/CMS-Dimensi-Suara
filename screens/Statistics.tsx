@@ -73,9 +73,9 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
   const StatCard = ({ title, count, icon, colorClass, bgClass, subtext }: any) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md">
         <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
-            <h3 className="text-3xl font-bold text-slate-800">{count}</h3>
-            <p className="text-xs text-slate-400 mt-2 font-medium">{subtext}</p>
+            <p className="text-slate-500 text-[10px] font-bold tracking-wider mb-1">{title}</p>
+            <h3 className="text-2xl font-bold text-slate-800">{count}</h3>
+            <p className="text-[10px] text-slate-400 mt-2 font-medium">{subtext}</p>
         </div>
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${bgClass} ${colorClass}`}>
             {icon}
@@ -86,8 +86,8 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
        <div className="mb-6 md:hidden">
-            <h1 className="text-lg text-slate-800 tracking-tight">Statistik &amp; Laporan</h1>
-            <p className="text-slate-500 mt-0.5 text-[12px]">Analisis performa katalog musik dan pendapatan Anda.</p>
+            <h1 className="text-base text-slate-800 tracking-tight">Statistik & Laporan</h1>
+            <p className="text-slate-500 mt-0.5 text-[10px]">Analisis performa katalog musik dan pendapatan Anda.</p>
        </div>
 
        {/* CATALOG STATS */}
@@ -98,7 +98,7 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                 icon={<Mic2 size={24} />} 
                 colorClass="text-blue-600" 
                 bgClass="bg-blue-50"
-                subtext="Total track individual"
+                subtext="Total Track Individual"
             />
             <StatCard 
                 title="Total Album" 
@@ -129,14 +129,14 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
        {/* ANALYTICS SECTION */}
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Stats */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-3 space-y-6">
                 <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
                     <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
                             <TrendingUp size={20} className="text-blue-600" />
                             Performa Keseluruhan
                         </h3>
-                        <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-600 rounded-full">
+                        <span className="text-[10px] font-bold px-3 py-1 bg-blue-50 text-blue-600 rounded-full">
                             Berdasarkan Data Import
                         </span>
                     </div>
@@ -147,10 +147,10 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                                 <div className="p-2 bg-green-500 text-white rounded-lg shadow-lg shadow-green-500/20">
                                     <DollarSign size={20} />
                                 </div>
-                                <span className="text-slate-500 font-bold text-sm uppercase tracking-wide">Total Pendapatan</span>
+                                <span className="text-slate-500 font-bold text-xs tracking-wide">Total Pendapatan</span>
                             </div>
-                            <h2 className="text-3xl md:text-4xl font-black text-slate-800 mt-4">{formatIDR(totalRevenue)}</h2>
-                            <p className="text-slate-500 text-sm mt-2">Akumulasi dari laporan yang diimpor</p>
+                            <h2 className="text-2xl md:text-3xl font-black text-slate-800 mt-4">{formatIDR(totalRevenue)}</h2>
+                            <p className="text-slate-500 text-[10px] mt-2">Akumulasi dari laporan yang diimpor</p>
                         </div>
 
                         <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
@@ -158,10 +158,10 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                                 <div className="p-2 bg-blue-500 text-white rounded-lg shadow-lg shadow-blue-500/20">
                                     <PlayCircle size={20} />
                                 </div>
-                                <span className="text-slate-500 font-bold text-sm uppercase tracking-wide">Total Streams</span>
+                                <span className="text-slate-500 font-bold text-xs tracking-wide">Total Streams</span>
                             </div>
-                            <h2 className="text-3xl md:text-4xl font-black text-slate-800 mt-4">{formatNumber(totalStreams)}</h2>
-                            <p className="text-slate-500 text-sm mt-2">Total kuantitas stream/penjualan</p>
+                            <h2 className="text-2xl md:text-3xl font-black text-slate-800 mt-4">{formatNumber(totalStreams)}</h2>
+                            <p className="text-slate-500 text-[10px] mt-2">Total kuantitas stream/penjualan</p>
                         </div>
                     </div>
                 </div>
@@ -169,16 +169,16 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                 {/* Platform Breakdown */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="font-bold text-slate-800">Performa Platform</h3>
+                        <h3 className="font-bold text-slate-800 text-base">Performa Platform</h3>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Platform</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Streams</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Pendapatan</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">%</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 tracking-wider">Platform</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-500 tracking-wider">Streams</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-500 tracking-wider">Pendapatan</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-500 tracking-wider">%</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -187,16 +187,16 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                                         <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs mr-3 ${platform.color}`}>
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-[10px] mr-3 ${platform.color}`}>
                                                         {platform.icon}
                                                     </div>
-                                                    <span className="font-bold text-slate-700">{platform.name}</span>
+                                                    <span className="font-bold text-slate-700 text-xs">{platform.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right font-medium text-slate-600">
+                                            <td className="px-6 py-4 whitespace-nowrap text-right font-medium text-slate-600 text-xs">
                                                 {formatNumber(platform.streams)}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-slate-800">
+                                            <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-slate-800 text-xs">
                                                 {formatIDR(platform.revenue)}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -207,7 +207,7 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                                                             style={{ width: `${(platform.revenue / totalRevenue) * 100}%` }}
                                                         ></div>
                                                     </div>
-                                                    <span className="text-xs text-slate-500 font-medium">
+                                                    <span className="text-[10px] text-slate-500 font-medium">
                                                         {((platform.revenue / totalRevenue) * 100).toFixed(1)}%
                                                     </span>
                                                 </div>
@@ -216,8 +216,8 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                                            DATA BELUM TERSEDIA
+                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500 text-xs">
+                                            Data Belum Tersedia
                                         </td>
                                     </tr>
                                 )}
@@ -225,33 +225,6 @@ export const Statistics: React.FC<Props> = ({ releases, reportData }) => {
                         </table>
                     </div>
                 </div>
-            </div>
-
-            {/* Sidebar Stats */}
-            <div className="space-y-6">
-                <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-900/10">
-                    <h3 className="font-bold text-lg mb-1">Top Pendapatan</h3>
-                    <p className="text-slate-400 text-sm mb-6">Berdasarkan data import terakhir</p>
-                    
-                    {platforms.length > 0 ? (
-                        <div className="space-y-6">
-                            <div>
-                                <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-2">Platform Terbaik</p>
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-xl">{platforms[0].name}</span>
-                                    <span className="text-emerald-400 font-bold">{formatIDR(platforms[0].revenue)}</span>
-                                </div>
-                                <div className="w-full bg-slate-700/50 h-1.5 rounded-full mt-2">
-                                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: '100%' }}></div>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-slate-400 italic">Data belum tersedia</p>
-                    )}
-                </div>
-                
-{/* Info section removed */}
             </div>
        </div>
     </div>

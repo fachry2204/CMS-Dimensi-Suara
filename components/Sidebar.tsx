@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 {({ isActive }) => (
                   <>
                     <BarChart3 size={20} className={getIconClass(isActive)} />
-                    Statistik
+                    statistik
                   </>
                 )}
               </NavLink>

@@ -50,8 +50,8 @@ export const RevenueScreen: React.FC<Props> = ({ data }) => {
         <div className="p-8 max-w-7xl mx-auto animate-fade-in">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">Pendapatan</h1>
-              <p className="text-slate-500">Ringkasan pendapatan dan royalti</p>
+              <h1 className="text-2xl font-bold text-slate-800">pendapatan</h1>
+              <p className="text-slate-500">ringkasan pendapatan dan royalti</p>
             </div>
           </div>
     
@@ -59,9 +59,9 @@ export const RevenueScreen: React.FC<Props> = ({ data }) => {
             <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-4">
               <Download size={32} />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Data Belum Tersedia</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">data belum tersedia</h3>
             <p className="text-slate-500 max-w-md mb-6">
-              Silakan import file laporan Excel pada menu <strong>Laporan</strong> untuk melihat analisis pendapatan Anda.
+              silakan import file laporan excel pada menu <strong>laporan</strong> untuk melihat analisis pendapatan anda.
             </p>
           </div>
         </div>
@@ -72,8 +72,8 @@ export const RevenueScreen: React.FC<Props> = ({ data }) => {
     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Pendapatan</h1>
-          <p className="text-slate-500">Ringkasan pendapatan dan royalti dari {data.length} baris data</p>
+          <h1 className="text-2xl font-bold text-slate-800">pendapatan</h1>
+          <p className="text-slate-500">ringkasan pendapatan dan royalti dari {data.length} baris data</p>
         </div>
       </div>
 
@@ -82,14 +82,14 @@ export const RevenueScreen: React.FC<Props> = ({ data }) => {
         <div className="absolute right-0 top-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl -mr-16 -mt-16"></div>
         <div className="relative z-10">
             <h2 className="text-emerald-100 font-medium mb-2 flex items-center gap-2">
-                <DollarSign size={20} /> Total Pendapatan Bersih
+                <DollarSign size={20} /> total pendapatan bersih
             </h2>
             <div className="text-5xl font-bold tracking-tight mb-4">
                 {formatIDR(stats.totalRevenue)}
             </div>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-sm font-medium backdrop-blur-sm">
                 <TrendingUp size={14} />
-                <span>Berdasarkan data import terkini</span>
+                <span>berdasarkan data import terkini</span>
             </div>
         </div>
       </div>
@@ -98,7 +98,7 @@ export const RevenueScreen: React.FC<Props> = ({ data }) => {
           {/* TOP TRACKS */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2">
-                  <Music size={20} className="text-blue-500" /> Top Lagu (Revenue)
+                  <Music size={20} className="text-blue-500" /> top lagu (revenue)
               </h3>
               <div className="space-y-4">
                   {stats.topTracks.map((track, idx) => (
@@ -124,7 +124,7 @@ export const RevenueScreen: React.FC<Props> = ({ data }) => {
           {/* TOP PLATFORMS */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2">
-                  <Smartphone size={20} className="text-purple-500" /> Pendapatan per Platform
+                  <Smartphone size={20} className="text-purple-500" /> pendapatan per platform
               </h3>
               <div className="space-y-4">
                   {stats.topPlatforms.map((p, idx) => (

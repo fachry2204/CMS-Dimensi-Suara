@@ -846,10 +846,10 @@ const App: React.FC = () => {
             ) : location.pathname === '/statistics' ? (
                 <div className="hidden md:flex flex-col leading-tight">
                     <span className="text-sm text-slate-800 tracking-tight">
-                        Statistik &amp; Laporan
+                        statistik &amp; laporan
                     </span>
                     <span className="text-[11px] text-slate-500">
-                        Analisis performa katalog musik dan pendapatan Anda.
+                        analisis performa katalog musik dan pendapatan anda.
                     </span>
                 </div>
             ) : (
@@ -874,7 +874,7 @@ const App: React.FC = () => {
 
                     {/* Notification Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="fixed right-6 top-[60px] w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                                 <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
                                 <button 
