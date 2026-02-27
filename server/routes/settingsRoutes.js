@@ -8,6 +8,7 @@ import { authenticateToken } from '../middleware/authMiddleware.js';
 import { exec } from 'child_process';
 import util from 'util';
 import { initDb } from '../init-db.js';
+import { checkDbIntegrity, checkSystemUpdate, logSystemCheck } from '../utils/systemCheck.js';
 
 const execPromise = util.promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -71,18 +72,9 @@ router.post('/aggregators', authenticateToken, async (req, res) => {
 // Check DB Integrity
 router.get('/system/check-db', authenticateToken, async (req, res) => {
     try {
-        // Critical tables to check
-        const requiredTables = ['users', 'releases', 'songs', 'reports', 'settings', 'notifications', 'tickets', 'security_logs'];
-        const [rows] = await db.query('SHOW TABLES');
-        const existingTables = rows.map(r => Object.values(r)[0]);
-        
-        const missingTables = requiredTables.filter(t => !existingTables.includes(t));
-        
-        res.json({
-            status: missingTables.length === 0 ? 'OK' : 'MISSING_TABLES',
-            missing: missingTables,
-            checked_at: new Date()
-        });
+        const result = await checkDbIntegrity();
+        await logSystemCheck('DB_INTEGRITY_CHECK', result);
+        res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -103,40 +95,22 @@ router.post('/system/fix-db', authenticateToken, async (req, res) => {
 // Check Update
 router.get('/system/check-update', authenticateToken, async (req, res) => {
     try {
-        // Run git fetch to update remote refs
-        // Note: This requires git to be in PATH and the server to have internet access
-        // Also assumes the current directory is a git repo
-        
-        try {
-            await execPromise('git --version');
-        } catch (e) {
-             return res.json({ 
-                updatesAvailable: false, 
-                error: 'Git is not installed or not in PATH' 
-            });
-        }
-
-        await execPromise('git fetch origin');
-        
-        // Check if behind
-        const { stdout: behindCount } = await execPromise('git rev-list --count HEAD..origin/main');
-        const { stdout: localHash } = await execPromise('git rev-parse --short HEAD');
-        const { stdout: remoteHash } = await execPromise('git rev-parse --short origin/main');
-        
-        const count = parseInt(behindCount.trim()) || 0;
-        const updatesAvailable = count > 0;
-        
-        res.json({
-            updatesAvailable,
-            behindCount: count,
-            localHash: localHash.trim(),
-            remoteHash: remoteHash.trim(),
-            repo: 'https://github.com/fachry2204/CMS-Dimensi-Suara.git'
-        });
+        const result = await checkSystemUpdate();
+        await logSystemCheck('UPDATE_CHECK', result);
+        res.json(result);
     } catch (err) {
         console.error('Git check failed:', err);
-        // If it's not a git repo or other error, return it
         res.status(500).json({ error: 'Failed to check updates: ' + err.message });
+    }
+});
+
+// Get System Logs
+router.get('/system/logs', authenticateToken, async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 50');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

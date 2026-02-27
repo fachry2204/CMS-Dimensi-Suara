@@ -36,6 +36,14 @@ interface SecurityLog {
     created_at: string;
 }
 
+interface SystemLog {
+    id: number;
+    check_type: 'UPDATE_CHECK' | 'DB_INTEGRITY_CHECK';
+    status: string;
+    details: string;
+    created_at: string;
+}
+
 export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'system' | 'security'>('general');
   const [token] = useState(localStorage.getItem('cms_token') || '');
@@ -59,6 +67,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   const [updatingSystem, setUpdatingSystem] = useState(false);
   const [fixingDb, setFixingDb] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
 
   // --- SECURITY LOGS LOGIC ---
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
@@ -69,6 +78,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
           fetchBranding();
       } else if (activeTab === 'system') {
           handleCheckSystem();
+          fetchSystemLogs();
       } else if (activeTab === 'security') {
           fetchSecurityLogs();
       }
@@ -202,10 +212,27 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
               const data = await upRes.json();
               setUpdateStatus(data);
           }
+          
+          // Refresh logs after check
+          fetchSystemLogs();
       } catch (err) {
           console.error("System check failed:", err);
       } finally {
           setCheckingSystem(false);
+      }
+  };
+
+  const fetchSystemLogs = async () => {
+      try {
+          const res = await fetch('/api/settings/system/logs', {
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+              const data = await res.json();
+              setSystemLogs(data);
+          }
+      } catch (err) {
+          console.error("Failed to fetch system logs:", err);
       }
   };
 
@@ -260,7 +287,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   const fetchSecurityLogs = async () => {
       setLoadingLogs(true);
       try {
-          const res = await fetch('/api/security/logs', {
+          const res = await fetch('/api/settings/security/logs', {
               headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {
@@ -646,6 +673,61 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                     ) : (
                          <div className="text-slate-400 text-sm">Click refresh to check updates.</div>
                     )}
+               </div>
+
+               {/* System Logs */}
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                   <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                            <Terminal size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800">System Logs</h3>
+                            <p className="text-sm text-slate-500">History of automated system checks and updates.</p>
+                        </div>
+                   </div>
+
+                   <div className="overflow-x-auto">
+                       <table className="w-full text-left border-collapse">
+                           <thead>
+                               <tr className="bg-slate-50 border-b border-gray-100">
+                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Time</th>
+                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
+                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
+                               </tr>
+                           </thead>
+                           <tbody className="divide-y divide-gray-100">
+                               {systemLogs.length === 0 ? (
+                                   <tr>
+                                       <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-sm">No system logs available.</td>
+                                   </tr>
+                               ) : (
+                                   systemLogs.map((log) => (
+                                       <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                           <td className="px-6 py-3 text-xs text-slate-600 whitespace-nowrap">
+                                               {new Date(log.created_at).toLocaleString()}
+                                           </td>
+                                           <td className="px-6 py-3 text-xs font-medium text-slate-800">
+                                               {log.check_type === 'UPDATE_CHECK' ? 'System Update Check' : 'Database Integrity'}
+                                           </td>
+                                           <td className="px-6 py-3">
+                                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                                   log.status === 'OK' || log.status === 'UPDATE_AVAILABLE' ? 'bg-green-100 text-green-700' :
+                                                   'bg-red-100 text-red-700'
+                                               }`}>
+                                                   {log.status}
+                                               </span>
+                                           </td>
+                                           <td className="px-6 py-3 text-xs text-slate-500 font-mono max-w-xs truncate" title={log.details}>
+                                               {log.details}
+                                           </td>
+                                       </tr>
+                                   ))
+                               )}
+                           </tbody>
+                       </table>
+                   </div>
                </div>
            </div>
        )}

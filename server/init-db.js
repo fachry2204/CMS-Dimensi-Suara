@@ -509,6 +509,24 @@ const initDb = async () => {
             }
         }
 
+        // 12. Check 'system_logs' table
+        try {
+            await connection.query('SELECT 1 FROM system_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: system_logs');
+                await connection.query(`
+                    CREATE TABLE system_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        check_type ENUM('UPDATE_CHECK', 'DB_INTEGRITY_CHECK') NOT NULL,
+                        status VARCHAR(50) NOT NULL,
+                        details TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
         console.log('✅ Database initialized successfully!');
         try {
             await writeLastDbName(dbName);
