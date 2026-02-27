@@ -370,33 +370,35 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
             <div className="flex flex-col md:flex-row gap-8 items-start mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="w-40 h-40 md:w-48 md:h-48 rounded-xl bg-gray-200 shadow-md overflow-hidden flex-shrink-0 border border-gray-300 flex flex-col relative group">
-                    <div className="flex-1 relative">
-                        {release.coverArt ? (
-                            <img 
-                                src={objectUrls['cover_art']} 
-                                className="w-full h-full object-cover" 
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
-                                }}
-                            />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400"><Disc size={40} /></div>
-                        )}
-                        
-                        {/* Edit Overlay */}
-                        {(token && !isUpdatingCoverArt) && (
-                            <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${release.coverArt ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
-                                <button 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isUploadingCover}
-                                    className="p-3 bg-white/90 backdrop-blur-sm rounded-full text-slate-700 hover:text-blue-600 hover:scale-110 transition-all shadow-lg"
-                                    title="Change Cover Art"
-                                >
-                                    {isUploadingCover ? <Loader2 size={24} className="animate-spin text-blue-600" /> : <Camera size={24} />}
-                                </button>
-                            </div>
-                        )}
+                <div className="flex flex-col gap-3 flex-shrink-0 w-40 md:w-48">
+                    <div className="w-full aspect-square rounded-xl bg-gray-200 shadow-md overflow-hidden border border-gray-300 flex flex-col relative group">
+                        <div className="flex-1 relative">
+                            {release.coverArt ? (
+                                <img 
+                                    src={objectUrls['cover_art']} 
+                                    className="w-full h-full object-cover" 
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                                    }}
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400"><Disc size={40} /></div>
+                            )}
+                            
+                            {/* Edit Overlay */}
+                            {(token && !isUpdatingCoverArt && userRole !== 'Admin') && (
+                                <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${release.coverArt ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+                                    <button 
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploadingCover}
+                                        className="p-3 bg-white/90 backdrop-blur-sm rounded-full text-slate-700 hover:text-blue-600 hover:scale-110 transition-all shadow-lg"
+                                        title="Change Cover Art"
+                                    >
+                                        {isUploadingCover ? <Loader2 size={24} className="animate-spin text-blue-600" /> : <Camera size={24} />}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     
                     {/* Hidden Input */}
@@ -408,6 +410,18 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         className="hidden" 
                     />
 
+                    {/* Change Cover Button - Non-Admin Only */}
+                    {userRole !== 'Admin' && (
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingCover}
+                            className="w-full py-2 rounded-lg bg-blue-600 text-white text-xs font-bold shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {isUploadingCover ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                            Ganti Art Cover
+                        </button>
+                    )}
+
                     <button 
                         onClick={() => {
                             if (!release.coverArt) return;
@@ -415,7 +429,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                             downloadFile(objectUrls['cover_art'], name);
                         }}
                         disabled={!release.coverArt}
-                        className="mt-3 w-full py-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-2 transition-colors
+                        className="w-full py-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-2 transition-colors
                                    border-orange-400 text-orange-600 bg-white hover:bg-orange-50 disabled:opacity-50"
                     >
                         <Download size={14} /> Album Cover

@@ -20,8 +20,6 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
   const [release, setRelease] = useState<ReleaseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isUpdatingCoverArt, setIsUpdatingCoverArt] = useState(false);
-  const coverArtInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -107,35 +105,6 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
   if (!release) return null;
 
   return (
-    <>
-      <input
-        ref={coverArtInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={async (e) => {
-          const file = e.target.files?.[0] || null;
-          e.target.value = '';
-          if (!file || !release?.id) return;
-          setIsUpdatingCoverArt(true);
-          try {
-            const resp: any = await api.updateReleaseCoverArt(token, release.id, file);
-            const next: ReleaseData = {
-              ...release,
-              coverArt: resp?.coverArt ?? resp?.cover_art ?? release.coverArt,
-              status: resp?.status ?? 'Request Edit'
-            };
-            setRelease(next);
-            if (onReleaseUpdated) onReleaseUpdated(next);
-            alert('Cover art berhasil diperbarui. Status berubah menjadi Request Edit.');
-          } catch (err: any) {
-            alert(err?.message || 'Gagal memperbarui cover art');
-          } finally {
-            setIsUpdatingCoverArt(false);
-          }
-        }}
-      />
-
       <ReleaseDetailModal 
         release={release}
         isOpen={true}
@@ -154,15 +123,21 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
         onEdit={(r) => {
           if (userRole === 'Admin') {
             onEditRelease?.(r);
-            return;
           }
-          if (isUpdatingCoverArt) return;
-          coverArtInputRef.current?.click();
         }}
         onDelete={onDeleteRelease}
         userRole={userRole}
-        isUpdatingCoverArt={isUpdatingCoverArt}
+        token={token}
+        onCoverArtUpdated={(newUrl) => {
+             setRelease(prev => prev ? ({ 
+                 ...prev, 
+                 coverArt: newUrl, 
+                 status: userRole !== 'Admin' ? 'Request Edit' : prev.status 
+             }) : null);
+             if (userRole !== 'Admin') {
+                 alert('Cover art updated. Status changed to Request Edit.');
+             }
+        }}
       />
-    </>
   );
 };
