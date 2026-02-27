@@ -530,17 +530,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                             </button>
                         )}
 
-                        {userRole !== 'Admin' && token && (
-                             <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={!!isUpdatingCoverArt}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                                title="Update Cover Art"
-                            >
-                                <Camera size={14} />
-                                Update Cover Art
-                            </button>
-                        )}
+
                         
                         {userRole === 'Admin' && onDelete && (
                             <button
