@@ -400,6 +400,14 @@ const App: React.FC = () => {
   const [releaseToDelete, setReleaseToDelete] = useState<ReleaseData | null>(null);
   const [isDeletingRelease, setIsDeletingRelease] = useState(false);
 
+  // Clear modal states on route change
+  useEffect(() => {
+      setViewingRelease(null);
+      // We don't clear editingRelease here because the wizard might rely on it persisting across sub-routes
+      // or we handle it specifically in the wizard flow.
+      // But for the detail modal, it should definitely close when changing pages.
+  }, [location.pathname]);
+
   // Check LocalStorage on Mount
   useEffect(() => {
     const storedAuth = localStorage.getItem('cms_auth');
