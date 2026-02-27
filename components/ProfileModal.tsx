@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Camera, Save, User, Mail, Lock } from 'lucide-react';
 import { api, API_BASE_URL } from '../utils/api';
 import { getProfileImageUrl } from '../utils/imageUtils';
+import { AlertModal, AlertState } from './AlertModal';
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -22,6 +23,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, tok
     });
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [alertState, setAlertState] = useState<AlertState>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
 
     // Initialize preview URL if user has profile picture
     useEffect(() => {
@@ -78,11 +85,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, tok
             // Update parent state
             onUpdateUser(response.user);
             
-            alert('Profile updated successfully!');
-            onClose();
+            setAlertState({
+                isOpen: true,
+                title: 'Sukses',
+                message: 'Profil berhasil diperbarui!',
+                type: 'success'
+            });
+            setTimeout(() => {
+                onClose();
+            }, 1500);
         } catch (err: any) {
             console.error(err);
-            alert(`Failed to update profile: ${err.message}`);
+            setAlertState({
+                isOpen: true,
+                title: 'Gagal',
+                message: `Gagal memperbarui profil: ${err.message}`,
+                type: 'error'
+            });
         } finally {
             setLoading(false);
         }
@@ -208,6 +227,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, tok
                     </form>
                 </div>
             </div>
+            <AlertModal
+                isOpen={alertState.isOpen}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 };

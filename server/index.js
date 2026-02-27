@@ -16,6 +16,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import { loadBackupScheduleFromDb } from './utils/scheduler.js';
 import userRoutes from './routes/userRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
+import { securityLogger } from './middleware/securityLogger.js';
 
 import { initDb } from './init-db.js';
 
@@ -58,6 +59,9 @@ app.use((err, req, res, next) => {
     }
     next(err);
 });
+
+// Security Logger Middleware
+app.use(securityLogger);
 
 
 // Static Files (Serve the React Frontend)

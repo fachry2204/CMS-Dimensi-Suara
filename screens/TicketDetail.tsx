@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Send, ArrowLeft, XCircle } from 'lucide-react';
+import { AlertModal } from '../components/AlertModal';
 
 interface TicketMessage {
     id: number;
@@ -30,6 +31,12 @@ interface TicketDetailProps {
 const TicketDetail: React.FC<TicketDetailProps> = ({ token, userRole, onAuthExpired }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'error'
+    });
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [messages, setMessages] = useState<TicketMessage[]>([]);
     const [loading, setLoading] = useState(true);
@@ -75,7 +82,12 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ token, userRole, onAuthExpi
             fetchTicketDetails(); // Refresh messages
         } catch (err: any) {
             console.error('Failed to reply', err);
-            alert('Gagal mengirim balasan.');
+            setAlertState({
+                isOpen: true,
+                title: 'Gagal Membalas',
+                message: 'Gagal mengirim balasan.',
+                type: 'error'
+            });
         } finally {
             setSending(false);
         }
@@ -88,7 +100,12 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ token, userRole, onAuthExpi
             fetchTicketDetails();
         } catch (err: any) {
             console.error('Failed to close ticket', err);
-            alert('Gagal menutup tiket.');
+            setAlertState({
+                isOpen: true,
+                title: 'Gagal Menutup Tiket',
+                message: 'Gagal menutup tiket.',
+                type: 'error'
+            });
         }
     };
 
@@ -184,6 +201,13 @@ const TicketDetail: React.FC<TicketDetailProps> = ({ token, userRole, onAuthExpi
                     Tiket ini telah ditutup. Anda tidak dapat membalas lagi.
                 </div>
             )}
+            <AlertModal
+                isOpen={alertState.isOpen}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 };

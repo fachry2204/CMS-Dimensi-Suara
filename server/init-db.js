@@ -489,6 +489,26 @@ const initDb = async () => {
             }
         }
 
+        // 13. Ensure security_logs table exists
+        try {
+            await connection.query('SELECT 1 FROM security_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: security_logs');
+                await connection.query(`
+                    CREATE TABLE security_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_identifier VARCHAR(255),
+                        ip_address VARCHAR(100),
+                        country VARCHAR(100),
+                        attack_type VARCHAR(50),
+                        details TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
         console.log('✅ Database initialized successfully!');
         try {
             await writeLastDbName(dbName);

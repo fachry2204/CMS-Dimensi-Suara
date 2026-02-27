@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Plus, MessageSquare, Search } from 'lucide-react';
 import { ReleaseData } from '../types';
+import { AlertModal } from '../components/AlertModal';
 
 interface Ticket {
     id: number;
@@ -21,6 +22,12 @@ interface TicketsProps {
 
 const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
     const navigate = useNavigate();
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'error'
+    });
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -126,7 +133,12 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
             fetchTickets();
         } catch (err: any) {
             console.error('Failed to create ticket', err);
-            alert('Gagal membuat tiket: ' + (err.message || 'Server error'));
+            setAlertState({
+                isOpen: true,
+                title: 'Gagal Membuat Tiket',
+                message: 'Gagal membuat tiket: ' + (err.message || 'Server error'),
+                type: 'error'
+            });
         } finally {
             setSubmitting(false);
         }
@@ -360,6 +372,13 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                     </table>
                 )}
             </div>
+            <AlertModal
+                isOpen={alertState.isOpen}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 };

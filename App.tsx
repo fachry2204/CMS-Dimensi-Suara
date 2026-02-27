@@ -32,6 +32,7 @@ import { MyProfile } from './screens/MyProfile';
 import { MyContracts } from './screens/MyContracts';
 import { ReleaseDetailModal } from './components/ReleaseDetailModal';
 import { ProfileModal } from './components/ProfileModal';
+import { AlertModal } from './components/AlertModal';
 import { FloatingSupportBubble } from './components/FloatingSupportBubble';
 import { ReleaseType, ReleaseData, ReportData, Notification } from './types';
 import { Menu, Bell, User, LogOut, ChevronDown, AlertTriangle, CheckCircle, Info, X, Loader2 } from 'lucide-react';
@@ -66,6 +67,14 @@ const App: React.FC = () => {
   
   // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+
+  // Alert Modal State
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   // Logout Confirmation State
   const [showLogoutDialog, setShowLogoutDialog] = useState<boolean>(false);
@@ -498,7 +507,12 @@ const App: React.FC = () => {
           setViewingRelease(prev => (prev && prev.id === releaseToDelete.id ? null : prev));
           navigate('/releases');
       } catch (err: any) {
-          alert(err?.message || 'Gagal menghapus release');
+          setAlertState({
+            isOpen: true,
+            title: 'Gagal Menghapus',
+            message: err?.message || 'Gagal menghapus release',
+            type: 'error'
+          });
       } finally {
           setIsDeletingRelease(false);
           setReleaseToDelete(null);
@@ -532,7 +546,12 @@ const App: React.FC = () => {
           setViewingRelease(null);
       } catch (err: any) {
           console.error("Failed to save release:", err);
-          alert(`Failed to save release: ${err.message || 'Unknown error'}`);
+          setAlertState({
+            isOpen: true,
+            title: 'Gagal Menyimpan',
+            message: `Failed to save release: ${err.message || 'Unknown error'}`,
+            type: 'error'
+          });
       }
   };
 
@@ -1197,7 +1216,12 @@ const App: React.FC = () => {
                         handleUpdateRelease(r);
                         setViewingRelease(null);
                     } catch (e: any) {
-                        alert(e?.message || 'Gagal menyimpan status release');
+                        setAlertState({
+                            isOpen: true,
+                            title: 'Error',
+                            message: e?.message || 'Gagal menyimpan status release',
+                            type: 'error'
+                        });
                     }
                 }}
                 availableAggregators={aggregators}
@@ -1218,6 +1242,14 @@ const App: React.FC = () => {
                 }}
             />
         )}
+
+        <AlertModal
+          isOpen={alertState.isOpen}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+        />
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users, Shield, User, MessageSquare } from 'lucide-react';
 
@@ -8,6 +8,17 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
+  const [logo, setLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+      fetch('/api/settings/branding')
+          .then(res => res.json())
+          .then(data => {
+              if (data.logo) setLogo(data.logo);
+          })
+          .catch(err => console.error("Failed to fetch branding:", err));
+  }, []);
+
   const getLinkClass = (isActive: boolean) => 
     `w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group font-medium text-[13px] ${
       isActive
@@ -22,9 +33,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
     <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-white/50 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
       {/* Brand Logo */}
       <div className="h-20 flex items-center px-6 border-b border-gray-100 flex-shrink-0">
-        <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg shadow-blue-500/30">
-          <Music4 size={20} />
-        </div>
+        {logo ? (
+            <img src={logo} alt="Logo" className="h-10 object-contain mr-3" />
+        ) : (
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg shadow-blue-500/30">
+                <Music4 size={20} />
+            </div>
+        )}
         <span className="font-bold text-lg text-slate-800 tracking-tight">Aggregator Musik</span>
       </div>
 

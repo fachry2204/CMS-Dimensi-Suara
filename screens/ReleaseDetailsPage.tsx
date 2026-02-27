@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ReleaseData } from '../types';
 import { api } from '../utils/api';
 import { ReleaseDetailModal } from '../components/ReleaseDetailModal';
+import { AlertModal } from '../components/AlertModal';
 
 interface Props {
   token: string;
@@ -20,6 +21,12 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
   const [release, setRelease] = useState<ReleaseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -105,6 +112,7 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
   if (!release) return null;
 
   return (
+    <>
       <ReleaseDetailModal 
         release={release}
         isOpen={true}
@@ -115,7 +123,12 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
             if (onReleaseUpdated) onReleaseUpdated(r);
             navigate('/releases');
           } catch (e: any) {
-            alert(e?.message || 'Gagal menyimpan status release');
+            setAlertState({
+                isOpen: true,
+                title: 'Error',
+                message: e?.message || 'Gagal menyimpan status release',
+                type: 'error'
+            });
           }
         }}
         availableAggregators={aggregators}
@@ -135,9 +148,22 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
                  status: userRole !== 'Admin' ? 'Request Edit' : prev.status 
              }) : null);
              if (userRole !== 'Admin') {
-                 alert('Cover art updated. Status changed to Request Edit.');
+                 setAlertState({
+                     isOpen: true,
+                     title: 'Cover Art Updated',
+                     message: 'Cover art updated. Status changed to Request Edit.',
+                     type: 'success'
+                 });
              }
         }}
       />
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+      />
+    </>
   );
 };

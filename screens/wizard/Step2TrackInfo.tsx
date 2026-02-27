@@ -4,6 +4,7 @@ import { Music, Trash2, PlusCircle, Info, ChevronDown, ChevronUp, FileAudio, Mic
 import { ARTIST_ROLES, CONTRIBUTOR_TYPES, EXPLICIT_OPTIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { processFullAudio, cropAndConvertAudio, getAudioDuration } from '../../utils/audioProcessing';
 import { api } from '../../utils/api';
+import { AlertModal } from '../../components/AlertModal';
 
 interface Props {
   data: ReleaseData;
@@ -70,6 +71,13 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   
   // Stable Audio URL State to prevent src changing on every render
   const [stableAudioUrl, setStableAudioUrl] = useState<string | null>(null);
+  
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   useEffect(() => {
     if (trimmerState.rawFile) {
@@ -234,13 +242,23 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                     }
                 } catch (e) {
                     console.error('Upload tmp audio clip failed:', e);
-                    alert("Failed to upload clipped audio. Please try again.");
+                    setAlertState({
+                        isOpen: true,
+                        title: 'Gagal Upload',
+                        message: 'Failed to upload clipped audio. Please try again.',
+                        type: 'error'
+                    });
                 }
             }
         }
       } catch (error) {
           console.error(error);
-          alert("Failed to trim audio.");
+          setAlertState({
+              isOpen: true,
+              title: 'Gagal Trim',
+              message: 'Failed to trim audio.',
+              type: 'error'
+          });
       } finally {
         setProcessingState(prev => {
             const newState = { ...prev };
@@ -392,7 +410,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             }
         } catch (error) {
             console.error("File processing error:", error);
-            alert("Error processing Full Audio.");
+            setAlertState({
+                isOpen: true,
+                title: 'Error',
+                message: 'Error processing Full Audio.',
+                type: 'error'
+            });
         } finally {
             setProcessingState(prev => {
                 const newState = { ...prev };
@@ -472,7 +495,12 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 isPlaying: false
             });
         } catch (e) {
-            alert("Could not read audio file for clipping.");
+            setAlertState({
+                isOpen: true,
+                title: 'Error',
+                message: 'Could not read audio file for clipping.',
+                type: 'error'
+            });
         }
     }
   };
@@ -1103,6 +1131,14 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             Add Another Track
         </button>
       )}
+      
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

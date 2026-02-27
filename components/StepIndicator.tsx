@@ -16,18 +16,9 @@ const steps = [
 
 export const StepIndicator: React.FC<Props> = ({ currentStep, onStepClick }) => {
   return (
-    <div className="w-full mb-12 px-2">
-      <div className="flex items-center justify-between relative">
-        {/* Connecting Line Background */}
-        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-100 rounded-full -z-10"></div>
-        
-        {/* Active Line (Dynamic width based on step) */}
-        <div 
-          className="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full -z-10 transition-all duration-500 ease-out"
-          style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-        ></div>
-
-        {steps.map((step, index) => {
+    <div className="w-full mb-8">
+      <div className="flex w-full bg-slate-50 p-1 rounded-xl border border-slate-200">
+        {steps.map((step) => {
           const isActive = step.id === currentStep;
           const isCompleted = step.id < currentStep;
           const canClick = !!onStepClick && step.id <= currentStep;
@@ -35,27 +26,34 @@ export const StepIndicator: React.FC<Props> = ({ currentStep, onStepClick }) => 
           return (
             <div 
               key={step.id} 
-              className={`flex flex-col items-center group ${canClick ? 'cursor-pointer' : 'cursor-default'}`}
+              className={`flex-1 relative flex flex-col items-center justify-center py-2.5 px-2 rounded-lg transition-all duration-300 ${
+                isActive 
+                  ? 'bg-white shadow-sm text-blue-600 ring-1 ring-black/5' 
+                  : canClick 
+                    ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 cursor-pointer' 
+                    : 'text-slate-300 cursor-default'
+              }`}
               onClick={() => { if (canClick) onStepClick!(step.id); }}
             >
-               <div 
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium shadow-sm transition-all duration-300 border-2 
-                ${isActive 
-                  ? 'bg-white border-blue-500 text-blue-600 scale-110' 
-                  : isCompleted 
-                    ? 'bg-gradient-to-br from-blue-500 to-cyan-500 border-white text-white' 
-                    : 'bg-white border-white text-gray-300'}`}
-           >
-              {isCompleted ? <Check size={14} strokeWidth={2.5} /> : step.id}
-           </div>
-           <div className={`mt-1.5 text-center transition-all duration-300 ${isActive ? 'transform translate-y-0 opacity-100' : 'transform translate-y-1 opacity-70'}`}>
-             <h4 className={`text-[10px] font-medium ${isActive ? 'text-blue-900' : 'text-gray-400'}`}>
-               {step.label}
-             </h4>
-             <p className="text-[9px] uppercase tracking-wider text-gray-400 font-medium hidden sm:block">
-               {step.desc}
-             </p>
-           </div>
+               <div className="flex items-center gap-2">
+                  {isCompleted ? (
+                    <div className="w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                        <Check size={10} strokeWidth={3} />
+                    </div>
+                  ) : (
+                    <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${isActive ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                        {step.id}
+                    </span>
+                  )}
+                  <span className={`text-sm font-semibold tracking-tight ${isActive ? 'text-slate-800' : ''}`}>
+                    {step.label}
+                  </span>
+               </div>
+               
+               {/* Optional Description - visible on larger screens */}
+               <span className={`text-[10px] font-medium mt-0.5 hidden sm:block ${isActive ? 'text-blue-500' : 'text-slate-400'}`}>
+                 {step.desc}
+               </span>
             </div>
           );
         })}

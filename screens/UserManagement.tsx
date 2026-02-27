@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 import { api } from '../utils/api';
+import { AlertModal, AlertState } from '../components/AlertModal';
 
 export const UserManagement: React.FC = () => {
   // --- USER MANAGEMENT LOGIC ---
@@ -28,6 +29,12 @@ export const UserManagement: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [statusDraft, setStatusDraft] = useState<User['status'] | null>(null);
+  const [alertState, setAlertState] = useState<AlertState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
   
   // Add/Edit User Form State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -73,7 +80,12 @@ export const UserManagement: React.FC = () => {
             
             const response = await api.updateUser(token, editingUserId, payload);
             setUsers(prev => prev.map(u => u.id === editingUserId ? response.user : u));
-            alert('User updated successfully');
+            setAlertState({
+                isOpen: true,
+                title: 'Sukses',
+                message: 'User berhasil diperbarui',
+                type: 'success'
+            });
         } else {
             const payload = {
                 ...newUser,
@@ -82,11 +94,21 @@ export const UserManagement: React.FC = () => {
             };
             const response = await api.createUser(token, payload);
             setUsers(prev => [response.user, ...prev]);
-            alert('User created successfully');
+            setAlertState({
+                isOpen: true,
+                title: 'Sukses',
+                message: 'User berhasil dibuat',
+                type: 'success'
+            });
         }
         closeModal();
     } catch (err: any) {
-        alert(`Failed to save user: ${err.message}`);
+        setAlertState({
+            isOpen: true,
+            title: 'Gagal',
+            message: `Gagal menyimpan user: ${err.message}`,
+            type: 'error'
+        });
     } finally {
         setIsSubmitting(false);
     }
@@ -118,7 +140,12 @@ export const UserManagement: React.FC = () => {
           await api.deleteUser(token, userId);
           setUsers(prev => prev.filter(u => u.id !== userId));
       } catch (err: any) {
-          alert(`Failed to delete user: ${err.message}`);
+          setAlertState({
+            isOpen: true,
+            title: 'Gagal',
+            message: `Gagal menghapus user: ${err.message}`,
+            type: 'error'
+          });
       }
   };
 
@@ -232,17 +259,17 @@ export const UserManagement: React.FC = () => {
                 <table className="w-full text-left">
                     <thead>
                         <tr className="border-b border-gray-200">
-                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">User</th>
-                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Aggregator %</th>
-                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Publishing %</th>
+                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">User</th>
+                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Aggregator %</th>
+                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Publishing %</th>
                             {userTab !== 'REGISTERED' && (
-                              <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                              <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Role</th>
                             )}
-                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Joined Date</th>
-                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Approved</th>
-                            <th className="text-left py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Reject Date</th>
-                            <th className="text-right py-2 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Action</th>
+                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Joined Date</th>
+                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Approved</th>
+                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Reject Date</th>
+                            <th className="text-right py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -251,19 +278,19 @@ export const UserManagement: React.FC = () => {
                                 <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                                     <td className="py-2 px-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                                {(user.full_name || user.name).charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <div className="font-medium text-slate-800 text-[11px]">{user.full_name || user.name}</div>
-                                                <div className="text-[10px] text-slate-500">{user.email}</div>
-                                            </div>
-                                        </div>
+                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                      {(user.full_name || user.name).charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-800 text-[10px]">{user.full_name || user.name}</div>
+                      <div className="text-[9px] text-slate-500">{user.email}</div>
+                    </div>
+                  </div>
                                     </td>
-                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                    <td className="py-2 px-3 text-[10px] text-slate-600">
                                         {user.aggregator_percentage !== null && user.aggregator_percentage !== undefined ? `${user.aggregator_percentage}%` : '-'}
                                     </td>
-                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                    <td className="py-2 px-3 text-[10px] text-slate-600">
                                         {user.publishing_percentage !== null && user.publishing_percentage !== undefined ? `${user.publishing_percentage}%` : '-'}
                                     </td>
                                     {userTab !== 'REGISTERED' && (
@@ -290,13 +317,13 @@ export const UserManagement: React.FC = () => {
                                             {user.status}
                                         </span>
                                     </td>
-                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                    <td className="py-2 px-3 text-[10px] text-slate-600">
                                         {user.registeredDate || '-'}
                                     </td>
-                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                    <td className="py-2 px-3 text-[10px] text-slate-600">
                                         {user.joinedDate || '-'}
                                     </td>
-                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                    <td className="py-2 px-3 text-[10px] text-slate-600">
                                         {user.rejectedDate || '-'}
                                     </td>
                                     <td className="py-2 px-3 text-right">
@@ -321,7 +348,7 @@ export const UserManagement: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={userTab !== 'REGISTERED' ? 9 : 8} className="py-6 text-center text-slate-500 text-[11px]">
+                                <td colSpan={userTab !== 'REGISTERED' ? 9 : 8} className="py-6 text-center text-slate-500 text-[10px]">
                                     No users found matching your criteria.
                                 </td>
                             </tr>
@@ -334,7 +361,7 @@ export const UserManagement: React.FC = () => {
        {/* Add User Modal */}
        {showAddUserModal && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-xl w-[96vw] md:w-full max-w-6xl h-[90svh] overflow-hidden animate-scale-in flex flex-col">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-scale-in flex flex-col">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                         <h3 className="text-lg font-bold text-slate-800">
                             {editingUserId ? 'Edit User' : (addUserContext === 'INTERNAL' ? 'Add Internal User' : 'Add Registered User')}
@@ -460,7 +487,7 @@ export const UserManagement: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="rounded-xl border border-slate-200 overflow-hidden">
-                                    <table className="w-full text-[11px]">
+                                    <table className="w-full text-[10px]">
                                         <tbody className="[&>tr>td]:py-1.5 [&>tr>td]:px-2.5 [&>tr:nth-child(even)]:bg-slate-50">
                                             <tr><td className="text-slate-600">Account Type</td><td className="font-medium">{selectedUser.account_type || '-'}</td></tr>
                                             {(selectedUser.account_type === 'COMPANY') && (
@@ -629,7 +656,12 @@ export const UserManagement: React.FC = () => {
                                 if (!selectedUser) return;
                                 const s = statusDraft || selectedUser.status;
                                 if (s === 'Rejected' && (!rejectReason || !rejectReason.trim())) {
-                                    alert('Alasan penolakan wajib diisi');
+                                    setAlertState({
+                                        isOpen: true,
+                                        title: 'Perhatian',
+                                        message: 'Alasan penolakan wajib diisi',
+                                        type: 'warning'
+                                    });
                                     return;
                                 }
                                 try {
@@ -663,9 +695,21 @@ export const UserManagement: React.FC = () => {
                                     });
                                     setStatusDraft(res.user.status);
                                     if (s !== 'Rejected') setRejectReason('');
-                                    alert('Perubahan status berhasil');
+                                    setAlertState({
+                                        isOpen: true,
+                                        title: 'Sukses',
+                                        message: 'Perubahan status berhasil',
+                                        type: 'success'
+                                    });
                                     setShowUserViewModal(false);
-                                } catch (err: any) { alert(err.message); }
+                                } catch (err: any) {
+                                    setAlertState({
+                                        isOpen: true,
+                                        title: 'Gagal',
+                                        message: err.message,
+                                        type: 'error'
+                                    });
+                                }
                             }}
                             className={`px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 ${statusDraft === 'Rejected' && !rejectReason?.trim() ? 'opacity-60 cursor-not-allowed' : ''}`}
                         >

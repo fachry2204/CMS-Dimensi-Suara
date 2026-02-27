@@ -4,6 +4,8 @@ import {
 } from 'lucide-react';
 import { api } from '../../utils/api';
 
+import { AlertModal } from '../../components/AlertModal';
+
 interface Writer {
     name: string;
     role: string;
@@ -36,6 +38,12 @@ interface Props {
 }
 
 export const PublishingSongs: React.FC<Props> = ({ token }) => {
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'error'
+    });
     const [songs, setSongs] = useState<Song[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -264,7 +272,12 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
         // Validate writers share
         const totalShare = writers.reduce((sum, w) => sum + Number(w.share_percent), 0);
         if (Math.abs(totalShare - 100) > 0.1) { // Floating point tolerance
-            alert(`Total share writer harus 100%. Saat ini: ${totalShare}%`);
+            setAlertState({
+                isOpen: true,
+                title: 'Validasi Share',
+                message: `Total share writer harus 100%. Saat ini: ${totalShare}%`,
+                type: 'warning'
+            });
             return;
         }
 
@@ -909,6 +922,14 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                     </div>
                 </div>
             )}
+
+            <AlertModal
+                isOpen={alertState.isOpen}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 };

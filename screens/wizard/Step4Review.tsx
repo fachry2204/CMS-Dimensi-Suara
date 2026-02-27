@@ -4,6 +4,7 @@ import { ReleaseData } from '../../types';
 import { api } from '../../utils/api';
 import { assetUrl } from '../../utils/url';
 import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle, ChevronLeft, X, Check } from 'lucide-react';
+import { AlertModal } from '../../components/AlertModal';
 
 interface Props {
   data: ReleaseData;
@@ -24,6 +25,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
   const [nowTs, setNowTs] = useState<number>(Date.now());
   const [fileProgress, setFileProgress] = useState<number>(0);
   const [uploadQueue, setUploadQueue] = useState<{ key: string; label: string; status: 'Queued' | 'Uploading' | 'Done'; progress: number }[]>([]);
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   React.useEffect(() => {
     if (isSubmitting && uploadTotal > 0) {
@@ -328,7 +335,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
              message += '\nDetails: ' + error.payload.details.join(', ');
         }
 
-        alert(`Upload failed: ${message}`);
+        setAlertState({
+            isOpen: true,
+            title: 'Upload Failed',
+            message: message,
+            type: 'error'
+        });
     } finally {
         setIsSubmitting(false);
     }
@@ -707,6 +719,14 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             </div>
         </div>
       )}
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

@@ -59,6 +59,20 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const [statusModalStatus, setStatusModalStatus] = useState<string | null>(null);
   const [statusModalUser, setStatusModalUser] = useState<string | null>(null);
 
+  // Branding State
+  const [branding, setBranding] = useState<{logo: string | null, login_background: string | null}>({
+      logo: null,
+      login_background: null
+  });
+
+  useEffect(() => {
+      // Fetch branding
+      fetch('/api/settings/branding')
+          .then(res => res.json())
+          .then(data => setBranding(data))
+          .catch(err => console.error("Failed to fetch branding:", err));
+  }, []);
+
   // register mode removed
 
   // register mode removed
@@ -128,9 +142,13 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const renderLogin = () => (
     <>
       <div className="text-center mb-6">
-        <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-blue-500/30">
-          <Music4 size={24} />
-        </div>
+        {branding.logo ? (
+            <img src={branding.logo} alt="Logo" className="h-16 object-contain mx-auto mb-3" />
+        ) : (
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-blue-500/30">
+                <Music4 size={24} />
+            </div>
+        )}
         
         <h1 className="text-xl font-bold text-slate-800 tracking-tight">Dimensi Suara CMS</h1>
         <p className="text-slate-500 text-xs mt-1">Sign in to manage your music distribution</p>
@@ -206,6 +224,20 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
             </>
           )}
         </button>
+
+        <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px]">ATAU</span>
+            <div className="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/register')}
+          className="w-full py-3 rounded-lg font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 shadow-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 text-xs"
+        >
+          Belum punya akun? Daftar di sini
+        </button>
       </form>
 
       <div className="mt-6 text-center space-y-3">
@@ -228,13 +260,6 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <p className="text-[10px] text-slate-400">
           Protected CMS Area. Authorized personnel only.
         </p>
-        <button
-          type="button"
-          onClick={() => navigate('/register')}
-          className="text-[10px] font-semibold text-blue-600 hover:text-blue-700"
-        >
-          Belum punya akun? Daftar di sini
-        </button>
       </div>
     </>
   );
@@ -258,8 +283,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   // register mode removed
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl shadow-blue-900/10 border border-white p-6 md:p-8 animate-fade-in-up">
+    <div 
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4 bg-cover bg-center"
+        style={branding.login_background ? { backgroundImage: `url(${branding.login_background})` } : {}}
+    >
+      <div className="w-full max-w-sm bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl shadow-blue-900/10 border border-white/50 p-6 md:p-8 animate-fade-in-up">
         {renderLogin()}
       </div>
 

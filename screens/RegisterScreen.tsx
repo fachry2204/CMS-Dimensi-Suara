@@ -641,18 +641,18 @@ export const RegisterScreen: React.FC<Props> = () => {
   const renderDocUploadItem = (label: string, field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature', file: File | null, required: boolean) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-semibold text-slate-700">
+        <label className="text-[10px] font-semibold text-slate-700">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         {file && (
-          <span className="text-[11px] text-green-600 flex items-center gap-1">
-            <CheckCircle2 size={12} />
+          <span className="text-[10px] text-green-600 flex items-center gap-1">
+            <CheckCircle2 size={10} />
             Terupload
           </span>
         )}
       </div>
       <div className="space-y-3">
-        <label className="flex-1 px-4 py-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-xs text-slate-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50">
+        <label className="flex-1 px-3 py-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-[10px] text-slate-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50">
           <input
             type="file"
             accept={field === 'kemenkumham' ? 'application/pdf' : 'image/*,application/pdf'}
@@ -665,7 +665,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           {file ? file.name : 'Pilih file'}
         </label>
         {docPreviews[field] && (
-          <div className="w-28 h-28 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+          <div className="w-24 h-24 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
             <img
               src={docPreviews[field]}
               alt={label}
@@ -684,7 +684,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         <button
           type="button"
           onClick={() => handleSelectAccountType('PERSONAL')}
-          className={`flex items-center justify-center gap-2 py-3 rounded-xl text-base bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium
+          className={`flex items-center justify-center gap-2 py-2 rounded-xl text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium
             ${accountType === 'PERSONAL' ? 'bg-green-100 text-green-700 ring-2 ring-green-300' : ''}`}
         >
           Personal
@@ -692,65 +692,65 @@ export const RegisterScreen: React.FC<Props> = () => {
         <button
           type="button"
           onClick={() => handleSelectAccountType('COMPANY')}
-          className={`flex items-center justify-center gap-2 py-3 rounded-xl text-base bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium
+          className={`flex items-center justify-center gap-2 py-2 rounded-xl text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium
             ${accountType === 'COMPANY' ? 'bg-green-100 text-green-700 ring-2 ring-green-300' : ''}`}
         >
-          <Building2 size={16} />
+          <Building2 size={14} />
           Perusahaan
         </button>
       </div>
       {accountType === 'COMPANY' && (
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Nama Perusahaan</label>
+          <label className="text-[10px] font-semibold text-slate-700">Nama Perusahaan</label>
           <input
             type="text"
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             placeholder="Masukkan nama perusahaan"
           />
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">NIK</label>
+          <label className="text-[10px] font-semibold text-slate-700">NIK</label>
           <input
             type="text"
             value={nik}
             onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, '').slice(0, 16))}
             maxLength={16}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             placeholder="Masukkan NIK"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}</label>
+          <label className="text-[10px] font-semibold text-slate-700">{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}</label>
           <input
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             placeholder={accountType === 'COMPANY' ? 'Masukkan nama direktur' : 'Masukkan nama lengkap'}
           />
         </div>
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700">Alamat Lengkap</label>
+        <label className="text-[10px] font-semibold text-slate-700">Alamat Lengkap</label>
         <textarea
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm min-h-[70px]"
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px] min-h-[70px]"
           placeholder="Masukkan alamat lengkap"
         />
       </div>
       {country === 'Indonesia' ? (
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">Negara</label>
+            <label className="text-[10px] font-semibold text-slate-700">Negara</label>
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             >
               <option value="">Pilih negara</option>
               {countries.map((c) => (
@@ -759,7 +759,7 @@ export const RegisterScreen: React.FC<Props> = () => {
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700">Provinsi</label>
+            <label className="text-[10px] font-semibold text-slate-700">Provinsi</label>
             {provinces.length > 0 ? (
               <select
                 value={provinceCode}
@@ -773,7 +773,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                   setSubdistrict('');
                   setPostalCode('');
                 }}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
               >
                 <option value="">Pilih provinsi</option>
                 {provinces.map((p) => (<option key={p.code} value={p.code}>{p.name}</option>))}
@@ -783,7 +783,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                 type="text"
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                 placeholder="Provinsi"
               />
             )}
@@ -791,11 +791,11 @@ export const RegisterScreen: React.FC<Props> = () => {
         </div>
       ) : (
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Negara</label>
+          <label className="text-[10px] font-semibold text-slate-700">Negara</label>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
           >
             <option value="">Pilih negara</option>
             {countries.map((c) => (
@@ -808,7 +808,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Kota / Kabupaten</label>
+              <label className="text-[10px] font-semibold text-slate-700">Kota / Kabupaten</label>
               {regencies.length > 0 ? (
                 <select
                   value={regencyCode}
@@ -821,7 +821,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                     setSubdistrict('');
                     setPostalCode('');
                   }}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                 >
                   <option value="">Pilih kota / kabupaten</option>
                   {regencies.map((r) => (<option key={r.code} value={r.code}>{r.name}</option>))}
@@ -831,7 +831,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                   placeholder="Kota / Kabupaten"
                 />
               )}
@@ -839,7 +839,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           </div>
           <div className="grid grid-cols-[2fr_2fr_1fr] gap-3">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Kecamatan</label>
+              <label className="text-[10px] font-semibold text-slate-700">Kecamatan</label>
               {districts.length > 0 ? (
                 <select
                   value={districtCode}
@@ -851,7 +851,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                     setSubdistrict('');
                     setPostalCode('');
                   }}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                 >
                   <option value="">Pilih kecamatan</option>
                   {districts.map((d) => (<option key={d.code} value={d.code}>{d.name}</option>))}
@@ -861,13 +861,13 @@ export const RegisterScreen: React.FC<Props> = () => {
                   type="text"
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                   placeholder="Kecamatan"
                 />
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Kelurahan</label>
+              <label className="text-[10px] font-semibold text-slate-700">Kelurahan</label>
               {villages.length > 0 ? (
                 <select
                   value={villageCode}
@@ -898,7 +898,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                       setIsPostalLoading(false);
                     }
                   }}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                 >
                   <option value="">Pilih kelurahan</option>
                   {villages.map((v) => (<option key={v.code} value={v.code}>{v.name}</option>))}
@@ -908,18 +908,18 @@ export const RegisterScreen: React.FC<Props> = () => {
                   type="text"
                   value={subdistrict}
                   onChange={(e) => setSubdistrict(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                   placeholder="Kelurahan"
                 />
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700">Kodepos</label>
+              <label className="text-[10px] font-semibold text-slate-700">Kodepos</label>
               <input
                 type="text"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs max-w-[160px]"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-[10px] max-w-[160px]"
                 placeholder={isPostalLoading ? 'Mencari kodepos...' : 'Kodepos'}
               />
             </div>
@@ -927,12 +927,12 @@ export const RegisterScreen: React.FC<Props> = () => {
         </div>
       ) : country ? (
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Kota</label>
+          <label className="text-[10px] font-semibold text-slate-700">Kota</label>
           <input
             type="text"
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             placeholder="Masukkan kota"
           />
         </div>
@@ -944,26 +944,26 @@ export const RegisterScreen: React.FC<Props> = () => {
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Email</label>
+          <label className="text-[10px] font-semibold text-slate-700">Email</label>
           <input
             type="email"
             value={regEmail}
             onChange={(e) => setRegEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             placeholder="Masukkan email"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">No Handphone</label>
+          <label className="text-[10px] font-semibold text-slate-700">No Handphone</label>
           <div className="flex items-center gap-2">
-            <div className="px-3 py-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 min-w-[80px] text-center">
+            <div className="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px] text-slate-700 min-w-[80px] text-center">
               {selectedCountryDialCode || '+..'}
             </div>
             <input
               type="tel"
               value={regPhoneLocal}
               onChange={(e) => setRegPhoneLocal(e.target.value.replace(/[^0-9]/g, ''))}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
               placeholder="Nomor tanpa angka 0 di depan"
             />
           </div>
@@ -971,12 +971,12 @@ export const RegisterScreen: React.FC<Props> = () => {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Password</label>
+          <label className="text-[10px] font-semibold text-slate-700">Password</label>
           <input
             type="password"
             value={regPassword}
             onChange={(e) => setRegPassword(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             placeholder="Password"
           />
           <div className="mt-1">
@@ -996,19 +996,19 @@ export const RegisterScreen: React.FC<Props> = () => {
                   <div className="h-2 w-full bg-slate-200 rounded">
                     <div className={`h-2 rounded ${colors[level]}`} style={{ width: `${(score / 5) * 100}%` }} />
                   </div>
-                  <p className="text-[11px] text-slate-600">Power security: {levels[level]} (≥8 char, huruf besar, kecil, angka, simbol)</p>
+                  <p className="text-[10px] text-slate-600">Power security: {levels[level]} (≥8 char, huruf besar, kecil, angka, simbol)</p>
                 </div>
               );
             })()}
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">Retype Password</label>
+          <label className="text-[10px] font-semibold text-slate-700">Retype Password</label>
           <input
             type="password"
             value={regPasswordConfirm}
             onChange={(e) => setRegPasswordConfirm(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             placeholder="Konfirmasi password"
           />
         </div>
@@ -1017,37 +1017,37 @@ export const RegisterScreen: React.FC<Props> = () => {
         <>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Nama PIC</label>
+              <label className="text-[10px] font-semibold text-slate-700">Nama PIC</label>
               <input
                 type="text"
                 value={picName}
                 onChange={(e) => setPicName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                 placeholder="Nama PIC"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Posisi PIC</label>
+              <label className="text-[10px] font-semibold text-slate-700">Posisi PIC</label>
               <input
                 type="text"
                 value={picPosition}
                 onChange={(e) => setPicPosition(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                 placeholder="Posisi PIC"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">No Handphone PIC</label>
+            <label className="text-[10px] font-semibold text-slate-700">No Handphone PIC</label>
             <div className="flex items-center gap-2">
-              <div className="px-3 py-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 min-w-[80px] text-center">
+              <div className="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px] text-slate-700 min-w-[80px] text-center">
                 {selectedCountryDialCode || '+..'}
               </div>
               <input
                 type="tel"
                 value={picPhoneLocal}
                 onChange={(e) => setPicPhoneLocal(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
                 placeholder="Nomor tanpa angka 0 di depan"
               />
             </div>
@@ -1061,34 +1061,34 @@ export const RegisterScreen: React.FC<Props> = () => {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {accountType === 'COMPANY' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
             {renderDocUploadItem('Upload NIB', 'nib', nibFile, true)}
           </div>
         )}
         {accountType === 'COMPANY' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
             {renderDocUploadItem('Upload Dokumen Kemenkumham', 'kemenkumham', kemenkumhamFile, true)}
           </div>
         )}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload KTP Direktur' : 'Upload KTP', 'ktp', ktpFile, true)}
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload NPWP Perusahaan' : 'Upload NPWP', 'npwp', npwpFile, true)}
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload Tanda Tangan Direktur' : 'Upload Tanda Tangan', 'signature', signatureFile, true)}
         </div>
       </div>
-      {docError && <p className="text-xs text-red-500 font-medium bg-red-50 p-2 rounded-lg border border-red-100">{docError}</p>}
-      {isUploadingDoc && <p className="text-xs text-blue-500 font-medium animate-pulse">Sedang mengupload dokumen...</p>}
+      {docError && <p className="text-[10px] text-red-500 font-medium bg-red-50 p-2 rounded-lg border border-red-100">{docError}</p>}
+      {isUploadingDoc && <p className="text-[10px] text-blue-500 font-medium animate-pulse">Sedang mengupload dokumen...</p>}
     </div>
   );
 
   const renderStep4 = () => (
-    <div className="space-y-4 text-xs text-slate-700">
+    <div className="space-y-4 text-[10px] text-slate-700">
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
-        <p className="text-sm font-semibold text-slate-800">Data Akun</p>
+        <p className="text-[10px] font-semibold text-slate-800">Data Akun</p>
         {accountType === 'COMPANY' && <p>Nama Perusahaan: {companyName}</p>}
         <p>NIK: {nik}</p>
         <p>{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}: {fullName}</p>
@@ -1104,7 +1104,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         <p>Alamat: {address}</p>
       </div>
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
-        <p className="text-sm font-semibold text-slate-800">Kontak & PIC</p>
+        <p className="text-[10px] font-semibold text-slate-800">Kontak & PIC</p>
         <p>Email: {regEmail}</p>
         <p>No Handphone: {regPhoneLocal && selectedCountryDialCode ? `${selectedCountryDialCode}${regPhoneLocal}` : regPhoneLocal}</p>
         {accountType === 'COMPANY' && (
@@ -1116,7 +1116,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         )}
       </div>
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
-        <p className="text-sm font-semibold text-slate-800">Dokumen</p>
+        <p className="text-[10px] font-semibold text-slate-800">Dokumen</p>
         {accountType === 'COMPANY' && (
           <>
             <div className="flex items-center gap-2">
@@ -1152,33 +1152,33 @@ export const RegisterScreen: React.FC<Props> = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
-      <div className="w-full bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-8 md:p-10 animate-fade-in-up max-w-3xl">
+      <div className="w-full bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-6 md:p-8 animate-fade-in-up max-w-3xl">
         <div className="flex items-center justify-between mb-6">
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700"
           >
-            <ChevronLeft size={14} />
+            <ChevronLeft size={12} />
             Kembali ke Login
           </button>
           <div className="text-right">
-            <p className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Pendaftaran Akun</p>
-            <p className="text-sm font-bold text-slate-800">{accountType === 'COMPANY' ? 'Perusahaan' : accountType === 'PERSONAL' ? 'Personal' : 'Pilih Tipe Akun'}</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Pendaftaran Akun</p>
+            <p className="text-[10px] font-bold text-slate-800">{accountType === 'COMPANY' ? 'Perusahaan' : accountType === 'PERSONAL' ? 'Personal' : 'Pilih Tipe Akun'}</p>
           </div>
         </div>
         <div className="flex items-center justify-between mb-4">
           {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex-1 flex items-center">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step === s ? 'bg-blue-600 text-white' : step > s ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                {step > s ? <CheckCircle2 size={14} /> : s}
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === s ? 'bg-blue-600 text-white' : step > s ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                {step > s ? <CheckCircle2 size={10} /> : s}
               </div>
               {s < 4 && <div className={`flex-1 h-[2px] mx-1 ${step > s ? 'bg-green-500' : 'bg-slate-200'}`} />}
             </div>
           ))}
         </div>
         {regError && (
-          <div className="mb-4 bg-red-50 text-red-600 text-xs p-3 rounded-xl flex items-center gap-2 border border-red-100">
+          <div className="mb-4 bg-red-50 text-red-600 text-[10px] p-3 rounded-xl flex items-center gap-2 border border-red-100">
             <AlertCircle size={14} />
             {regError}
           </div>
@@ -1194,7 +1194,7 @@ export const RegisterScreen: React.FC<Props> = () => {
             type="button"
             onClick={goPrevStep}
             disabled={step === 1}
-            className={`flex-1 py-3 rounded-xl border text-xs font-semibold ${step === 1 ? 'border-slate-200 text-slate-300 cursor-not-allowed' : 'border-slate-300 text-slate-700 hover:border-slate-400'}`}
+            className={`flex-1 py-2 rounded-xl border text-[10px] font-semibold ${step === 1 ? 'border-slate-200 text-slate-300 cursor-not-allowed' : 'border-slate-300 text-slate-700 hover:border-slate-400'}`}
           >
             Sebelumnya
           </button>
@@ -1203,7 +1203,7 @@ export const RegisterScreen: React.FC<Props> = () => {
               type="button"
               onClick={goNextStep}
               disabled={(step === 1 && (dupNik || dupCompany || isCheckingDup)) || (step === 2 && (dupEmail || dupPhone || isCheckingDup))}
-              className={`flex-1 py-3 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/25 active:scale-95 ${
+              className={`flex-1 py-2 rounded-xl text-[10px] font-semibold shadow-md shadow-blue-500/25 active:scale-95 ${
                 (step === 1 && (dupNik || dupCompany || isCheckingDup)) || (step === 2 && (dupEmail || dupPhone || isCheckingDup))
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:brightness-110'
@@ -1216,7 +1216,7 @@ export const RegisterScreen: React.FC<Props> = () => {
               type="button"
               onClick={handleRegisterSubmit}
               disabled={isRegistering}
-              className={`flex-1 py-3 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/25 active:scale-95 ${
+              className={`flex-1 py-2 rounded-xl text-[10px] font-semibold shadow-md shadow-blue-500/25 active:scale-95 ${
                 isRegistering ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:brightness-110'
               }`}
             >
@@ -1232,15 +1232,15 @@ export const RegisterScreen: React.FC<Props> = () => {
             <div className="flex items-center gap-3">
               <AlertCircle size={24} className="text-red-500" />
               <div>
-                <p className="text-sm font-semibold text-slate-800">Data Tidak Lengkap / Tidak Valid</p>
-                <p className="text-xs text-slate-600 mt-1">{regError}</p>
+                <p className="text-[10px] font-semibold text-slate-800">Data Tidak Lengkap / Tidak Valid</p>
+                <p className="text-[10px] text-slate-600 mt-1">{regError}</p>
               </div>
             </div>
             <div className="flex justify-end mt-4">
               <button
                 type="button"
                 onClick={() => setRegErrorModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-[10px] font-semibold hover:bg-blue-700"
               >
                 Mengerti
               </button>
@@ -1252,7 +1252,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       {cropImageUrl && cropField && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-8 space-y-6">
-            <p className="text-sm font-semibold text-slate-800">Crop {cropField.toUpperCase()}</p>
+            <p className="text-[10px] font-semibold text-slate-800">Crop {cropField.toUpperCase()}</p>
             <div className="w-full flex items-center justify-center">
               <div
                 className="relative bg-slate-100 rounded-xl overflow-hidden"
@@ -1362,15 +1362,15 @@ export const RegisterScreen: React.FC<Props> = () => {
             </div>
             <div className="grid grid-cols-3 gap-6">
               <div className="space-y-1">
-                <p className="text-xs text-slate-600">Zoom</p>
+                <p className="text-[10px] text-slate-600">Zoom</p>
                 <input type="range" min={0.2} max={4} step={0.01} value={cropScale} onChange={(e) => setCropScale(parseFloat(e.target.value))} className="w-full" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-slate-600">Rotasi</p>
+                <p className="text-[10px] text-slate-600">Rotasi</p>
                 <input type="range" min={-15} max={15} step={0.1} value={cropAngle} onChange={(e) => setCropAngle(parseFloat(e.target.value))} className="w-full" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-slate-600">Lebar/Tinggi Crop</p>
+                <p className="text-[10px] text-slate-600">Lebar/Tinggi Crop</p>
                 <div className="flex items-center gap-2">
                   <input type="range" min={64} max={720} step={1} value={cropRect.w} onChange={(e) => setCropRect((prev) => ({ ...prev, w: Math.min(720 - prev.x, parseInt(e.target.value)) }))} className="flex-1" />
                   <input type="range" min={64} max={480} step={1} value={cropRect.h} onChange={(e) => setCropRect((prev) => ({ ...prev, h: Math.min(480 - prev.y, parseInt(e.target.value)) }))} className="flex-1" />
@@ -1378,8 +1378,8 @@ export const RegisterScreen: React.FC<Props> = () => {
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={cancelCrop} className="px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-700">Batal</button>
-              <button type="button" onClick={applyCrop} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">Simpan Crop</button>
+              <button type="button" onClick={cancelCrop} className="px-4 py-2 rounded-xl border border-slate-200 text-[10px] text-slate-700">Batal</button>
+              <button type="button" onClick={applyCrop} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-[10px] font-semibold hover:bg-blue-700">Simpan Crop</button>
             </div>
           </div>
         </div>
@@ -1388,8 +1388,8 @@ export const RegisterScreen: React.FC<Props> = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-slate-800">{previewModal.title}</p>
-              <button type="button" onClick={() => setPreviewModal(null)} className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-700">Tutup</button>
+              <p className="text-[10px] font-semibold text-slate-800">{previewModal.title}</p>
+              <button type="button" onClick={() => setPreviewModal(null)} className="px-3 py-1.5 rounded-xl border border-slate-200 text-[10px] text-slate-700">Tutup</button>
             </div>
             <div className="w-full max-h-[70vh] overflow-auto">
               <img src={previewModal.url} alt={previewModal.title} className="w-full h-auto object-contain" />

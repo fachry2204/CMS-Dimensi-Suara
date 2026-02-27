@@ -6,6 +6,7 @@ import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, D
 import { formatDMY } from '../utils/date';
 import { assetUrl } from '../utils/url';
 import { api, API_BASE_URL } from '../utils/api';
+import { AlertModal } from './AlertModal';
 
 interface Props {
   release: ReleaseData;
@@ -24,6 +25,12 @@ interface Props {
 
 export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, onUpdate, availableAggregators, mode = 'edit', onEdit, onDelete, userRole, isUpdatingCoverArt, token, onCoverArtUpdated }) => {
   const [activeTab, setActiveTab] = useState<'INFO' | 'DISTRIBUTION'>('INFO');
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   // Accordion State for Tracklist
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
@@ -123,17 +130,67 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
     // Check permissions if needed, but UI already restricts it
     if (!token) {
-        alert("Session expired. Please login again.");
+        setAlertState({
+            isOpen: true,
+            title: 'Sesi Berakhir',
+            message: 'Session expired. Please login again.',
+            type: 'error'
+        });
         return;
     }
 
-    if (!file.type.startsWith('image/')) {
-        alert("Please upload a valid image file (JPEG, PNG).");
+    // 1. Strict File Type Check
+    if (file.type !== 'image/jpeg' && file.type !== 'image/jpg') {
+        setAlertState({
+            isOpen: true,
+            title: 'Format File Salah',
+            message: 'Format gambar WAJIB JPG/JPEG. Tidak boleh format lain.',
+            type: 'error'
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+    }
+
+    // 2. Strict Dimension Check (3000x3000px)
+    const isValidDimensions = await new Promise<boolean>((resolve) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            if (img.width !== 3000 || img.height !== 3000) {
+                setAlertState({
+                    isOpen: true,
+                    title: 'Ukuran Gambar Salah',
+                    message: `Ukuran gambar WAJIB 3000x3000px. Tidak boleh ukuran lain. Ukuran file anda: ${img.width}x${img.height}px`,
+                    type: 'error'
+                });
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+        };
+        img.onerror = () => {
+            setAlertState({
+                isOpen: true,
+                title: 'Error',
+                message: 'Gagal membaca file gambar.',
+                type: 'error'
+            });
+            resolve(false);
+        };
+    });
+
+    if (!isValidDimensions) {
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
     }
 
     if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        alert("File size exceeds 5MB limit.");
+        setAlertState({
+            isOpen: true,
+            title: 'File Terlalu Besar',
+            message: 'File size exceeds 5MB limit.',
+            type: 'error'
+        });
         return;
     }
 
@@ -165,14 +222,29 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
            if (onCoverArtUpdated) {
                onCoverArtUpdated(data.cover_art_url);
            }
-           alert("Cover art updated successfully!");
+           setAlertState({
+               isOpen: true,
+               title: 'Berhasil',
+               message: 'Cover art updated successfully!',
+               type: 'success'
+           });
         } else {
-           alert("Cover art uploaded. Please refresh to see changes.");
+           setAlertState({
+               isOpen: true,
+               title: 'Berhasil',
+               message: 'Cover art uploaded. Please refresh to see changes.',
+               type: 'success'
+           });
         }
         
     } catch (error: any) {
         console.error("Upload error:", error);
-        alert(error.message || "Failed to upload cover art");
+        setAlertState({
+            isOpen: true,
+            title: 'Gagal Upload',
+            message: error.message || "Failed to upload cover art",
+            type: 'error'
+        });
     } finally {
         setIsUploadingCover(false);
         // Reset input
@@ -183,7 +255,12 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
   // AI Generation for Rejection
   const generateRejectionMessage = async () => {
       if (!rejectionReason) {
-          alert("Mohon isi alasan utama terlebih dahulu.");
+          setAlertState({
+              isOpen: true,
+              title: 'Peringatan',
+              message: 'Mohon isi alasan utama terlebih dahulu.',
+              type: 'warning'
+          });
           return;
       }
       setIsGeneratingAi(true);
@@ -205,7 +282,12 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           setRejectionDesc(result.text || "");
       } catch (error) {
           console.error("AI Generation Error", error);
-          alert("Gagal membuat deskripsi. Periksa API Key atau coba lagi manual.");
+          setAlertState({
+              isOpen: true,
+              title: 'Gagal',
+              message: 'Gagal membuat deskripsi. Periksa API Key atau coba lagi manual.',
+              type: 'error'
+          });
           // Fallback if AI fails
           setRejectionDesc(`Rilis Anda ditolak karena: ${rejectionReason}. Mohon perbaiki masalah ini dan ajukan ulang.`);
       } finally {
@@ -216,14 +298,24 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
   const handleSaveStatus = () => {
       // 1. Validation for Processing
       if (status === 'Processing' && !selectedAggregator) {
-          alert("Please select an Aggregator for processing.");
+          setAlertState({
+              isOpen: true,
+              title: 'Validasi Gagal',
+              message: 'Please select an Aggregator for processing.',
+              type: 'error'
+          });
           return;
       }
 
       // 2. Validation for LIVE/RELEASED (Strict)
       if (status === 'Live') {
           if (!upcInput || upcInput.trim() === "") {
-             alert("CRITICAL: Album UPC is REQUIRED for Live status.");
+             setAlertState({
+                 isOpen: true,
+                 title: 'CRITICAL ERROR',
+                 message: 'Album UPC is REQUIRED for Live status.',
+                 type: 'error'
+             });
              return;
           }
           
@@ -233,14 +325,24 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           });
 
           if (missingIsrcs) {
-              alert("CRITICAL: ISRC Codes are REQUIRED for ALL tracks when status is Live.");
+              setAlertState({
+                  isOpen: true,
+                  title: 'CRITICAL ERROR',
+                  message: 'ISRC Codes are REQUIRED for ALL tracks when status is Live.',
+                  type: 'error'
+              });
               return;
           }
       }
 
       // 3. Validation for Rejection
       if (status === 'Rejected' && !rejectionReason) {
-          alert("Please provide a reason for rejection.");
+          setAlertState({
+              isOpen: true,
+              title: 'Validasi Gagal',
+              message: 'Please provide a reason for rejection.',
+              type: 'error'
+          });
           return;
       }
 
@@ -283,7 +385,12 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
-      alert("Copied to clipboard!");
+      setAlertState({
+          isOpen: true,
+          title: 'Disalin',
+          message: 'Copied to clipboard!',
+          type: 'success'
+      });
   };
 
   const AudioPlayer = ({ track, type = 'full' }: { track: Track, type?: 'full' | 'clip' }) => {
@@ -406,7 +513,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         type="file" 
                         ref={fileInputRef} 
                         onChange={handleCoverArtUpload} 
-                        accept="image/jpeg,image/png,image/webp" 
+                        accept=".jpg, .jpeg" 
                         className="hidden" 
                     />
 
@@ -434,6 +541,10 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                     >
                         <Download size={14} /> Album Cover
                     </button>
+                    
+                    <div className="text-[10px] text-red-600 font-medium leading-tight text-center mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                        Wajib menggunakan format JPG/JPEG dengan resolusi tepat 3000x3000px.
+                    </div>
                 </div>
                 <div className="flex-1">
                     <div className="text-sm text-slate-500 mb-1">

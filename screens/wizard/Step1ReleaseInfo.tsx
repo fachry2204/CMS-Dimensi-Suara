@@ -4,6 +4,7 @@ import { TextInput, SelectInput } from '../../components/Input';
 import { LANGUAGES, VERSIONS, TRACK_GENRES, SUB_GENRES_MAP } from '../../constants';
 import { ImagePlus, UserPlus, Trash2, Loader2 } from 'lucide-react';
 import { api } from '../../utils/api';
+import { AlertModal } from '../../components/AlertModal';
 
 interface Props {
   data: ReleaseData;
@@ -17,6 +18,12 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userType, setUserType] = useState<'Company' | 'Personal' | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   useEffect(() => {
     const fetchUserType = async () => {
@@ -44,51 +51,64 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
     fetchUserType();
   }, []);
 
-  // --- Image Processing Logic ---
-  const processImage = async (file: File): Promise<File> => {
+  // --- Image Validation Logic ---
+  const validateImage = async (file: File): Promise<boolean> => {
     return new Promise((resolve, reject) => {
+      // 1. Check File Type (Strict JPG)
+      if (file.type !== 'image/jpeg' && file.type !== 'image/jpg') {
+        setAlertState({
+          isOpen: true,
+          title: 'Format File Salah',
+          message: 'Format gambar WAJIB JPG/JPEG. Tidak boleh format lain.',
+          type: 'error'
+        });
+        resolve(false);
+        return;
+      }
+
       const img = new Image();
       img.src = URL.createObjectURL(file);
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 3000;
-        canvas.height = 3000;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error("Canvas context error"));
-          return;
+        // 2. Check Dimensions (Strict 3000x3000px)
+        if (img.width !== 3000 || img.height !== 3000) {
+          setAlertState({
+            isOpen: true,
+            title: 'Ukuran Gambar Salah',
+            message: `Ukuran gambar WAJIB 3000x3000px. Tidak boleh ukuran lain. Ukuran file anda: ${img.width}x${img.height}px`,
+            type: 'error'
+          });
+          resolve(false);
+        } else {
+          resolve(true);
         }
-
-        // Fill white background (optional, but good for JPG)
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, 3000, 3000);
-
-        // Draw image stretched/resized to 3000x3000px
-        ctx.drawImage(img, 0, 0, 3000, 3000);
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
-              type: "image/jpeg",
-              lastModified: Date.now(),
-            });
-            resolve(newFile);
-          } else {
-            reject(new Error("Blob creation failed"));
-          }
-        }, "image/jpeg", 0.9);
       };
-      img.onerror = (err) => reject(err);
+      img.onerror = (err) => {
+        setAlertState({
+          isOpen: true,
+          title: 'Error',
+          message: 'Gagal membaca file gambar.',
+          type: 'error'
+        });
+        resolve(false);
+      };
     });
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
       setIsProcessingCover(true);
       try {
-        const processedFile = await processImage(e.target.files[0]);
+        const isValid = await validateImage(file);
+        if (!isValid) {
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
         const token = localStorage.getItem('cms_token') || '';
-        let storedCover: any = processedFile;
+        let storedCover: any = file;
+        
         if (token) {
           try {
             // Use TMP upload
@@ -96,7 +116,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
               token,
               { title: (data.title && data.title.trim()) || `Cover-${Date.now()}`, primaryArtists: (data.primaryArtists || []).filter(a => a && a.trim() !== '') },
               'coverArt',
-              processedFile
+              file
             );
             if (resp && resp.paths && resp.paths['coverArt']) {
               storedCover = resp.paths['coverArt'];
@@ -108,7 +128,12 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
         updateData({ coverArt: storedCover });
       } catch (error) {
         console.error("Image processing failed", error);
-        alert("Failed to process image.");
+        setAlertState({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to process image.',
+            type: 'error'
+        });
       } finally {
         setIsProcessingCover(false);
       }
@@ -257,20 +282,15 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                             </div>
                           )}
                         </div>
-                        <div className="text-xs text-slate-500 space-y-1">
-                            <p className="font-medium text-slate-700">Requirements:</p>
-                            <ul className="list-disc pl-4">
-                                <li>Format: JPG/PNG</li>
-                                <li>Size: 3000x3000px</li>
-                                <li>Ratio: 1:1</li>
-                            </ul>
+                        <div className="text-[10px] text-red-600 font-medium space-y-1 mt-2 p-2 bg-red-50 border border-red-200 rounded text-center leading-tight">
+                            <p>Wajib menggunakan format JPG/JPEG dengan resolusi tepat 3000x3000px.</p>
                         </div>
                     </div>
                     <input
                       type="file"
                       ref={fileInputRef}
                       className="hidden"
-                      accept="image/*"
+                      accept=".jpg, .jpeg"
                       onChange={handleCoverUpload}
                     />
                   </div>
@@ -332,6 +352,14 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
           </div>
           )}
       </div>
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

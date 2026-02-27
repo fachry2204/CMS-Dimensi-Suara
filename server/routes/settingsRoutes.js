@@ -1,63 +1,239 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { exec } from 'child_process';
+import util from 'util';
+import { initDb } from '../init-db.js';
+
+const execPromise = util.promisify(exec);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Ensure settings table exists (Lazy initialization)
-const initSettingsTable = async () => {
-    try {
-        await db.query(`
-            CREATE TABLE IF NOT EXISTS settings (
-                setting_key VARCHAR(50) PRIMARY KEY,
-                setting_value TEXT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )
-        `);
-        // Insert default aggregators if not exists
-        const [rows] = await db.query('SELECT * FROM settings WHERE setting_key = ?', ['aggregators']);
-        if (rows.length === 0) {
-            const defaultAggregators = ["LokaMusik", "SoundOn", "Tunecore", "Believe"];
-            await db.query('INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)', 
-                ['aggregators', JSON.stringify(defaultAggregators)]);
-        }
-    } catch (err) {
-        console.error('Error initializing settings table:', err);
+// Ensure settings upload directory exists
+const UPLOADS_ROOT = path.join(__dirname, '../../uploads');
+const SETTINGS_DIR = path.join(UPLOADS_ROOT, 'settings');
+
+try {
+    if (!fs.existsSync(SETTINGS_DIR)) {
+        fs.mkdirSync(SETTINGS_DIR, { recursive: true });
     }
-};
+} catch (err) {
+    console.error('Failed to create settings upload directory:', err);
+}
 
-// Run initialization
-initSettingsTable();
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, SETTINGS_DIR);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
 
-// GET Aggregators
-router.get('/aggregators', authenticateToken, async (req, res) => {
+const upload = multer({ storage: storage });
+
+// --- AGGREGATORS ---
+
+router.get('/aggregators', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['aggregators']);
-        if (rows.length > 0) {
-            res.json(JSON.parse(rows[0].setting_value));
-        } else {
-            // Should not happen due to init, but fallback
-            res.json([]);
+        if (rows.length === 0 || !rows[0].setting_value) {
+            return res.json([]);
         }
+        res.json(JSON.parse(rows[0].setting_value));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// UPDATE Aggregators
 router.post('/aggregators', authenticateToken, async (req, res) => {
     try {
         const { aggregators } = req.body;
-        if (!Array.isArray(aggregators)) {
-            return res.status(400).json({ error: 'Aggregators must be an array' });
-        }
-
         await db.query(
             'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
             ['aggregators', JSON.stringify(aggregators), JSON.stringify(aggregators)]
         );
-
         res.json({ message: 'Aggregators updated', aggregators });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- SYSTEM CHECK ---
+
+// Check DB Integrity
+router.get('/system/check-db', authenticateToken, async (req, res) => {
+    try {
+        // Critical tables to check
+        const requiredTables = ['users', 'releases', 'songs', 'reports', 'settings', 'notifications', 'tickets', 'security_logs'];
+        const [rows] = await db.query('SHOW TABLES');
+        const existingTables = rows.map(r => Object.values(r)[0]);
+        
+        const missingTables = requiredTables.filter(t => !existingTables.includes(t));
+        
+        res.json({
+            status: missingTables.length === 0 ? 'OK' : 'MISSING_TABLES',
+            missing: missingTables,
+            checked_at: new Date()
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Fix DB Integrity
+router.post('/system/fix-db', authenticateToken, async (req, res) => {
+    try {
+        console.log('Starting manual DB fix...');
+        await initDb();
+        res.json({ message: 'Database structure repaired successfully.' });
+    } catch (err) {
+        console.error('DB Fix failed:', err);
+        res.status(500).json({ error: 'Failed to repair database: ' + err.message });
+    }
+});
+
+// Check Update
+router.get('/system/check-update', authenticateToken, async (req, res) => {
+    try {
+        // Run git fetch to update remote refs
+        // Note: This requires git to be in PATH and the server to have internet access
+        // Also assumes the current directory is a git repo
+        
+        try {
+            await execPromise('git --version');
+        } catch (e) {
+             return res.json({ 
+                updatesAvailable: false, 
+                error: 'Git is not installed or not in PATH' 
+            });
+        }
+
+        await execPromise('git fetch origin');
+        
+        // Check if behind
+        const { stdout: behindCount } = await execPromise('git rev-list --count HEAD..origin/main');
+        const { stdout: localHash } = await execPromise('git rev-parse --short HEAD');
+        const { stdout: remoteHash } = await execPromise('git rev-parse --short origin/main');
+        
+        const count = parseInt(behindCount.trim()) || 0;
+        const updatesAvailable = count > 0;
+        
+        res.json({
+            updatesAvailable,
+            behindCount: count,
+            localHash: localHash.trim(),
+            remoteHash: remoteHash.trim(),
+            repo: 'https://github.com/fachry2204/CMS-Dimensi-Suara.git'
+        });
+    } catch (err) {
+        console.error('Git check failed:', err);
+        // If it's not a git repo or other error, return it
+        res.status(500).json({ error: 'Failed to check updates: ' + err.message });
+    }
+});
+
+// Perform Update
+router.post('/system/update', authenticateToken, async (req, res) => {
+    try {
+        // 1. Pull
+        await execPromise('git pull origin main');
+        
+        // 2. Install Dependencies (Frontend & Backend)
+        // Assuming we are in server root or project root? 
+        // cwd for node process is usually project root based on package.json scripts
+        await execPromise('npm install'); 
+        
+        // 3. Build Frontend
+        await execPromise('npm run build');
+        
+        res.json({ message: 'Update & Build successful. Server restarting...' });
+        
+        // Restart Server (Exit process so PM2/Nodemon restarts it)
+        setTimeout(() => {
+            console.log('Restarting server...');
+            process.exit(0);
+        }, 1000);
+    } catch (err) {
+        console.error('Update failed:', err);
+        res.status(500).json({ error: 'Update failed: ' + err.message });
+    }
+});
+
+// --- SECURITY LOGS ---
+
+router.get('/security/logs', authenticateToken, async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM security_logs ORDER BY created_at DESC LIMIT 100');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// BRANDING ROUTES
+router.get('/branding', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT setting_key, setting_value FROM settings WHERE setting_key IN (?, ?)', ['logo', 'login_background']);
+        const settings = {
+            logo: null,
+            login_background: null
+        };
+        
+        rows.forEach(row => {
+            if (row.setting_key === 'logo') settings.logo = row.setting_value;
+            if (row.setting_key === 'login_background') settings.login_background = row.setting_value;
+        });
+        
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/branding', authenticateToken, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'login_background', maxCount: 1 }]), async (req, res) => {
+    try {
+        const updates = [];
+        const files = req.files;
+        const baseUrl = '/uploads/settings/';
+
+        if (files['logo']) {
+            const logoPath = baseUrl + files['logo'][0].filename;
+            updates.push(db.query(
+                'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
+                ['logo', logoPath, logoPath]
+            ));
+        }
+
+        if (files['login_background']) {
+            const bgPath = baseUrl + files['login_background'][0].filename;
+            updates.push(db.query(
+                'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
+                ['login_background', bgPath, bgPath]
+            ));
+        }
+
+        await Promise.all(updates);
+        
+        // Fetch updated
+        const [rows] = await db.query('SELECT setting_key, setting_value FROM settings WHERE setting_key IN (?, ?)', ['logo', 'login_background']);
+        const settings = {
+            logo: null,
+            login_background: null
+        };
+        rows.forEach(row => {
+            if (row.setting_key === 'logo') settings.logo = row.setting_value;
+            if (row.setting_key === 'login_background') settings.login_background = row.setting_value;
+        });
+
+        res.json({ message: 'Branding updated', branding: settings });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

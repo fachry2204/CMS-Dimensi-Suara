@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, Upload, Filter, FileSpreadsheet, Download, Search } from 'lucide-react';
 import { api } from '../../utils/api';
+import { AlertModal } from '../../components/AlertModal';
 
 interface Report {
     id: number;
@@ -41,6 +42,12 @@ export const PublishingReports: React.FC<Props> = ({ token }) => {
         period: ''
     });
     const [reportFile, setReportFile] = useState<File | null>(null);
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'error'
+    });
 
     useEffect(() => {
         if (token) fetchReports();
@@ -68,7 +75,12 @@ export const PublishingReports: React.FC<Props> = ({ token }) => {
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!reportFile) {
-            alert('Pilih file laporan (Excel) terlebih dahulu');
+            setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Pilih file laporan (Excel) terlebih dahulu',
+                type: 'warning'
+            });
             return;
         }
 
@@ -81,12 +93,22 @@ export const PublishingReports: React.FC<Props> = ({ token }) => {
 
         try {
             const res = await api.publishing.uploadReport(token, data);
-            alert(`Upload berhasil! ${res.inserted} data dimasukkan.`);
+            setAlertState({
+                isOpen: true,
+                title: 'Sukses',
+                message: `Upload berhasil! ${res.inserted} data dimasukkan.`,
+                type: 'success'
+            });
             setShowUploadModal(false);
             setReportFile(null);
             fetchReports(); // Refresh data
         } catch (error: any) {
-            alert('Gagal upload: ' + error.message);
+            setAlertState({
+                isOpen: true,
+                title: 'Gagal Upload',
+                message: 'Gagal upload: ' + error.message,
+                type: 'error'
+            });
         } finally {
             setUploading(false);
         }
@@ -313,6 +335,14 @@ export const PublishingReports: React.FC<Props> = ({ token }) => {
                     </div>
                 </div>
             )}
+
+            <AlertModal
+                isOpen={alertState.isOpen}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 };

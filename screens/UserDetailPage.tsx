@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { User } from '../types';
 import { api } from '../utils/api';
 import { XCircle, Eye, Download, CheckCircle } from 'lucide-react';
+import { AlertModal } from '../components/AlertModal';
 
 export const UserDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -18,6 +19,12 @@ export const UserDetailPage: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewIsPdf, setPreviewIsPdf] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -42,12 +49,22 @@ export const UserDetailPage: React.FC = () => {
     if (!user) return;
     const s = statusDraft || user.status;
     if ((s === 'Rejected' || s === 'Blocked') && (!rejectReason || !rejectReason.trim())) {
-      alert(`Alasan ${s === 'Rejected' ? 'penolakan' : 'pemblokiran'} wajib diisi`);
+      setAlertState({
+        isOpen: true,
+        title: 'Validasi',
+        message: `Alasan ${s === 'Rejected' ? 'penolakan' : 'pemblokiran'} wajib diisi`,
+        type: 'warning'
+      });
       return;
     }
     if (s === 'Approved') {
         if (aggregatorPercentage === undefined || aggregatorPercentage === null || publishingPercentage === undefined || publishingPercentage === null) {
-             alert('Persentase Aggregator dan Publishing wajib diisi untuk status Approved');
+             setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Persentase Aggregator dan Publishing wajib diisi untuk status Approved',
+                type: 'warning'
+             });
              return;
         }
     }
@@ -75,7 +92,12 @@ export const UserDetailPage: React.FC = () => {
       if (s !== 'Rejected' && s !== 'Blocked') setRejectReason('');
       setShowSuccessModal(true);
     } catch (err: any) {
-      alert(err.message);
+      setAlertState({
+        isOpen: true,
+        title: 'Gagal Menyimpan',
+        message: err.message,
+        type: 'error'
+      });
     }
   };
 
@@ -451,6 +473,14 @@ export const UserDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

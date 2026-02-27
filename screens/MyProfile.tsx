@@ -80,9 +80,9 @@ export const MyProfile: React.FC<Props> = ({ currentUserData }) => {
                 <UserIcon size={24} />
             </div>
             <div>
-                <div className="text-xl font-bold text-slate-800">{user.full_name || user.name || '-'}</div>
-                <div className="text-slate-500">{user.email || '-'}</div>
-            </div>
+            <div className="text-xs font-bold text-slate-800">{user.full_name || user.name || '-'}</div>
+            <div className="text-[10px] text-slate-500">{user.email || '-'}</div>
+          </div>
             </div>
             
 

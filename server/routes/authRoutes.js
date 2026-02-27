@@ -1,10 +1,20 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import geoip from 'geoip-lite';
 import db from '../config/db.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+
+const getCountry = (ip) => {
+    // Handle localhost/private IPs
+    if (ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+        return 'Localhost/Private';
+    }
+    const geo = geoip.lookup(ip);
+    return geo ? geo.country : 'Unknown';
+};
 
 // REGISTER (Public: creates basic User with Pending status and optional extended profile)
 router.post('/register', async (req, res) => {
@@ -137,13 +147,29 @@ router.post('/login', async (req, res) => {
 
         // Allow login with either username or email
         const [users] = await db.query('SELECT * FROM users WHERE username = ? OR email = ?', [username, username]);
-        if (users.length === 0) return res.status(400).json({ error: 'User not found' });
+        if (users.length === 0) {
+            // Log User Not Found
+            const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            const country = getCountry(ip);
+            await db.query('INSERT INTO security_logs (user_identifier, ip_address, country, attack_type, details) VALUES (?, ?, ?, ?, ?)', 
+                [username, ip, country, 'USER_NOT_FOUND', 'User identifier not found']);
+                
+            return res.status(400).json({ error: 'User not found' });
+        }
 
         const user = users[0];
 
         // Check password
         const validPass = await bcrypt.compare(password, user.password_hash);
-        if (!validPass) return res.status(400).json({ error: 'Invalid password' });
+        if (!validPass) {
+            // Log Failed Login
+            const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            const country = getCountry(ip);
+            await db.query('INSERT INTO security_logs (user_identifier, ip_address, country, attack_type, details) VALUES (?, ?, ?, ?, ?)', 
+                [username, ip, country, 'LOGIN_FAIL', 'Invalid password']);
+            
+            return res.status(400).json({ error: 'Invalid password' });
+        }
 
         // Create Token (1h) and set sliding session cookie
         const payload = { id: user.id, role: user.role };

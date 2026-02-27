@@ -3,6 +3,7 @@ import { Users, User as UserIcon, Shield, Search, CheckCircle, XCircle } from 'l
 import { User } from '../types';
 import { api } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
+import { AlertModal, AlertState } from '../components/AlertModal';
 
 export const RoleUserPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -10,6 +11,12 @@ export const RoleUserPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [token] = useState(localStorage.getItem('cms_token') || '');
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [alertState, setAlertState] = useState<AlertState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,7 +58,12 @@ export const RoleUserPage: React.FC = () => {
       await api.updateUserStatus(token, userId, status);
       setUsers(prev => prev.map(u => (u.id === userId ? { ...u, status } : u)));
     } catch (err: any) {
-      alert(err?.message || 'Failed to update status');
+      setAlertState({
+        isOpen: true,
+        title: 'Gagal Update Status',
+        message: err?.message || 'Gagal memperbarui status',
+        type: 'error'
+      });
     } finally {
       setIsUpdating(null);
     }
@@ -222,6 +234,14 @@ export const RoleUserPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
