@@ -65,8 +65,8 @@ app.use(securityLogger);
 
 
 // Static Files (Serve the React Frontend)
-// Serve from "public" (Vite outDir) at the project root
-const distPath = path.join(__dirname, '../public');
+// Serve from "dist" (Vite outDir) at the project root
+const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
 
 // Serve Uploads
