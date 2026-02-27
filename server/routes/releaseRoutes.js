@@ -827,8 +827,12 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                     track.isrc || null,
                     track.explicitLyrics || null,
                     track.composer || null,
-                    track.lyricist || null,
-                    track.producer || null,
+                    track.lyricist
+                        ? JSON.stringify(Array.isArray(track.lyricist) ? track.lyricist : [track.lyricist])
+                        : null,
+                    track.producer
+                        ? JSON.stringify(Array.isArray(track.producer) ? track.producer : [track.producer])
+                        : null,
                     track.genre || null,
                     track.subGenre || null,
                     track.previewStart || 0
@@ -1169,6 +1173,36 @@ router.get('/:id', authenticateToken, async (req, res) => {
             ...t,
             primaryArtists: typeof t.primary_artists === 'string' ? JSON.parse(t.primary_artists) : t.primary_artists,
             featuredArtists: typeof t.featured_artists === 'string' ? JSON.parse(t.featured_artists) : t.featured_artists,
+            composer: (() => {
+                if (t.composer == null) return t.composer;
+                if (typeof t.composer !== 'string') return t.composer;
+                try {
+                    const parsed = JSON.parse(t.composer);
+                    return Array.isArray(parsed) ? parsed.join(', ') : String(parsed ?? t.composer);
+                } catch {
+                    return t.composer;
+                }
+            })(),
+            lyricist: (() => {
+                if (t.lyricist == null) return t.lyricist;
+                if (typeof t.lyricist !== 'string') return t.lyricist;
+                try {
+                    const parsed = JSON.parse(t.lyricist);
+                    return Array.isArray(parsed) ? parsed.join(', ') : String(parsed ?? t.lyricist);
+                } catch {
+                    return t.lyricist;
+                }
+            })(),
+            producer: (() => {
+                if (t.producer == null) return t.producer;
+                if (typeof t.producer !== 'string') return t.producer;
+                try {
+                    const parsed = JSON.parse(t.producer);
+                    return Array.isArray(parsed) ? parsed.join(', ') : String(parsed ?? t.producer);
+                } catch {
+                    return t.producer;
+                }
+            })(),
             contributors: contribByTrack.get(t.id) || []
         }));
 

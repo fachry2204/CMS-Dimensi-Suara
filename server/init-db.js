@@ -265,6 +265,31 @@ const initDb = async () => {
             }
         }
 
+        try {
+            const [rows] = await connection.query("SHOW COLUMNS FROM releases LIKE 'planned_release_date'");
+            if (rows.length > 0) {
+                const nullable = String(rows[0].Null || '').toUpperCase() === 'YES';
+                if (!nullable) {
+                    console.log('🔧 Making planned_release_date nullable');
+                    await connection.query('ALTER TABLE releases MODIFY COLUMN planned_release_date DATE NULL DEFAULT NULL');
+                }
+            }
+        } catch (e) {
+            console.warn('planned_release_date alteration warning:', e.message);
+        }
+        try {
+            const [rows] = await connection.query("SHOW COLUMNS FROM releases LIKE 'original_release_date'");
+            if (rows.length > 0) {
+                const nullable = String(rows[0].Null || '').toUpperCase() === 'YES';
+                if (!nullable) {
+                    console.log('🔧 Making original_release_date nullable');
+                    await connection.query('ALTER TABLE releases MODIFY COLUMN original_release_date DATE NULL DEFAULT NULL');
+                }
+            }
+        } catch (e) {
+            console.warn('original_release_date alteration warning:', e.message);
+        }
+
         // 7. Check 'profile_json' in 'users' for extended registration data
         try {
             await connection.query('SELECT profile_json FROM users LIMIT 1');
@@ -275,9 +300,14 @@ const initDb = async () => {
             }
         }
 
-        // 8. Check missing columns in 'tracks'
+        // 8. Check missing columns in 'tracks' using SHOW COLUMNS for reliability
         const trackColumns = [
             { name: 'track_number', type: "VARCHAR(10)" },
+            { name: 'title', type: "VARCHAR(255)" },
+            { name: 'audio_file', type: "VARCHAR(1024)" },
+            { name: 'audio_clip', type: "VARCHAR(1024)" },
+            { name: 'ipl_file', type: "VARCHAR(1024)" },
+            { name: 'is_instrumental', type: "TINYINT(1) DEFAULT 0" },
             { name: 'duration', type: "VARCHAR(20)" },
             { name: 'genre', type: "VARCHAR(100)" },
             { name: 'sub_genre', type: "VARCHAR(100)" },
@@ -296,15 +326,22 @@ const initDb = async () => {
             { name: 'preview_start', type: "INT DEFAULT 0" }
         ];
 
-        for (const col of trackColumns) {
-             try {
-                await connection.query(`SELECT \`${col.name}\` FROM tracks LIMIT 1`);
-            } catch (err) {
-                if (err.code === 'ER_BAD_FIELD_ERROR') {
+        try {
+            const [existingTrackCols] = await connection.query("SHOW COLUMNS FROM tracks");
+            const existingTrackColNames = existingTrackCols.map(c => c.Field);
+
+            for (const col of trackColumns) {
+                if (!existingTrackColNames.includes(col.name)) {
                     console.log(`⚠️ Adding missing column: ${col.name} to tracks table`);
-                    await connection.query(`ALTER TABLE tracks ADD COLUMN \`${col.name}\` ${col.type}`);
+                    try {
+                        await connection.query(`ALTER TABLE tracks ADD COLUMN \`${col.name}\` ${col.type}`);
+                    } catch (alterErr) {
+                        console.error(`Failed to add column ${col.name}:`, alterErr.message);
+                    }
                 }
             }
+        } catch (err) {
+            console.error('Error checking tracks columns:', err);
         }
 
         // 9. Check missing columns in 'songs'
@@ -404,6 +441,27 @@ const initDb = async () => {
                 ['fachry', 'fachry@dimensisuara.com', hash2, 'Admin']
             );
             console.log("Admin 'fachry' created with role Admin.");
+        }
+
+        // 12. Ensure track_contributors table exists
+        try {
+            await connection.query('SELECT 1 FROM track_contributors LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: track_contributors');
+                await connection.query(`
+                    CREATE TABLE track_contributors (
+                        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                        track_id INT NOT NULL,
+                        name VARCHAR(255) NOT NULL,
+                        type VARCHAR(100) NULL,
+                        role VARCHAR(100) NULL,
+                        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (id),
+                        INDEX idx_track_contributors_track_id (track_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
         }
 
         console.log('✅ Database initialized successfully!');
