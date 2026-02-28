@@ -211,26 +211,37 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   };
 
   const handleCheckSystem = async () => {
-      setCheckingSystem(true);
-      setUpdateMessage(null);
-      try {
-          // Check Updates
-          const upRes = await fetch('/api/settings/system/check-update', {
-               headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (upRes.ok) {
-              const data = await upRes.json();
-              setUpdateStatus(data);
-          }
-          
-          // Refresh logs after check
-          fetchSystemLogs();
-      } catch (err) {
-          console.error("System check failed:", err);
-      } finally {
-          setCheckingSystem(false);
-      }
-  };
+       setCheckingSystem(true);
+       setUpdateMessage(null);
+       try {
+           // Check Updates
+           const upRes = await fetch('/api/settings/system/check-update', {
+                headers: { 'Authorization': `Bearer ${token}` }
+           });
+           
+           if (upRes.ok) {
+               const data = await upRes.json();
+               if (data.error) {
+                   setUpdateMessage("Check failed: " + data.error);
+                   // Still set status so we can see partial info if any
+                   setUpdateStatus(data);
+               } else {
+                   setUpdateStatus(data);
+               }
+           } else {
+               const errData = await upRes.json().catch(() => ({}));
+               setUpdateMessage("Check failed: " + (errData.error || upRes.statusText));
+           }
+           
+           // Refresh logs after check
+           fetchSystemLogs();
+       } catch (err: any) {
+           console.error("System check failed:", err);
+           setUpdateMessage("System check failed: " + err.message);
+       } finally {
+           setCheckingSystem(false);
+       }
+   };
 
   const fetchSystemLogs = async () => {
       try {
@@ -729,6 +740,13 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                             </div>
                             <h3 className="text-slate-900 font-medium mb-1">System Status Unknown</h3>
                             <p className="text-slate-500 text-sm mb-6">Check for the latest updates from the repository.</p>
+                            
+                            {updateMessage && (
+                                <div className="mb-6 p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100 max-w-md mx-auto">
+                                    {updateMessage}
+                                </div>
+                            )}
+                            
                             <button 
                                 onClick={handleCheckSystem}
                                 disabled={checkingSystem}
