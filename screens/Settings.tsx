@@ -605,19 +605,33 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
 
                {/* Git Update Check */}
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-orange-50 rounded-lg text-orange-600">
-                            <GitBranch size={24} />
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-orange-50 rounded-lg text-orange-600">
+                                <GitBranch size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800">System Update</h3>
+                                <p className="text-sm text-slate-500">Check for updates from GitHub repository.</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800">System Update</h3>
-                            <p className="text-sm text-slate-500">Check for updates from GitHub repository.</p>
-                        </div>
+                        
+                        <button 
+                            onClick={handleCheckSystem}
+                            disabled={checkingSystem}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Refresh System Status"
+                        >
+                            <RefreshCw size={20} className={checkingSystem ? 'animate-spin' : ''} />
+                        </button>
                     </div>
 
                     {checkingSystem ? (
-                        <div className="text-slate-500 text-sm py-4">Checking for updates...</div>
-                    ) : updateStatus ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 size={32} className="text-blue-600 animate-spin mb-4" />
+                        <p className="text-slate-500 text-sm">Checking for updates...</p>
+                    </div>
+                ) : updateStatus ? (
                         <div>
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="flex-1 space-y-3">
@@ -671,7 +685,21 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                             )}
                         </div>
                     ) : (
-                         <div className="text-slate-400 text-sm">Click refresh to check updates.</div>
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                <GitBranch size={32} className="text-slate-300" />
+                            </div>
+                            <h3 className="text-slate-900 font-medium mb-1">System Status Unknown</h3>
+                            <p className="text-slate-500 text-sm mb-6">Check for the latest updates from the repository.</p>
+                            <button 
+                                onClick={handleCheckSystem}
+                                disabled={checkingSystem}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                                <RefreshCw size={16} className={checkingSystem ? 'animate-spin' : ''} />
+                                Check for Updates
+                            </button>
+                        </div>
                     )}
                </div>
 
