@@ -909,57 +909,57 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="overflow-x-auto">
                        <table className="w-full text-left border-collapse">
-                           <thead>
-                               <tr className="bg-slate-50 border-b border-gray-100">
-                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Time</th>
-                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User / ID</th>
-                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">IP Address</th>
-                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Location</th>
-                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Attack Type</th>
-                                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
-                               </tr>
-                           </thead>
-                           <tbody className="divide-y divide-gray-100">
-                               {loadingLogs ? (
-                                   <tr>
-                                       <td colSpan={6} className="px-6 py-12 text-center text-slate-400">Loading security logs...</td>
-                                   </tr>
-                               ) : securityLogs.length === 0 ? (
-                                   <tr>
-                                       <td colSpan={6} className="px-6 py-12 text-center text-slate-400">No security incidents recorded.</td>
-                                   </tr>
-                               ) : (
-                                   securityLogs.map((log) => (
-                                       <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                           <td className="px-6 py-4 text-xs text-slate-600 whitespace-nowrap">
-                                               {new Date(log.created_at).toLocaleString()}
-                                           </td>
-                                           <td className="px-6 py-4 text-xs font-medium text-slate-800">
-                                               {log.user_identifier}
-                                           </td>
-                                           <td className="px-6 py-4 text-xs font-mono text-slate-600">
-                                               {log.ip_address}
-                                           </td>
-                                           <td className="px-6 py-4 text-xs text-slate-600">
-                                               {log.country || 'Unknown'}
-                                           </td>
-                                           <td className="px-6 py-4">
-                                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                                   log.attack_type === 'BRUTE_FORCE' ? 'bg-red-100 text-red-700' :
-                                                   log.attack_type === 'DDOS' ? 'bg-purple-100 text-purple-700' :
-                                                   'bg-orange-100 text-orange-700'
-                                               }`}>
-                                                   {log.attack_type}
-                                               </span>
-                                           </td>
-                                           <td className="px-6 py-4 text-xs text-slate-500 max-w-xs truncate" title={log.details}>
-                                               {log.details}
-                                           </td>
-                                       </tr>
-                                   ))
-                               )}
-                           </tbody>
-                       </table>
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-gray-100">
+                                    <th className="px-6 py-4 text-[10px] font-medium text-slate-500 uppercase tracking-wider">Time</th>
+                                    <th className="px-6 py-4 text-[10px] font-medium text-slate-500 uppercase tracking-wider">User / ID</th>
+                                    <th className="px-6 py-4 text-[10px] font-medium text-slate-500 uppercase tracking-wider">IP Address</th>
+                                    <th className="px-6 py-4 text-[10px] font-medium text-slate-500 uppercase tracking-wider">Location</th>
+                                    <th className="px-6 py-4 text-[10px] font-medium text-slate-500 uppercase tracking-wider">Attack Type</th>
+                                    <th className="px-6 py-4 text-[10px] font-medium text-slate-500 uppercase tracking-wider">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {loadingLogs ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-12 text-center text-[10px] text-slate-400">Loading security logs...</td>
+                                    </tr>
+                                ) : securityLogs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-12 text-center text-[10px] text-slate-400">No security incidents recorded.</td>
+                                    </tr>
+                                ) : (
+                                    securityLogs.map((log) => (
+                                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-6 py-3 text-[10px] text-slate-600 whitespace-nowrap">
+                                                {new Date(log.created_at).toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-3 text-[10px] text-slate-800">
+                                                {log.user_identifier}
+                                            </td>
+                                            <td className="px-6 py-3 text-[10px] font-mono text-slate-600">
+                                                {log.ip_address}
+                                            </td>
+                                            <td className="px-6 py-3 text-[10px] text-slate-600">
+                                                {log.country || 'Unknown'}
+                                            </td>
+                                            <td className="px-6 py-3">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                                    log.attack_type === 'BRUTE_FORCE' ? 'bg-red-100 text-red-700' :
+                                                    log.attack_type === 'DDOS' ? 'bg-purple-100 text-purple-700' :
+                                                    'bg-orange-100 text-orange-700'
+                                                }`}>
+                                                    {log.attack_type}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-3 text-[10px] text-slate-500 max-w-xs truncate" title={log.details}>
+                                                {log.details}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                    </div>
                </div>
            </div>

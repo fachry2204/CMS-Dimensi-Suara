@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, FileText, AlertCircle, CheckCircle, Download, Calendar, Clock, ChevronLeft, Search, User, XCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, CheckCircle2, Download, Calendar, Clock, ChevronLeft, Search, User, XCircle } from 'lucide-react';
 import { ReportData, ReleaseData } from '../types';
 import { formatDMY, formatHM } from '../utils/date';
 

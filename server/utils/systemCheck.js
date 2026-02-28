@@ -27,6 +27,16 @@ export const checkDbIntegrity = async () => {
     }
 };
 
+const ensureGitRepo = async (cwd) => {
+    try {
+        await execPromise('git rev-parse --is-inside-work-tree', { cwd });
+    } catch (error) {
+        console.log('Initializing git repository...');
+        await execPromise('git init', { cwd });
+        await execPromise('git remote add origin https://github.com/fachry2204/CMS-Dimensi-Suara.git', { cwd });
+    }
+};
+
 export const checkSystemUpdate = async () => {
     try {
         try {
@@ -41,22 +51,42 @@ export const checkSystemUpdate = async () => {
 
         const repoUrl = 'https://github.com/fachry2204/CMS-Dimensi-Suara.git';
         
-        // Fetch from specific repo to ensure we check the right source
-        await execPromise(`git fetch ${repoUrl}`, { cwd: projectRoot });
+        await ensureGitRepo(projectRoot);
         
-        // Check behind count (HEAD vs FETCH_HEAD)
-        const { stdout: behindCount } = await execPromise('git rev-list --count HEAD..FETCH_HEAD', { cwd: projectRoot });
-        const { stdout: localHash } = await execPromise('git rev-parse --short HEAD', { cwd: projectRoot });
-        const { stdout: remoteHash } = await execPromise('git rev-parse --short FETCH_HEAD', { cwd: projectRoot });
+        try {
+            await execPromise('git fetch origin', { cwd: projectRoot });
+        } catch (e) {
+             throw new Error('Git fetch failed: ' + e.message);
+        }
         
-        const count = parseInt(behindCount.trim()) || 0;
-        const updatesAvailable = count > 0;
+        let behindCount = 0;
+        let localHash = 'none';
+        let remoteHash = '';
+
+        try {
+             const { stdout: rh } = await execPromise('git rev-parse --short origin/main', { cwd: projectRoot });
+             remoteHash = rh.trim();
+        } catch (e) {
+             remoteHash = 'unknown';
+        }
+
+        try {
+            const { stdout: lh } = await execPromise('git rev-parse --short HEAD', { cwd: projectRoot });
+            localHash = lh.trim();
+            const { stdout: bc } = await execPromise('git rev-list --count HEAD..origin/main', { cwd: projectRoot });
+            behindCount = parseInt(bc.trim()) || 0;
+        } catch (e) {
+            behindCount = 999;
+            localHash = 'none (fresh)';
+        }
+        
+        const updatesAvailable = behindCount > 0 || localHash === 'none (fresh)';
         
         return {
             updatesAvailable,
-            behindCount: count,
-            localHash: localHash.trim(),
-            remoteHash: remoteHash.trim(),
+            behindCount,
+            localHash,
+            remoteHash,
             repo: repoUrl,
             checked_at: new Date()
         };
@@ -85,15 +115,17 @@ export const logSystemCheck = async (type, result) => {
 export const performSystemUpdate = async (cwd) => {
     const repoUrl = 'https://github.com/fachry2204/CMS-Dimensi-Suara.git';
     
-    // 1. Pull Now
-    console.log('Pulling updates from:', repoUrl);
-    await execPromise(`git pull ${repoUrl} main`, { cwd });
+    await ensureGitRepo(cwd);
+
+    console.log('Fetching updates from:', repoUrl);
+    await execPromise('git fetch origin', { cwd });
     
-    // 2. Deploy (Install Dependencies)
+    console.log('Resetting to origin/main...');
+    await execPromise('git reset --hard origin/main', { cwd });
+    
     console.log('Installing dependencies...');
     await execPromise('npm install', { cwd }); 
     
-    // 3. Run Build
     console.log('Building project...');
     await execPromise('npm run build', { cwd });
 
