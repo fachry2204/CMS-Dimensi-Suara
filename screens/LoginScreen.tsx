@@ -143,7 +143,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
     <>
       <div className="text-center mb-6">
         {branding.logo ? (
-            <img src={branding.logo} alt="Logo" className="h-32 object-contain mx-auto mb-3" />
+            <img src={branding.logo} alt="Logo" className="h-48 object-contain mx-auto mb-1" />
         ) : (
             <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-blue-500/30">
                 <Music4 size={24} />
@@ -151,7 +151,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         )}
         
         <h1 className="text-xl font-bold text-slate-800 tracking-tight">Dimensi Suara CMS</h1>
-        <p className="text-slate-500 text-xs mt-1">Sign in to manage your music distribution</p>
+        <p className="text-slate-500 text-xs mt-0">Sign in to manage your music distribution</p>
       </div>
 
       <form onSubmit={handleLogin} className="space-y-4">
