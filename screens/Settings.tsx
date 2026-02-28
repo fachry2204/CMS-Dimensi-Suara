@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Plus, Trash2, Globe, Edit2, X, Image as ImageIcon, Upload, Shield, Server, Database, GitBranch, RefreshCw, Play, AlertTriangle, CheckCircle, Terminal } from 'lucide-react';
+import { Settings as SettingsIcon, Plus, Trash2, Globe, Edit2, X, Image as ImageIcon, Upload, Shield, Server, Database, GitBranch, RefreshCw, Play, AlertTriangle, CheckCircle, Terminal, Loader2 } from 'lucide-react';
 import { api } from '../utils/api';
 
 interface Props {
@@ -64,6 +64,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   const [dbStatus, setDbStatus] = useState<SystemCheckResult | null>(null);
   const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult | null>(null);
   const [checkingSystem, setCheckingSystem] = useState(false);
+  const [checkingDb, setCheckingDb] = useState(false);
   const [updatingSystem, setUpdatingSystem] = useState(false);
   const [fixingDb, setFixingDb] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
       if (activeTab === 'general') {
           fetchBranding();
       } else if (activeTab === 'system') {
-          handleCheckSystem();
+          // handleCheckSystem(); // Removed auto-check
           fetchSystemLogs();
       } else if (activeTab === 'security') {
           fetchSecurityLogs();
@@ -191,11 +192,9 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   };
 
   // --- SYSTEM CHECK HANDLERS ---
-  const handleCheckSystem = async () => {
-      setCheckingSystem(true);
-      setUpdateMessage(null);
+  const handleCheckDb = async () => {
+      setCheckingDb(true);
       try {
-          // Check DB
           const dbRes = await fetch('/api/settings/system/check-db', {
               headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -203,7 +202,18 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
               const data = await dbRes.json();
               setDbStatus(data);
           }
+          fetchSystemLogs();
+      } catch (err) {
+          console.error("DB check failed:", err);
+      } finally {
+          setCheckingDb(false);
+      }
+  };
 
+  const handleCheckSystem = async () => {
+      setCheckingSystem(true);
+      setUpdateMessage(null);
+      try {
           // Check Updates
           const upRes = await fetch('/api/settings/system/check-update', {
                headers: { 'Authorization': `Bearer ${token}` }
@@ -272,7 +282,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
           const data = await res.json();
           if (res.ok) {
               alert(data.message);
-              handleCheckSystem(); // Re-check
+              handleCheckDb(); // Re-check
           } else {
               alert("Failed to repair database: " + data.error);
           }
@@ -552,18 +562,32 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
 
                {/* Database Check */}
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-green-50 rounded-lg text-green-600">
-                            <Database size={24} />
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                                <Database size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800">Database Integrity</h3>
+                                <p className="text-sm text-slate-500">Checking critical tables and schema structure.</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800">Database Integrity</h3>
-                            <p className="text-sm text-slate-500">Checking critical tables and schema structure.</p>
-                        </div>
+                        
+                        <button 
+                            onClick={handleCheckDb}
+                            disabled={checkingDb}
+                            className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Check Database"
+                        >
+                            <RefreshCw size={20} className={checkingDb ? 'animate-spin' : ''} />
+                        </button>
                     </div>
 
-                    {checkingSystem ? (
-                        <div className="text-slate-500 text-sm py-4">Checking database...</div>
+                    {checkingDb ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 size={32} className="text-green-600 animate-spin mb-4" />
+                            <p className="text-slate-500 text-sm">Verifying database structure...</p>
+                        </div>
                     ) : dbStatus ? (
                         <div>
                             <div className={`flex items-center gap-2 text-sm font-medium mb-4 ${dbStatus.status === 'OK' ? 'text-green-600' : 'text-red-600'}`}>
@@ -599,7 +623,21 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                             <p className="text-xs text-slate-400">Last checked: {new Date(dbStatus.checked_at).toLocaleString()}</p>
                         </div>
                     ) : (
-                        <div className="text-slate-400 text-sm">Click refresh to check database.</div>
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                <Database size={32} className="text-slate-300" />
+                            </div>
+                            <h3 className="text-slate-900 font-medium mb-1">Database Status Unknown</h3>
+                            <p className="text-slate-500 text-sm mb-6">Check database integrity to ensure system stability.</p>
+                            <button 
+                                onClick={handleCheckDb}
+                                disabled={checkingDb}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+                            >
+                                <RefreshCw size={16} className={checkingDb ? 'animate-spin' : ''} />
+                                Check Database
+                            </button>
+                        </div>
                     )}
                </div>
 
