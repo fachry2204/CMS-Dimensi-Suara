@@ -8,7 +8,7 @@ import { authenticateToken } from '../middleware/authMiddleware.js';
 import { exec } from 'child_process';
 import util from 'util';
 import { initDb } from '../init-db.js';
-import { checkDbIntegrity, checkSystemUpdate, logSystemCheck } from '../utils/systemCheck.js';
+import { checkDbIntegrity, checkSystemUpdate, logSystemCheck, performSystemUpdate } from '../utils/systemCheck.js';
 
 const execPromise = util.promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +19,7 @@ const router = express.Router();
 // Ensure settings upload directory exists
 const UPLOADS_ROOT = path.join(__dirname, '../../uploads');
 const SETTINGS_DIR = path.join(UPLOADS_ROOT, 'settings');
+const PROJECT_ROOT = path.resolve(__dirname, '../../');
 
 try {
     if (!fs.existsSync(SETTINGS_DIR)) {
@@ -117,22 +118,8 @@ router.get('/system/logs', authenticateToken, async (req, res) => {
 // Perform Update
 router.post('/system/update', authenticateToken, async (req, res) => {
     try {
-        const repoUrl = 'https://github.com/fachry2204/CMS-Dimensi-Suara.git';
-        
-        // 1. Pull Now (from specific repo)
-        // Using main branch as default target
-        console.log('Pulling updates from:', repoUrl);
-        await execPromise(`git pull ${repoUrl} main`);
-        
-        // 2. Deploy (Install Dependencies)
-        console.log('Installing dependencies...');
-        await execPromise('npm install'); 
-        
-        // 3. Run Build
-        console.log('Building project...');
-        await execPromise('npm run build');
-        
-        res.json({ message: 'System Updated Successfully. Server is restarting...' });
+        const result = await performSystemUpdate(PROJECT_ROOT);
+        res.json(result);
         
         // Restart Server (Exit process so PM2/Nodemon restarts it)
         setTimeout(() => {

@@ -69,6 +69,8 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   const [fixingDb, setFixingDb] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const logsPerPage = 10;
 
   // --- SECURITY LOGS LOGIC ---
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
@@ -251,10 +253,47 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
           if (res.ok) {
               const data = await res.json();
               setSystemLogs(data);
+              setCurrentPage(1); // Reset to first page on refresh
           }
       } catch (err) {
           console.error("Failed to fetch system logs:", err);
       }
+  };
+
+  const currentLogs = systemLogs.slice(
+      (currentPage - 1) * logsPerPage,
+      currentPage * logsPerPage
+  );
+  
+  const totalPages = Math.ceil(systemLogs.length / logsPerPage);
+
+  const formatLogDetails = (details: string, type: string) => {
+    try {
+        const data = JSON.parse(details);
+        if (type === 'UPDATE_CHECK') {
+            if (data.updatesAvailable) {
+                return `Update available (${data.behindCount} commits behind). Remote: ${data.remoteHash}`;
+            }
+            if (data.error) {
+                 return `Check failed: ${data.error}`;
+            }
+            // For successful check with no updates, status might not be in the JSON detail
+            if (data.updatesAvailable === false) {
+                 return `System is up to date. Local commit: ${data.localHash}`;
+            }
+        } else if (type === 'DB_INTEGRITY_CHECK') {
+             if (data.status === 'OK' && (!data.missing || data.missing.length === 0)) {
+                 return 'Database structure verified. No issues found.';
+             }
+             if (data.missing && data.missing.length > 0) {
+                 return `Missing: ${data.missing.join(', ')}`;
+             }
+             return `Status: ${data.status}`;
+        }
+        return details; // Fallback
+    } catch (e) {
+        return details;
+    }
   };
 
   const handleUpdateSystem = async () => {
@@ -784,27 +823,27 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                            <tbody className="divide-y divide-gray-100">
                                {systemLogs.length === 0 ? (
                                    <tr>
-                                       <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-sm">No system logs available.</td>
+                                       <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-xs">No system logs available.</td>
                                    </tr>
                                ) : (
-                                   systemLogs.map((log) => (
+                                   currentLogs.map((log) => (
                                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                           <td className="px-6 py-3 text-xs text-slate-600 whitespace-nowrap">
+                                           <td className="px-6 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                                                {new Date(log.created_at).toLocaleString()}
                                            </td>
-                                           <td className="px-6 py-3 text-xs font-medium text-slate-800">
+                                           <td className="px-6 py-3 text-[10px] font-medium text-slate-800">
                                                {log.check_type === 'UPDATE_CHECK' ? 'System Update Check' : 'Database Integrity'}
                                            </td>
                                            <td className="px-6 py-3">
-                                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                                    log.status === 'OK' || log.status === 'UPDATE_AVAILABLE' ? 'bg-green-100 text-green-700' :
                                                    'bg-red-100 text-red-700'
                                                }`}>
                                                    {log.status}
                                                </span>
                                            </td>
-                                           <td className="px-6 py-3 text-xs text-slate-500 font-mono max-w-xs truncate" title={log.details}>
-                                               {log.details}
+                                           <td className="px-6 py-3 text-[10px] text-slate-500 max-w-xs truncate" title={formatLogDetails(log.details, log.check_type)}>
+                                               {formatLogDetails(log.details, log.check_type)}
                                            </td>
                                        </tr>
                                    ))
@@ -812,6 +851,34 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                            </tbody>
                        </table>
                    </div>
+                   
+                   {/* Pagination */}
+                   {totalPages > 1 && (
+                       <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                           <div className="text-[10px] text-slate-500">
+                               Showing {(currentPage - 1) * logsPerPage + 1} to {Math.min(currentPage * logsPerPage, systemLogs.length)} of {systemLogs.length} results
+                           </div>
+                           <div className="flex items-center gap-2">
+                               <button 
+                                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                   disabled={currentPage === 1}
+                                   className="px-2 py-1 text-xs border rounded hover:bg-slate-50 disabled:opacity-50"
+                               >
+                                   Previous
+                               </button>
+                               <span className="text-xs text-slate-600">
+                                   Page {currentPage} of {totalPages}
+                               </span>
+                               <button 
+                                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                   disabled={currentPage === totalPages}
+                                   className="px-2 py-1 text-xs border rounded hover:bg-slate-50 disabled:opacity-50"
+                               >
+                                   Next
+                               </button>
+                           </div>
+                       </div>
+                   )}
                </div>
            </div>
        )}
