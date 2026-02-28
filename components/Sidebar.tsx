@@ -40,7 +40,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 <Music4 size={20} />
             </div>
         )}
-        <span className="font-bold text-lg text-slate-800 tracking-tight">Aggregator Musik</span>
       </div>
 
       {/* Navigation */}

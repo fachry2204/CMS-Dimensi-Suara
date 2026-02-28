@@ -364,13 +364,13 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                             <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
                                 {logoFile ? (
                                     <div className="relative">
-                                        <img src={URL.createObjectURL(logoFile)} alt="Preview" className="h-16 object-contain mb-2" />
+                                        <img src={URL.createObjectURL(logoFile)} alt="Preview" className="h-32 object-contain mb-2" />
                                         <button onClick={() => setLogoFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
                                         <p className="text-xs text-slate-500 text-center">{logoFile.name}</p>
                                     </div>
                                 ) : branding.logo ? (
                                     <div className="text-center">
-                                        <img src={branding.logo} alt="Current Logo" className="h-16 object-contain mb-3 mx-auto" />
+                                        <img src={branding.logo} alt="Current Logo" className="h-32 object-contain mb-3 mx-auto" />
                                         <p className="text-xs text-slate-400">Current Logo</p>
                                     </div>
                                 ) : (

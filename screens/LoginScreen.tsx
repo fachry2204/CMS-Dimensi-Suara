@@ -143,7 +143,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
     <>
       <div className="text-center mb-6">
         {branding.logo ? (
-            <img src={branding.logo} alt="Logo" className="h-16 object-contain mx-auto mb-3" />
+            <img src={branding.logo} alt="Logo" className="h-32 object-contain mx-auto mb-3" />
         ) : (
             <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-blue-500/30">
                 <Music4 size={24} />

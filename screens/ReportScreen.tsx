@@ -106,10 +106,10 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
         const newData = [...data, ...processedData];
         onImport(newData);
         
-        setSuccessMsg(`Berhasil mengimpor ${processedData.length} baris data.`);
+        setSuccessMsg(`Berhasil Mengimpor ${processedData.length} Baris Data.`);
       } catch (err) {
         console.error("Import Error:", err);
-        setError('Gagal memproses file. Pastikan format Excel valid.');
+        setError('Gagal Memproses File. Pastikan Format Excel Valid.');
       } finally {
         setIsProcessing(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -190,12 +190,12 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-800">
-            {mode === 'import' ? 'import laporan' : 'laporan'}
+            {mode === 'import' ? 'Import Laporan' : 'Laporan'}
           </h1>
           <p className="text-slate-500 text-sm">
             {mode === 'import' 
-                ? 'upload laporan excel (.xlsx) untuk memperbarui statistik dan pendapatan' 
-                : 'ringkasan laporan dan statistik pendapatan'}
+                ? 'Upload Laporan Excel (.xlsx) Untuk Memperbarui Statistik Dan Pendapatan' 
+                : 'Ringkasan Laporan Dan Statistik Pendapatan'}
           </p>
         </div>
         {mode === 'import' && !selectedFile && (
@@ -205,7 +205,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                     onChange={(e) => setSelectedAggregator(e.target.value)}
                     className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
-                    <option value="">pilih aggregator</option>
+                    <option value="">Pilih Aggregator</option>
                     {aggregators.map(agg => (
                         <option key={agg} value={agg}>{agg}</option>
                     ))}
@@ -215,7 +215,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium text-xs"
                 >
                     <Download size={16} />
-                    download template
+                    Download Template
                 </button>
                 <div className="relative">
                     <input 
@@ -235,7 +235,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                         ) : (
                             <Upload size={16} />
                         )}
-                        import excel
+                        Import Excel
                     </button>
                 </div>
             </div>
@@ -266,7 +266,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                       <FileText size={24} />
                   </div>
                   <div>
-                      <div className="text-xs font-medium text-slate-500">total baris data</div>
+                      <div className="text-xs font-medium text-slate-500">Total Baris Data</div>
                       <div className="text-2xl font-bold text-slate-800">{data.length.toLocaleString()}</div>
                   </div>
               </div>
@@ -277,7 +277,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                       <FileText size={24} />
                   </div>
                   <div>
-                      <div className="text-xs font-medium text-slate-500">total pendapatan terimpor</div>
+                      <div className="text-xs font-medium text-slate-500">Total Pendapatan Terimpor</div>
                       <div className="text-2xl font-bold text-slate-800">
                           ${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
@@ -294,20 +294,20 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                 <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50 text-slate-500 font-medium">
                         <tr>
-                            <th className="px-6 py-3 font-normal">period</th>
-                            <th className="px-6 py-3 font-normal">upc / isrc</th>
-                            <th className="px-6 py-3 font-normal">title</th>
-                            <th className="px-6 py-3 font-normal">platform</th>
-                            <th className="px-6 py-3 font-normal">country</th>
-                            <th className="px-6 py-3 text-right font-normal">qty</th>
-                            <th className="px-6 py-3 text-right font-normal">revenue</th>
+                            <th className="px-6 py-3 font-normal">Period</th>
+                            <th className="px-6 py-3 font-normal">UPC / ISRC</th>
+                            <th className="px-6 py-3 font-normal">Title</th>
+                            <th className="px-6 py-3 font-normal">Platform</th>
+                            <th className="px-6 py-3 font-normal">Country</th>
+                            <th className="px-6 py-3 text-right font-normal">Qty</th>
+                            <th className="px-6 py-3 text-right font-normal">Revenue</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {data.length === 0 ? (
                              <tr>
                                 <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                                    belum ada data yang diimpor. silakan upload file excel.
+                                    Belum Ada Data Yang Diimpor. Silakan Upload File Excel.
                                 </td>
                             </tr>
                         ) : (
@@ -341,17 +341,17 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                         <table className="w-full text-xs text-left">
                             <thead className="bg-slate-50 text-slate-500 font-medium">
                                 <tr>
-                                    <th className="px-6 py-3 font-normal">nama file</th>
-                                    <th className="px-6 py-3 font-normal">tanggal upload</th>
-                                    <th className="px-6 py-3 font-normal">jam upload</th>
-                                    <th className="px-6 py-3 font-normal">status</th>
+                                    <th className="px-6 py-3 font-normal">Nama File</th>
+                                    <th className="px-6 py-3 font-normal">Tanggal Upload</th>
+                                    <th className="px-6 py-3 font-normal">Jam Upload</th>
+                                    <th className="px-6 py-3 font-normal">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {uploadHistory.length === 0 ? (
                                      <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                            belum ada file yang diupload.
+                                            Belum Ada File Yang Diupload.
                                         </td>
                                     </tr>
                                 ) : (
@@ -406,7 +406,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                             className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors"
                         >
                             <ChevronLeft size={20} />
-                            kembali ke daftar file
+                            Kembali Ke Daftar File
                         </button>
                         <div className="flex items-center gap-3">
                             <h2 className="text-lg font-bold text-slate-800">{selectedFile}</h2>
@@ -416,7 +416,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all font-medium text-sm"
                         >
                             <Search size={18} />
-                            cek upc & isrc
+                            Cek UPC & ISRC
                         </button>
                     </div>
 
