@@ -650,7 +650,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                                                 disabled={updatingSystem}
                                                 className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20 disabled:opacity-50"
                                             >
-                                                {updatingSystem ? 'Updating...' : 'Update & Build System'}
+                                                {updatingSystem ? 'Updating...' : 'Update System'}
                                             </button>
                                         </>
                                     ) : (
@@ -658,7 +658,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                                             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3">
                                                 <CheckCircle size={24} />
                                             </div>
-                                            <h4 className="font-bold text-slate-800 mb-1">System is Up to Date</h4>
+                                            <h4 className="font-bold text-slate-800 mb-1">System sudah Update</h4>
                                             <p className="text-xs text-slate-500">You are running the latest version.</p>
                                         </>
                                     )}

@@ -117,24 +117,28 @@ router.get('/system/logs', authenticateToken, async (req, res) => {
 // Perform Update
 router.post('/system/update', authenticateToken, async (req, res) => {
     try {
-        // 1. Pull
-        await execPromise('git pull origin main');
+        const repoUrl = 'https://github.com/fachry2204/CMS-Dimensi-Suara.git';
         
-        // 2. Install Dependencies (Frontend & Backend)
-        // Assuming we are in server root or project root? 
-        // cwd for node process is usually project root based on package.json scripts
+        // 1. Pull Now (from specific repo)
+        // Using main branch as default target
+        console.log('Pulling updates from:', repoUrl);
+        await execPromise(`git pull ${repoUrl} main`);
+        
+        // 2. Deploy (Install Dependencies)
+        console.log('Installing dependencies...');
         await execPromise('npm install'); 
         
-        // 3. Build Frontend
+        // 3. Run Build
+        console.log('Building project...');
         await execPromise('npm run build');
         
-        res.json({ message: 'Update & Build successful. Server restarting...' });
+        res.json({ message: 'System Updated Successfully. Server is restarting...' });
         
         // Restart Server (Exit process so PM2/Nodemon restarts it)
         setTimeout(() => {
             console.log('Restarting server...');
             process.exit(0);
-        }, 1000);
+        }, 2000);
     } catch (err) {
         console.error('Update failed:', err);
         res.status(500).json({ error: 'Update failed: ' + err.message });

@@ -34,11 +34,15 @@ export const checkSystemUpdate = async () => {
             };
         }
 
-        await execPromise('git fetch origin');
+        const repoUrl = 'https://github.com/fachry2204/CMS-Dimensi-Suara.git';
         
-        const { stdout: behindCount } = await execPromise('git rev-list --count HEAD..origin/main');
+        // Fetch from specific repo to ensure we check the right source
+        await execPromise(`git fetch ${repoUrl}`);
+        
+        // Check behind count (HEAD vs FETCH_HEAD)
+        const { stdout: behindCount } = await execPromise('git rev-list --count HEAD..FETCH_HEAD');
         const { stdout: localHash } = await execPromise('git rev-parse --short HEAD');
-        const { stdout: remoteHash } = await execPromise('git rev-parse --short origin/main');
+        const { stdout: remoteHash } = await execPromise('git rev-parse --short FETCH_HEAD');
         
         const count = parseInt(behindCount.trim()) || 0;
         const updatesAvailable = count > 0;
@@ -48,7 +52,7 @@ export const checkSystemUpdate = async () => {
             behindCount: count,
             localHash: localHash.trim(),
             remoteHash: remoteHash.trim(),
-            repo: 'https://github.com/fachry2204/CMS-Dimensi-Suara.git',
+            repo: repoUrl,
             checked_at: new Date()
         };
     } catch (err) {
