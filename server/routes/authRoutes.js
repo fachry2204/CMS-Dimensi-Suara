@@ -171,6 +171,20 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Invalid password' });
         }
 
+        // Log Successful Login & Create Notification
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const country = getCountry(ip);
+        
+        // 1. Security Log
+        await db.query('INSERT INTO security_logs (user_identifier, ip_address, country, attack_type, details) VALUES (?, ?, ?, ?, ?)', 
+            [username, ip, country, 'LOGIN_SUCCESS', 'User logged in successfully']);
+
+        // 2. User Notification
+        // "notifikasi orang lain masuk ke akun nya" - notify owner about this login
+        const notifMsg = `Login baru terdeteksi pada perangkat Anda dari IP ${ip} (${country}).`;
+        await db.query('INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
+            [user.id, 'Security', notifMsg]);
+
         // Create Token (1h) and set sliding session cookie
         const payload = { id: user.id, role: user.role };
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });

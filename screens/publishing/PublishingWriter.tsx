@@ -24,9 +24,10 @@ interface Creator {
 
 interface Props {
   token: string | null;
+  userRole?: string;
 }
 
-export const PublishingWriter: React.FC<Props> = ({ token }) => {
+export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
     const navigate = useNavigate();
     const [creators, setCreators] = useState<Creator[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -172,13 +173,15 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-800">Data Pencipta (Songwriters)</h1>
-                <button 
-                    onClick={() => { resetForm(); setShowModal(true); }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
-                >
-                    <Plus size={20} />
-                    Tambah Pencipta
-                </button>
+                {userRole !== 'User' && (
+                    <button 
+                        onClick={() => { resetForm(); setShowModal(true); }}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                    >
+                        <Plus size={20} />
+                        Tambah Pencipta
+                    </button>
+                )}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -261,18 +264,22 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                             >
                                                 <Eye size={16} />
                                             </button>
-                                            <button 
-                                                onClick={() => openEditModal(creator)}
-                                                className="text-indigo-600 hover:text-indigo-800 p-1"
-                                            >
-                                                <Edit2 size={16} />
-                                            </button>
-                                            <button 
-                                                onClick={() => handleDelete(creator.id)}
-                                                className="text-red-600 hover:text-red-800 p-1"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {userRole !== 'User' && (
+                                                <>
+                                                    <button 
+                                                        onClick={() => openEditModal(creator)}
+                                                        className="text-indigo-600 hover:text-indigo-800 p-1"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDelete(creator.id)}
+                                                        className="text-red-600 hover:text-red-800 p-1"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </td>
                                     </tr>
                                 ))

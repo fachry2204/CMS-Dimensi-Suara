@@ -1088,7 +1088,7 @@ const App: React.FC = () => {
             <Route path="/releases/:id/single" element={<SingleReleasePage />} />
             
             {/* Publishing Routes */}
-            <Route path="/publishing/writer" element={<PublishingWriter token={token} />} />
+            <Route path="/publishing/writer" element={<PublishingWriter token={token} userRole={userRole} />} />
             <Route path="/publishing/writers/:id" element={<PublishingWriterDetail token={token} />} />
             <Route path="/publishing/songs" element={<PublishingSongs token={token} />} />
             <Route path="/publishing/analytics" element={<PublishingAnalytics token={token} />} />
