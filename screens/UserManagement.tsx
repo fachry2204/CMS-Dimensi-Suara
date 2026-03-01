@@ -259,43 +259,43 @@ export const UserManagement: React.FC = () => {
                 <table className="w-full text-left">
                     <thead>
                         <tr className="border-b border-gray-200">
-                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">User</th>
-                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Aggregator %</th>
-                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Publishing %</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Aggregator %</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Publishing %</th>
                             {userTab !== 'REGISTERED' && (
-                              <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
                             )}
-                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Joined Date</th>
-                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Approved</th>
-                            <th className="text-left py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Reject Date</th>
-                            <th className="text-right py-2 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Action</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Joined Date</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved</th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Reject Date</th>
+                            <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {filteredUsers.length > 0 ? (
                             filteredUsers.map((user) => (
                                 <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="py-2 px-3">
+                                    <td className="py-3 px-4">
                                         <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
                       {(user.full_name || user.name).charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div className="font-medium text-slate-800 text-[10px]">{user.full_name || user.name}</div>
-                      <div className="text-[9px] text-slate-500">{user.email}</div>
+                      <div className="font-medium text-slate-800 text-sm">{user.full_name || user.name}</div>
+                      <div className="text-xs text-slate-500">{user.email}</div>
                     </div>
                   </div>
                                     </td>
-                                    <td className="py-2 px-3 text-[10px] text-slate-600">
+                                    <td className="py-3 px-4 text-sm text-slate-600">
                                         {user.aggregator_percentage !== null && user.aggregator_percentage !== undefined ? `${user.aggregator_percentage}%` : '-'}
                                     </td>
-                                    <td className="py-2 px-3 text-[10px] text-slate-600">
+                                    <td className="py-3 px-4 text-sm text-slate-600">
                                         {user.publishing_percentage !== null && user.publishing_percentage !== undefined ? `${user.publishing_percentage}%` : '-'}
                                     </td>
                                     {userTab !== 'REGISTERED' && (
-                                      <td className="py-2 px-3">
-                                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                      <td className="py-3 px-4">
+                                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                                               user.role === 'Admin' ? 'bg-purple-100 text-purple-800' :
                                               user.role === 'Operator' ? 'bg-blue-100 text-blue-800' :
                                               'bg-gray-100 text-gray-800'
@@ -304,8 +304,8 @@ export const UserManagement: React.FC = () => {
                                           </span>
                                       </td>
                                     )}
-                                    <td className="py-2 px-3">
-                                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                    <td className="py-3 px-4">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                                             user.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
                                             user.status === 'Review' ? 'bg-blue-100 text-blue-700' :
                                             user.status === 'Approved' ? 'bg-green-100 text-green-700' :
@@ -313,34 +313,34 @@ export const UserManagement: React.FC = () => {
                                             user.status === 'Active' ? 'bg-green-100 text-green-700' :
                                             user.status === 'Inactive' ? 'bg-gray-100 text-gray-700' : 'bg-slate-100 text-slate-700'
                                         }`}>
-                                            {user.status === 'Rejected' ? <XCircle size={10} /> : <CheckCircle size={10} />}
+                                            {user.status === 'Rejected' ? <XCircle size={12} /> : <CheckCircle size={12} />}
                                             {user.status}
                                         </span>
                                     </td>
-                                    <td className="py-2 px-3 text-[10px] text-slate-600">
+                                    <td className="py-3 px-4 text-sm text-slate-600">
                                         {user.registeredDate || '-'}
                                     </td>
-                                    <td className="py-2 px-3 text-[10px] text-slate-600">
+                                    <td className="py-3 px-4 text-sm text-slate-600">
                                         {user.joinedDate || '-'}
                                     </td>
-                                    <td className="py-2 px-3 text-[10px] text-slate-600">
+                                    <td className="py-3 px-4 text-sm text-slate-600">
                                         {user.rejectedDate || '-'}
                                     </td>
-                                    <td className="py-2 px-3 text-right">
+                                    <td className="py-3 px-4 text-right">
                                         <div className="flex justify-end items-center gap-2">
                                             <button
                                                 onClick={() => navigate(`/users/${user.id}`)}
-                                                className="px-2 py-1 text-[10px] rounded border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium"
+                                                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium"
                                                 title="View User"
                                             >
                                                 View
                                             </button>
                                             <button 
                                                 onClick={() => handleDeleteUser(user.id)}
-                                                className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors"
+                                                className="text-red-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors"
                                                 title="Delete User"
                                             >
-                                                <Trash2 size={14} />
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -348,7 +348,7 @@ export const UserManagement: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={userTab !== 'REGISTERED' ? 9 : 8} className="py-6 text-center text-slate-500 text-[10px]">
+                                <td colSpan={userTab !== 'REGISTERED' ? 9 : 8} className="py-6 text-center text-slate-500 text-sm">
                                     No users found matching your criteria.
                                 </td>
                             </tr>
@@ -480,15 +480,15 @@ export const UserManagement: React.FC = () => {
                     <div className="p-4 space-y-3">
                         <div className="space-y-3">
                             <div>
-                                <div className="font-medium text-slate-800 text-sm">{selectedUser.name}</div>
-                                <div className="text-[10px] text-slate-500">{selectedUser.email}</div>
-                                <div className="text-[10px] text-slate-500">Role: {selectedUser.role}</div>
-                                <div className="text-[10px] text-slate-500">Joined: {selectedUser.registeredDate}</div>
+                                <div className="font-medium text-slate-800 text-base">{selectedUser.name}</div>
+                                <div className="text-xs text-slate-500">{selectedUser.email}</div>
+                                <div className="text-xs text-slate-500">Role: {selectedUser.role}</div>
+                                <div className="text-xs text-slate-500">Joined: {selectedUser.registeredDate}</div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="rounded-xl border border-slate-200 overflow-hidden">
-                                    <table className="w-full text-[10px]">
-                                        <tbody className="[&>tr>td]:py-1.5 [&>tr>td]:px-2.5 [&>tr:nth-child(even)]:bg-slate-50">
+                                    <table className="w-full text-xs">
+                                        <tbody className="[&>tr>td]:py-2 [&>tr>td]:px-3 [&>tr:nth-child(even)]:bg-slate-50">
                                             <tr><td className="text-slate-600">Account Type</td><td className="font-medium">{selectedUser.account_type || '-'}</td></tr>
                                             {(selectedUser.account_type === 'COMPANY') && (
                                                 <tr><td className="text-slate-600">Company</td><td className="font-medium">{selectedUser.company_name || '-'}</td></tr>

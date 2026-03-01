@@ -485,7 +485,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                     src={objectUrls['cover_art']} 
                                     className="w-full h-full object-cover" 
                                     onError={(e) => {
-                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                                        (e.target as HTMLImageElement).src = '/assets/placeholder-cover.jpg';
+                                        (e.target as HTMLImageElement).onerror = null;
                                     }}
                                 />
                             ) : (
@@ -552,7 +553,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                     </div>
                     <h1 className="text-3xl font-bold text-slate-800 mb-1">{release.title}</h1>
                     <p className="text-slate-600 font-medium text-lg mb-3">
-                        {release.primaryArtists.join(", ")}
+                        {release.primaryArtists.map(a => typeof a === 'string' ? a : a.name).join(", ")}
                     </p>
                     
                     <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -619,12 +620,12 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         <div>
                             <div className="text-[11px] uppercase text-slate-500 mb-1">Primary Artists</div>
                             <ul className="text-sm text-slate-800 space-y-0.5">
-                                {(release.primaryArtists || []).map((name, idx) => (
-                                    <li key={idx} className="flex items-center gap-1">
-                                        <span>{name}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                                            {(release.primaryArtists || []).map((artist, idx) => (
+                                                <li key={idx} className="flex items-center gap-1">
+                                                    <span>{typeof artist === 'string' ? artist : artist.name}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
                         </div>
                     </div>
 

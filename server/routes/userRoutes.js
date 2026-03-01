@@ -161,6 +161,7 @@ router.get('/', authenticateToken, async (req, res) => {
         const hasJoinedDate = colNames.includes('joined_date');
         const hasRegisteredAt = colNames.includes('registered_at');
         const hasRejectedDate = colNames.includes('rejected_date');
+        const hasBlockedAt = colNames.includes('blocked_at');
 
         const selectParts = [
             'id',
@@ -171,7 +172,11 @@ router.get('/', authenticateToken, async (req, res) => {
             hasStatus ? 'status' : `'Active' as status`,
             hasJoinedDate ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate',
             hasRegisteredAt ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
-            hasRejectedDate ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate',
+            hasRejectedDate 
+                ? (hasBlockedAt 
+                    ? `CASE WHEN status = 'Blocked' THEN DATE_FORMAT(blocked_at, "%Y-%m-%d") ELSE DATE_FORMAT(rejected_date, "%Y-%m-%d") END as rejectedDate` 
+                    : `DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate`)
+                : `NULL as rejectedDate`,
             colNames.includes('aggregator_percentage') ? 'aggregator_percentage' : 'NULL as aggregator_percentage',
             colNames.includes('publishing_percentage') ? 'publishing_percentage' : 'NULL as publishing_percentage'
         ];
@@ -453,7 +458,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
             colNames.includes('status') ? 'status' : `'Active' as status`,
             colNames.includes('registered_at') ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
             colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate',
-            colNames.includes('rejected_date') ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate',
+            colNames.includes('rejected_date') 
+                ? (colNames.includes('blocked_at') 
+                    ? `CASE WHEN status = 'Blocked' THEN DATE_FORMAT(blocked_at, "%Y-%m-%d") ELSE DATE_FORMAT(rejected_date, "%Y-%m-%d") END as rejectedDate` 
+                    : `DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate`)
+                : `NULL as rejectedDate`,
             colNames.includes('rejection_reason') ? 'rejection_reason' : 'NULL as rejection_reason',
             colNames.includes('account_type') ? 'account_type' : 'NULL as account_type',
             colNames.includes('company_name') ? 'company_name' : 'NULL as company_name',

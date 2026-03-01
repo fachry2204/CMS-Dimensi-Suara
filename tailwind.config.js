@@ -16,7 +16,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Arial', 'sans-serif'],
       }
     },
   },

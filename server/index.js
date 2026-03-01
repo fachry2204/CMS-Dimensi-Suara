@@ -82,10 +82,18 @@ app.use('/uploads', (req, res) => {
 // API Routes
 app.get('/api/health', async (req, res) => {
     try {
-        await db.query('SELECT 1');
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB Query Timeout')), 5000));
+        await Promise.race([
+            db.query('SELECT 1'),
+            timeout
+        ]);
         res.json({ status: 'online', database: 'connected' });
     } catch (err) {
-        console.error('Health check failed:', err);
+        console.error('Health check failed:', err.message);
+        // Even if DB fails, we return 200 so frontend doesn't see network error, but with status offline
+        // Wait, frontend expects 200 to check status.
+        // If status is 500, frontend fetch throws or returns !ok.
+        // Let's keep 500 but ensure we send JSON.
         res.status(500).json({ status: 'offline', database: 'disconnected', error: err.message });
     }
 });
@@ -278,7 +286,7 @@ app.get('*', (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📂 Serving static files from: ${distPath}`);
 });

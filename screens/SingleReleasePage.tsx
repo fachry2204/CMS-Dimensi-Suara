@@ -36,7 +36,17 @@ export const SingleReleasePage: React.FC = () => {
           } catch {}
           return '';
         };
-        const mapArr = (v: any) => Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
+        const mapArr = (v: any) => {
+          if (Array.isArray(v)) return v;
+          if (typeof v === 'string') {
+            try {
+              const parsed = JSON.parse(v);
+              if (Array.isArray(parsed)) return parsed;
+            } catch {}
+            return [v];
+          }
+          return [];
+        };
         const primaryArtists = mapArr(raw.primaryArtists);
         const optionMap: Record<string, { id: string; label: string; logo: string }> = {
           'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: socialLogo },
@@ -73,8 +83,8 @@ export const SingleReleasePage: React.FC = () => {
           title: t.title || '',
           duration: t.duration || '',
           artists: [
-            ...mapArr(t.primary_artists).map((name: string) => ({ name, role: 'MainArtist' })),
-            ...mapArr(t.featured_artists).map((name: string) => ({ name, role: 'FeaturedArtist' })),
+            ...mapArr(t.primary_artists).map((item: any) => ({ name: typeof item === 'string' ? item : item.name, role: 'MainArtist' })),
+            ...mapArr(t.featured_artists).map((item: any) => ({ name: typeof item === 'string' ? item : item.name, role: 'FeaturedArtist' })),
           ],
           genre: t.genre || '',
           subGenre: t.sub_genre || '',

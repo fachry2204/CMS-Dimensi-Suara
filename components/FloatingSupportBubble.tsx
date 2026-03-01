@@ -19,7 +19,7 @@ export const FloatingSupportBubble: React.FC<{ count?: number }> = ({ count = 0 
                 )}
             </div>
             <div className="flex flex-col">
-                <span className="text-xs text-gray-900 leading-tight">Ticket Support</span>
+                <span className="text-xs font-bold text-gray-900 leading-tight">Ticket Support</span>
                 <span className="text-[10px] text-gray-500 leading-tight group-hover:text-indigo-600">
                     {count > 0 ? `${count} New Reply` : 'Click Here'}
                 </span>

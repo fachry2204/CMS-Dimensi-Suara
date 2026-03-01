@@ -13,7 +13,7 @@ export const ReleaseTypeSelection: React.FC<Props> = ({ onSelect }) => {
          <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-medium tracking-wide uppercase mb-4 shadow-sm">
             Start Your Journey
          </span>
-         <h1 className="text-2xl md:text-3xl font-medium text-slate-800 mb-3 tracking-tight">
+         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-3 tracking-tight">
             What are you releasing?
          </h1>
          <p className="text-slate-500 text-sm">Select the format that matches your music.</p>
@@ -31,7 +31,7 @@ export const ReleaseTypeSelection: React.FC<Props> = ({ onSelect }) => {
              <Music size={28} className="text-blue-500 group-hover:scale-110 transition-transform duration-300" />
           </div>
           
-          <h2 className="text-base font-medium text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">Single Song</h2>
+          <h2 className="text-base font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">Single Song</h2>
           <p className="text-slate-500 mb-6 text-center leading-relaxed text-sm">
             Upload a single track. Perfect for your latest hit or a standalone release.
           </p>
@@ -52,7 +52,7 @@ export const ReleaseTypeSelection: React.FC<Props> = ({ onSelect }) => {
              <Disc size={28} className="text-purple-500 group-hover:scale-110 transition-transform duration-300" />
           </div>
 
-          <h2 className="text-base font-medium text-slate-800 mb-1 group-hover:text-purple-600 transition-colors">EP / Album</h2>
+          <h2 className="text-base font-bold text-slate-800 mb-1 group-hover:text-purple-600 transition-colors">EP / Album</h2>
           <p className="text-slate-500 mb-6 text-center leading-relaxed text-sm">
              Compile two or more tracks. Ideal for EPs, full albums, or compilations.
           </p>

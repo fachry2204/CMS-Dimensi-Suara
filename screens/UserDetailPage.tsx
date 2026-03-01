@@ -465,7 +465,10 @@ export const UserDetailPage: React.FC = () => {
             <h3 className="text-lg font-medium text-slate-800 mb-2">Berhasil!</h3>
             <p className="text-slate-600 mb-6">Status user berhasil diperbarui.</p>
             <button 
-              onClick={() => setShowSuccessModal(false)}
+              onClick={() => {
+                setShowSuccessModal(false);
+                navigate('/users');
+              }}
               className="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
             >
               Tutup

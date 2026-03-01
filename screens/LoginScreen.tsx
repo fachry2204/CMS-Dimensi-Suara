@@ -141,20 +141,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   const renderLogin = () => (
     <>
-      <div className="text-center mb-6">
-        {branding.logo ? (
-            <img src={branding.logo} alt="Logo" className="h-48 object-contain mx-auto mb-1" />
-        ) : (
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-blue-500/30">
-                <Music4 size={24} />
-            </div>
-        )}
-        
-        <h1 className="text-xl font-bold text-slate-800 tracking-tight">Dimensi Suara CMS</h1>
-        <p className="text-slate-500 text-xs mt-0">Sign in to manage your music distribution</p>
-      </div>
-
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleLogin} className="space-y-4 mt-4">
         {error && (
           <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg flex items-center gap-2 border border-red-100 animate-pulse">
             <AlertCircle size={14} />
@@ -234,29 +221,13 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         <button
           type="button"
           onClick={() => navigate('/register')}
-          className="w-full py-3 rounded-lg font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 shadow-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 text-xs"
+          className="w-full py-3 rounded-lg font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 shadow-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 text-[12px]"
         >
           Belum punya akun? Daftar di sini
         </button>
       </form>
 
       <div className="mt-6 text-center space-y-3">
-        <div className="flex justify-center gap-3 text-[10px] font-medium bg-slate-100 py-1.5 rounded-md mb-2">
-            <div className="flex items-center gap-1.5">
-                <div className={`w-2 h-2 rounded-full ${serverStatus === 'online' ? 'bg-green-500 animate-pulse' : serverStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'}`} />
-                <span className={`${serverStatus === 'online' ? 'text-green-700' : 'text-slate-500'}`}>
-                    Server: {serverStatus === 'checking' ? 'Checking...' : serverStatus.toUpperCase()}
-                </span>
-            </div>
-            {serverStatus === 'online' && (
-                 <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className={`${dbStatus === 'connected' ? 'text-green-700' : 'text-red-500'}`}>
-                        DB: {dbStatus === 'connected' ? 'CONNECTED' : 'DISCONNECTED'}
-                    </span>
-                </div>
-            )}
-        </div>
         <p className="text-[10px] text-slate-400">
           Protected CMS Area. Authorized personnel only.
         </p>
@@ -284,10 +255,42 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   return (
     <div 
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4 bg-cover bg-center"
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4 bg-cover bg-center relative"
         style={branding.login_background ? { backgroundImage: `url(${branding.login_background})` } : {}}
     >
-      <div className="w-full max-w-sm bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl shadow-blue-900/10 border border-white/50 p-6 md:p-8 animate-fade-in-up">
+      {/* Server Status Top Right */}
+      <div className="absolute top-6 right-6 z-10 animate-fade-in-down">
+         <div className="flex justify-center gap-3 text-[10px] font-medium bg-white/90 backdrop-blur-sm border border-white/50 shadow-sm px-4 py-2 rounded-xl text-slate-600">
+            <div className="flex items-center gap-1.5">
+                <div className={`w-2 h-2 rounded-full ${serverStatus === 'online' ? 'bg-green-500 animate-pulse' : serverStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                <span className={`${serverStatus === 'online' ? 'text-green-700' : 'text-slate-500'}`}>
+                    Server: {serverStatus === 'checking' ? 'Checking...' : serverStatus.toUpperCase()}
+                </span>
+            </div>
+            {serverStatus === 'online' && (
+                 <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${dbStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span className={`${dbStatus === 'connected' ? 'text-green-700' : 'text-red-500'}`}>
+                        DB: {dbStatus === 'connected' ? 'CONNECTED' : 'DISCONNECTED'}
+                    </span>
+                </div>
+            )}
+         </div>
+      </div>
+
+      <div className="w-full max-w-sm bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl shadow-blue-900/10 border border-white/50 px-6 pb-6 pt-6 md:px-8 md:pb-8 md:pt-8 animate-fade-in-up">
+        <div className="flex flex-col items-center mb-2">
+            {branding.logo ? (
+                <img src={branding.logo} alt="Logo" className="max-h-[80px] w-auto object-contain mb-3 drop-shadow-md" />
+            ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 mb-3">
+                    <Music4 size={24} />
+                </div>
+            )}
+            <div className="px-4 py-1 rounded-xl">
+                <h2 className="text-sm font-bold text-slate-800 tracking-wide text-center">Agregator & Publishing Musik</h2>
+            </div>
+        </div>
         {renderLogin()}
       </div>
 

@@ -79,6 +79,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     type: 'error'
   });
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
     if (trimmerState.rawFile) {
         const url = URL.createObjectURL(trimmerState.rawFile);
@@ -90,7 +92,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
 
   // Initialize first track if empty
   useEffect(() => {
-    if (data.tracks.length === 0) {
+    if (!initializedRef.current && data.tracks.length === 0) {
+       initializedRef.current = true;
        addTrack();
     }
   }, []);
@@ -217,9 +220,10 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 const fieldName = `track_${trackIndex}_clip`;
                 try {
                     // 2. Upload the small cropped file (chunked)
+                    const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
                     const resp = await api.uploadTmpReleaseFileChunked(
                         token,
-                        { title: data.title, primaryArtists: data.primaryArtists },
+                        { title: data.title, primaryArtists: normalizedArtists },
                         fieldName,
                         croppedFile,
                         10 * 1024 * 1024 // 10MB chunk
@@ -288,14 +292,19 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       let initialArtists: TrackArtist[] = [{ name: "", role: "MainArtist" }];
       let initialTitle = "";
 
-      if (releaseType === 'SINGLE') {
-        const inheritedArtists: TrackArtist[] = prev.primaryArtists
-          .filter(name => name.trim() !== "")
-          .map(name => ({ name, role: "MainArtist" }));
+      // Inherit Artists from Step 1
+      const inheritedArtists: TrackArtist[] = (prev.primaryArtists || [])
+        .map(a => {
+            if (typeof a === 'string') return { name: a, role: "MainArtist" };
+            return { name: a.name, role: "MainArtist", spotifyLink: a.spotifyLink };
+        })
+        .filter(a => a.name && a.name.trim() !== "");
 
-        if (inheritedArtists.length > 0) {
-          initialArtists = inheritedArtists;
-        }
+      if (inheritedArtists.length > 0) {
+        initialArtists = inheritedArtists;
+      }
+
+      if (releaseType === 'SINGLE') {
         initialTitle = prev.title || "";
       }
 
@@ -306,7 +315,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         duration: "",
         releaseDate: prev.plannedReleaseDate || "",
         isrc: "",
-        genre: "",
+        genre: prev.genre || "", // Inherit from Step 1
+        subGenre: prev.subGenre || "", // Inherit from Step 1
         isInstrumental: "No",
         explicitLyrics: "No",
         composer: "",
@@ -377,10 +387,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                     try {
                         // Use chunked upload for files > 20MB
                         const useChunk = (file?.size || 0) > (20 * 1024 * 1024);
+                        const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
                         const resp = useChunk
                           ? await api.uploadTmpReleaseFileChunked(
                               token,
-                              { title: data.title, primaryArtists: data.primaryArtists },
+                              { title: data.title, primaryArtists: normalizedArtists },
                               fieldName,
                               file,
                               10 * 1024 * 1024,
@@ -388,7 +399,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                             )
                           : await api.uploadTmpReleaseFile(
                               token,
-                              { title: data.title, primaryArtists: data.primaryArtists },
+                              { title: data.title, primaryArtists: normalizedArtists },
                               fieldName,
                               file
                             );
@@ -445,10 +456,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                             updateTrack(trackId, { processingClip: true });
                             // Same for clip, lower threshold to 1MB
                             const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
+                            const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
                             const resp = useChunk
                               ? await api.uploadTmpReleaseFileChunked(
                                   token,
-                                  { title: data.title, primaryArtists: data.primaryArtists },
+                                  { title: data.title, primaryArtists: normalizedArtists },
                                   fieldName,
                                   file,
                                   10 * 1024 * 1024,
@@ -456,7 +468,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                 )
                               : await api.uploadTmpReleaseFile(
                                   token,
-                                  { title: data.title, primaryArtists: data.primaryArtists },
+                                  { title: data.title, primaryArtists: normalizedArtists },
                                   fieldName,
                                   file
                                 );
@@ -909,32 +921,48 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                         Primary Artists <span className="text-red-500">*</span>
                                     </label>
                                     {track.artists.map((artist, idx) => (
-                                        <div key={idx} className="flex gap-3">
-                                            <input 
-                                                value={artist.name}
-                                                onChange={(e) => handleArtistChange(track.id, idx, 'name', e.target.value)}
-                                                className="flex-[2] px-4 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
-                                                placeholder="Artist Name"
-                                            />
-                                            <div className="flex-1 relative">
-                                                <select 
-                                                    value={artist.role}
-                                                    onChange={(e) => handleArtistChange(track.id, idx, 'role', e.target.value)}
-                                                    className="w-full px-4 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
-                                                >
-                                                    {ARTIST_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-                                                </select>
-                                                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
-                                                    <ChevronDown size={20} />
+                                        <div key={idx} className="bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+                                            <div className="flex gap-3 mb-2">
+                                                <input 
+                                                    value={artist.name}
+                                                    onChange={(e) => handleArtistChange(track.id, idx, 'name', e.target.value)}
+                                                    className="flex-[2] px-4 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 focus:outline-none"
+                                                    placeholder="Artist Name"
+                                                />
+                                                <div className="flex-1 relative">
+                                                    <select 
+                                                        value={artist.role}
+                                                        onChange={(e) => handleArtistChange(track.id, idx, 'role', e.target.value)}
+                                                        className="w-full px-4 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 focus:outline-none appearance-none bg-white"
+                                                    >
+                                                        {ARTIST_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                                                    </select>
+                                                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
+                                                        <ChevronDown size={20} />
+                                                    </div>
                                                 </div>
+                                                <button 
+                                                    onClick={() => removeArtist(track.id, idx)}
+                                                    className={`p-2.5 rounded transition-colors ${track.artists.length > 1 ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-gray-300 bg-gray-50 cursor-not-allowed'}`}
+                                                    disabled={track.artists.length <= 1}
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
                                             </div>
-                                            <button 
-                                                onClick={() => removeArtist(track.id, idx)}
-                                                className={`p-2.5 rounded transition-colors ${track.artists.length > 1 ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-gray-300 bg-gray-50 cursor-not-allowed'}`}
-                                                disabled={track.artists.length <= 1}
-                                            >
-                                                <Trash2 size={20} />
-                                            </button>
+                                            {/* Spotify Link for MainArtist */}
+                                            {artist.role === 'MainArtist' && (
+                                                <div className="relative">
+                                                    <input 
+                                                        value={artist.spotifyLink || ''}
+                                                        onChange={(e) => handleArtistChange(track.id, idx, 'spotifyLink', e.target.value)}
+                                                        className="w-full pl-9 pr-4 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 focus:outline-none bg-white placeholder:text-gray-400"
+                                                        placeholder="Spotify Artist Link (Optional)"
+                                                    />
+                                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-green-500">
+                                                        <Music size={14} />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

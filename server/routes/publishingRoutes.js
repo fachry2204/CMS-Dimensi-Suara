@@ -70,8 +70,8 @@ router.post('/creators', authenticateToken, upload.fields([{ name: 'ktp', maxCou
     try {
         const {
             name, nik, birth_place, birth_date, address, 
-            religion, marital_status, occupation, nationality,
-            bank_name, bank_account_name, bank_account_number
+            nationality,
+            bank_name, bank_account_name, bank_account_number, whatsapp_number
         } = req.body;
 
         const ktp_path = req.files['ktp'] ? `/uploads/ktp/${req.files['ktp'][0].filename}` : null;
@@ -82,16 +82,16 @@ router.post('/creators', authenticateToken, upload.fields([{ name: 'ktp', maxCou
         const [result] = await db.query(
             `INSERT INTO writers (
                 name, nik, birth_place, birth_date, address, 
-                religion, marital_status, occupation, nationality, 
+                nationality, 
                 ktp_path, npwp_path, 
-                bank_name, bank_account_name, bank_account_number, 
+                bank_name, bank_account_name, bank_account_number, whatsapp_number,
                 user_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 name, nik, birth_place, birth_date, address,
-                religion, marital_status, occupation, nationality,
+                nationality,
                 ktp_path, npwp_path,
-                bank_name, bank_account_name, bank_account_number,
+                bank_name, bank_account_name, bank_account_number, whatsapp_number,
                 user_id
             ]
         );
@@ -125,7 +125,7 @@ router.put('/creators/:id', authenticateToken, upload.fields([{ name: 'ktp', max
         const fields = [];
         const values = [];
         for (const [key, value] of Object.entries(updates)) {
-            if (['name', 'nik', 'birth_place', 'birth_date', 'address', 'religion', 'marital_status', 'occupation', 'nationality', 'ktp_path', 'npwp_path', 'bank_name', 'bank_account_name', 'bank_account_number'].includes(key)) {
+            if (['name', 'nik', 'birth_place', 'birth_date', 'address', 'nationality', 'ktp_path', 'npwp_path', 'bank_name', 'bank_account_name', 'bank_account_number', 'whatsapp_number'].includes(key)) {
                 fields.push(`${key} = ?`);
                 values.push(value);
             }

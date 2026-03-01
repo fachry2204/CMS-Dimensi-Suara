@@ -425,15 +425,15 @@ export const api = {
             }
         });
     },
-    cleanupTmp: async (token: string, meta: { title: string; primaryArtists: string[] }) => {
+    cleanupTmp: async (token: string, meta: { title: string; primaryArtists: any[] }) => {
         const res = await fetch(`${API_BASE_URL}/releases/tmp/cleanup`, {
             method: 'POST',
-            headers: {
+            headers: { 
                 'Content-Type': 'application/json',
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
-            credentials: 'include',
-            body: JSON.stringify({ title: meta.title, primaryArtists: meta.primaryArtists || [] })
+            body: JSON.stringify(meta),
+            credentials: 'include'
         });
         return parseResponse(res);
     },

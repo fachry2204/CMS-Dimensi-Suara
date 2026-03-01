@@ -542,6 +542,17 @@ const App: React.FC = () => {
           } else {
               setAllReleases(prev => ([{ ...(data as any), ownerDisplayName: inferredOwnerDisplayName }, ...prev]));
           }
+
+          // Force re-fetch to ensure data consistency
+           if (token) {
+               api.getReleases(token).then(freshData => {
+                   if (Array.isArray(freshData)) {
+                       const mapped = freshData.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }));
+                       setAllReleases(mapped);
+                   }
+               }).catch(err => console.warn("Background refresh failed", err));
+           }
+
           navigate('/releases');
           setViewingRelease(null);
       } catch (err: any) {
@@ -560,6 +571,16 @@ const App: React.FC = () => {
      if (viewingRelease && viewingRelease.id === updated.id) {
          setViewingRelease(updated);
      }
+     
+     // Re-fetch to ensure consistency (especially for status changes that might trigger other backend updates)
+      if (token) {
+         api.getReleases(token).then(freshData => {
+             if (Array.isArray(freshData)) {
+                 const mapped = freshData.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }));
+                 setAllReleases(mapped);
+             }
+         }).catch(err => console.warn("Background refresh failed", err));
+      }
   };
 
   const handleViewDetails = async (release: ReleaseData) => {
@@ -699,6 +720,7 @@ const App: React.FC = () => {
           }
           const mapped: ReleaseData = {
               id: String(raw.id),
+              userId: raw.user_id,
               status: raw.status || release.status,
               submissionDate: raw.submission_date || release.submissionDate,
               aggregator: raw.aggregator || release.aggregator,
@@ -803,17 +825,11 @@ const App: React.FC = () => {
                     <span className="text-sm text-slate-800 tracking-tight">
                         Dashboard
                     </span>
-                    <span className="text-[11px] text-slate-500">
-                        Welcome back, here is your catalog overview.
-                    </span>
                 </div>
             ) : location.pathname === '/aggregator' ? (
                 <div className="hidden md:flex flex-col leading-tight">
                     <span className="text-sm text-slate-800 tracking-tight">
                         Aggregator Overview
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                        Detailed statistics for your releases.
                     </span>
                 </div>
             ) : location.pathname === '/releases' ? (
@@ -821,17 +837,11 @@ const App: React.FC = () => {
                     <span className="text-sm text-slate-800 tracking-tight">
                         All Releases
                     </span>
-                    <span className="text-[11px] text-slate-500">
-                        Manage and track your music catalog status.
-                    </span>
                 </div>
             ) : location.pathname === '/settings' ? (
                 <div className="hidden md:flex flex-col leading-tight">
                     <span className="text-sm text-slate-800 tracking-tight">
                         Settings
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                        Configure your CMS parameters.
                     </span>
                 </div>
             ) : location.pathname === '/users' ? (
@@ -839,17 +849,11 @@ const App: React.FC = () => {
                     <span className="text-sm text-slate-800 tracking-tight">
                         User Management
                     </span>
-                    <span className="text-[11px] text-slate-500">
-                        Manage system access and registered users.
-                    </span>
                 </div>
             ) : location.pathname === '/statistics' ? (
                 <div className="hidden md:flex flex-col leading-tight">
                     <span className="text-sm text-slate-800 tracking-tight">
                         statistik &amp; laporan
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                        analisis performa katalog musik dan pendapatan anda.
                     </span>
                 </div>
             ) : (
@@ -1063,7 +1067,7 @@ const App: React.FC = () => {
 
             <Route path="/me/profile" element={<MyProfile currentUserData={currentUserData} />} />
             <Route path="/me/contracts" element={<MyContracts />} />
-            <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} />} />
+            <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} token={token} />} />
             <Route 
                 path="/releases/:id/view" 
                 element={

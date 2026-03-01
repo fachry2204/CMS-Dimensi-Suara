@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users, Shield, User, MessageSquare } from 'lucide-react';
+import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users, Shield, User, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface SidebarProps {
   currentUser: string;
@@ -9,6 +9,23 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   const [logo, setLogo] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    dashboard: true,
+    aggregator: true,
+    publishing: true,
+    report: true,
+    reportUser: true,
+    system: true,
+    dataSaya: true,
+    bantuan: true
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   useEffect(() => {
       fetch('/api/settings/branding')
@@ -20,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   }, []);
 
   const getLinkClass = (isActive: boolean) => 
-    `w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group font-medium text-[13px] ${
+    `w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] ${
       isActive
         ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100'
         : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'
@@ -32,14 +49,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   return (
     <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-white/50 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
       {/* Brand Logo */}
-      <div className="h-20 flex items-center px-6 border-b border-gray-100 flex-shrink-0">
+      <div className="min-h-[80px] h-auto py-4 flex flex-col items-center justify-center px-6 border-b border-gray-100 flex-shrink-0">
         {logo ? (
-            <img src={logo} alt="Logo" className="h-10 object-contain mr-3" />
+            <img src={logo} alt="Logo" className="w-auto h-auto max-h-[150px] object-contain mb-2" />
         ) : (
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg shadow-blue-500/30">
-                <Music4 size={20} />
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 mb-2">
+                <Music4 size={24} />
             </div>
         )}
+        <div className="text-center">
+            <span className="text-xs font-bold text-slate-700 block tracking-wide">Aggregator & Publishing</span>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -47,10 +67,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         
         {/* Dashboard Menu */}
         <div>
-          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <h3 
+            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            onClick={() => toggleSection('dashboard')}
+          >
             Dashboard
+            {expandedSections.dashboard ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </h3>
-          <ul className="space-y-2">
+          {expandedSections.dashboard && (
+            <ul className="space-y-2">
             <li>
               <NavLink to="/dashboard" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -62,14 +87,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
           </ul>
+          )}
         </div>
 
         {/* Aggregator Menu */}
         <div>
-          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <h3 
+            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            onClick={() => toggleSection('aggregator')}
+          >
             Aggregator
+            {expandedSections.aggregator ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </h3>
-          <ul className="space-y-2">
+          {expandedSections.aggregator && (
+            <ul className="space-y-2">
             <li>
               <NavLink to="/aggregator" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -91,14 +122,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
           </ul>
+          )}
         </div>
 
         {/* Publishing Menu */}
         <div>
-          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <h3 
+            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            onClick={() => toggleSection('publishing')}
+          >
             Publishing
+            {expandedSections.publishing ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </h3>
-          <ul className="space-y-2">
+          {expandedSections.publishing && (
+            <ul className="space-y-2">
             <li>
               <NavLink to="/publishing/writer" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -144,21 +181,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
             </li>
             )}
           </ul>
+          )}
         </div>
 
         {/* Report Section */}
         {userRole !== 'User' && (
         <div>
-          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <h3 
+            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            onClick={() => toggleSection('report')}
+          >
             Report
+            {expandedSections.report ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </h3>
-          <ul className="space-y-2">
+          {expandedSections.report && (
+            <ul className="space-y-2">
             <li>
               <NavLink to="/statistics" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
                   <>
                     <BarChart3 size={20} className={getIconClass(isActive)} />
-                    statistik
+                    Statistik
                   </>
                 )}
               </NavLink>
@@ -194,14 +237,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
           </ul>
+          )}
         </div>
         )}
         {userRole === 'User' && (
         <div>
-          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <h3 
+            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            onClick={() => toggleSection('reportUser')}
+          >
             Report User
+            {expandedSections.reportUser ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </h3>
-          <ul className="space-y-2">
+          {expandedSections.reportUser && (
+            <ul className="space-y-2">
             <li>
               <NavLink to="/user/reports/analytics" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -223,16 +272,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
           </ul>
+          )}
         </div>
         )}
 
         {/* System / Settings Section */}
         {userRole !== 'User' && (
         <div>
-            <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+            <h3 
+              className="px-4 text-[14px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+              onClick={() => toggleSection('system')}
+            >
               System
+              {expandedSections.system ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </h3>
-            <ul className="space-y-2">
+            {expandedSections.system && (
+              <ul className="space-y-2">
             <li>
               <NavLink to="/settings" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -256,14 +311,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
             </li>
             )}
           </ul>
+            )}
         </div>
         )}
         {userRole === 'User' && (
         <div>
-            <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+            <h3 
+              className="px-4 text-[14px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+              onClick={() => toggleSection('dataSaya')}
+            >
               Data Saya
+              {expandedSections.dataSaya ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </h3>
-            <ul className="space-y-2">
+            {expandedSections.dataSaya && (
+              <ul className="space-y-2">
             <li>
               <NavLink to="/me/profile" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -285,15 +346,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
             </ul>
+            )}
         </div>
         )}
 
         {/* Support Section */}
         <div>
-          <h3 className="px-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <h3 
+            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            onClick={() => toggleSection('bantuan')}
+          >
             Bantuan
+            {expandedSections.bantuan ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </h3>
-          <ul className="space-y-2">
+          {expandedSections.bantuan && (
+            <ul className="space-y-2">
             <li>
               <NavLink to="/tickets" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -305,6 +372,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
           </ul>
+          )}
         </div>
       </nav>
     </aside>

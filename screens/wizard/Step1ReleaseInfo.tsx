@@ -18,6 +18,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userType, setUserType] = useState<'Company' | 'Personal' | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [users, setUsers] = useState<{ id: number; username: string }[]>([]);
   const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
     isOpen: false,
     title: '',
@@ -35,6 +36,18 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                 const type = (profile.account_type === 'Company' || profile.account_type === 'COMPANY') ? 'Company' : 'Personal';
                 setUserType(type);
                 setUserRole(profile.role);
+                
+                if (profile.role === 'Admin') {
+                    try {
+                        const allUsers = await api.getUsers(token);
+                        setUsers(allUsers.map((u: any) => ({ 
+                            id: u.id, 
+                            username: u.full_name ? `${u.full_name} (${u.email})` : (u.name || u.username || u.email) 
+                        })));
+                    } catch (error) {
+                        console.error("Failed to fetch users list", error);
+                    }
+                }
                 
                 if (type === 'Personal' && profile.role !== 'Admin') {
                     updateData({ 
@@ -114,7 +127,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
             // Use TMP upload
             const resp = await api.uploadTmpReleaseFile(
               token,
-              { title: (data.title && data.title.trim()) || `Cover-${Date.now()}`, primaryArtists: (data.primaryArtists || []).filter(a => a && a.trim() !== '') },
+              { title: (data.title && data.title.trim()) || `Cover-${Date.now()}`, primaryArtists: (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '') },
               'coverArt',
               file
             );
@@ -146,14 +159,23 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
   };
 
   // --- Multi Artist Logic ---
-  const handleArtistChange = (index: number, value: string) => {
+  const handleArtistChange = (index: number, field: 'name' | 'spotifyLink', value: string) => {
     const newArtists = [...data.primaryArtists];
-    newArtists[index] = value;
+    const currentArtist = newArtists[index];
+
+    if (typeof currentArtist === 'string') {
+        newArtists[index] = { 
+            name: field === 'name' ? value : currentArtist, 
+            spotifyLink: field === 'spotifyLink' ? value : '' 
+        };
+    } else {
+        newArtists[index] = { ...currentArtist, [field]: value };
+    }
     updateData({ primaryArtists: newArtists });
   };
 
   const addArtist = () => {
-    updateData({ primaryArtists: [...data.primaryArtists, ""] });
+    updateData({ primaryArtists: [...data.primaryArtists, { name: '', spotifyLink: '' }] });
   };
 
   const removeArtist = (index: number) => {
@@ -172,6 +194,25 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
       
       <div className="flex flex-col gap-6 items-start w-full">
           {/* Group 1: Main Info */}
+          {userRole === 'Admin' && (
+              <div className="w-full bg-white border border-gray-200 rounded p-6 relative">
+                  <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 absolute -top-2 left-4 bg-white px-2">Admin Controls</h3>
+                  <div className="mb-3">
+                    <SelectInput
+                        label="Release Owner (Admin Only)"
+                        options={users.map(u => u.username)}
+                        value={users.find(u => u.id === Number(data.userId))?.username || ""}
+                        onChange={(e) => {
+                            const selectedUser = users.find(u => u.username === e.target.value);
+                            if (selectedUser) {
+                                updateData({ userId: selectedUser.id });
+                            }
+                        }}
+                    />
+                  </div>
+              </div>
+          )}
+
           <div className="w-full bg-white border border-gray-200 rounded p-6 relative mt-4">
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 absolute -top-2 left-4 bg-white px-2">Release Identity</h3>
               
@@ -194,25 +235,37 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Primary Artist(s) <span className="text-red-500">*</span></label>
                     <div className="space-y-2">
-                      {data.primaryArtists.map((artist, index) => (
-                        <div key={index} className="flex items-center gap-2">
+                      {data.primaryArtists.map((artist, index) => {
+                        const artistName = typeof artist === 'string' ? artist : artist.name;
+                        const spotifyLink = typeof artist === 'string' ? '' : artist.spotifyLink || '';
+
+                        return (
+                        <div key={index} className="flex flex-col gap-2 p-3 bg-slate-50 rounded border border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <input 
+                              value={artistName}
+                              onChange={(e) => handleArtistChange(index, 'name', e.target.value)}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
+                              placeholder="Artist Name"
+                            />
+                            {data.primaryArtists.length > 1 && (
+                              <button 
+                                type="button"
+                                onClick={() => removeArtist(index)}
+                                className="p-2 text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
                           <input 
-                            value={artist}
-                            onChange={(e) => handleArtistChange(index, e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
-                            placeholder="Artist Name"
+                              value={spotifyLink}
+                              onChange={(e) => handleArtistChange(index, 'spotifyLink', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
+                              placeholder="Spotify Artist Link (Optional)"
                           />
-                          {data.primaryArtists.length > 1 && (
-                            <button 
-                              type="button"
-                              onClick={() => removeArtist(index)}
-                              className="p-2 text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
                         </div>
-                      ))}
+                      )})}
                     </div>
                     <button 
                       type="button"
@@ -239,6 +292,8 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                     </div>
                   </div>
                 </div>
+
+
 
                 {/* Right Column: Cover Art */}
                 <div className="w-full md:w-56 flex-shrink-0">
@@ -303,6 +358,8 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
           <div className="w-full bg-white border border-gray-200 rounded p-6 relative mt-4">
               <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 absolute -top-2 left-4 bg-white px-2">Details & Classification</h3>
               
+
+
               {(userType === 'Company' || userRole === 'Admin') && (
                 <>
                   <div className="mb-3">

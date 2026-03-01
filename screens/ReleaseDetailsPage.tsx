@@ -33,7 +33,17 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
       if (!id) { setError('Invalid release id'); setLoading(false); return; }
       try {
         const raw: any = await api.getRelease(token, id);
-        const mapArtists = (arr: any) => Array.isArray(arr) ? arr : (typeof arr === 'string' ? [arr] : []);
+        const mapArtists = (arr: any) => {
+          if (Array.isArray(arr)) return arr;
+          if (typeof arr === 'string') {
+            try {
+              const parsed = JSON.parse(arr);
+              if (Array.isArray(parsed)) return parsed;
+            } catch {}
+            return [arr];
+          }
+          return [];
+        };
         const primaryArtists = mapArtists(raw.primaryArtists);
 
         const ownerDisplayName =
@@ -43,6 +53,7 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
 
         const mapped: ReleaseData = {
           id: String(raw.id),
+          userId: raw.user_id,
           status: raw.status,
           submissionDate: raw.submission_date,
           aggregator: raw.aggregator,
@@ -72,8 +83,8 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
               title: t.title || '',
               duration: t.duration || '',
               artists: [
-                ...p.map((name: string) => ({ name, role: 'MainArtist' })),
-                ...f.map((name: string) => ({ name, role: 'FeaturedArtist' })),
+                ...p.map((item: any) => ({ name: typeof item === 'string' ? item : item.name, role: 'MainArtist' })),
+                ...f.map((item: any) => ({ name: typeof item === 'string' ? item : item.name, role: 'FeaturedArtist' })),
               ],
               genre: t.genre || '',
               subGenre: t.sub_genre || '',

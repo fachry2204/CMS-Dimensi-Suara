@@ -72,7 +72,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
              return;
         }
 
-        const artists = (data.primaryArtists || []).map(a => (a || '').trim()).filter(a => a.length > 0);
+        const artists = (data.primaryArtists || []).map(a => (typeof a === 'string' ? a : a.name || '').trim()).filter(a => a.length > 0);
         // Check mandatory fields: title, primaryArtists, version, language (territory)
         if (artists.length === 0 || !data.title || !data.title.trim() || !data.version || !data.language) {
             setShowArtistWarning(true);

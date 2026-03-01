@@ -12,15 +12,13 @@ interface Creator {
     birth_place: string;
     birth_date: string;
     address: string;
-    religion: string;
-    marital_status: string;
-    occupation: string;
     nationality: string;
     ktp_path: string;
     npwp_path: string;
     bank_name: string;
     bank_account_name: string;
     bank_account_number: string;
+    whatsapp_number: string;
 }
 
 interface Props {
@@ -45,8 +43,8 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [formData, setFormData] = useState<any>({
         name: '', nik: '', birth_place: '', birth_date: '', address: '',
-        religion: '', marital_status: '', occupation: '', nationality: 'Indonesia',
-        bank_name: '', bank_account_name: '', bank_account_number: ''
+        nationality: 'Indonesia',
+        bank_name: '', bank_account_name: '', bank_account_number: '', whatsapp_number: ''
     });
     const [files, setFiles] = useState<{ ktp: File | null, npwp: File | null }>({ ktp: null, npwp: null });
 
@@ -141,13 +139,11 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
             birth_place: creator.birth_place,
             birth_date: creator.birth_date ? creator.birth_date.split('T')[0] : '',
             address: creator.address,
-            religion: creator.religion,
-            marital_status: creator.marital_status,
-            occupation: creator.occupation,
             nationality: creator.nationality,
             bank_name: creator.bank_name,
             bank_account_name: creator.bank_account_name,
-            bank_account_number: creator.bank_account_number
+            bank_account_number: creator.bank_account_number,
+            whatsapp_number: creator.whatsapp_number
         });
         setFiles({ ktp: null, npwp: null });
         setShowModal(true);
@@ -156,8 +152,8 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
     const resetForm = () => {
         setFormData({
             name: '', nik: '', birth_place: '', birth_date: '', address: '',
-            religion: '', marital_status: '', occupation: '', nationality: 'Indonesia',
-            bank_name: '', bank_account_name: '', bank_account_number: ''
+            nationality: 'Indonesia',
+            bank_name: '', bank_account_name: '', bank_account_number: '', whatsapp_number: ''
         });
         setFiles({ ktp: null, npwp: null });
         setIsEditing(false);
@@ -217,7 +213,6 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                     <tr key={creator.id} className="hover:bg-slate-50">
                                         <td className="px-6 py-4">
                                             <div className="text-slate-900">{creator.name}</div>
-                                            <div className="text-xs text-slate-500">{creator.occupation}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
@@ -321,48 +316,19 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Agama</label>
-                                    <select 
-                                        name="religion"
-                                        value={formData.religion} onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    >
-                                        <option value="">Pilih Agama</option>
-                                        <option value="Islam">Islam</option>
-                                        <option value="Kristen">Kristen</option>
-                                        <option value="Katolik">Katolik</option>
-                                        <option value="Hindu">Hindu</option>
-                                        <option value="Buddha">Buddha</option>
-                                        <option value="Konghucu">Konghucu</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Status Pernikahan</label>
-                                    <select 
-                                        name="marital_status"
-                                        value={formData.marital_status} onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    >
-                                        <option value="">Pilih Status</option>
-                                        <option value="Belum Menikah">Belum Menikah</option>
-                                        <option value="Menikah">Menikah</option>
-                                        <option value="Cerai Hidup">Cerai Hidup</option>
-                                        <option value="Cerai Mati">Cerai Mati</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Pekerjaan</label>
-                                    <input 
-                                        type="text" name="occupation"
-                                        value={formData.occupation} onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    />
-                                </div>
-                                <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Kewarganegaraan</label>
                                     <input 
                                         type="text" name="nationality"
                                         value={formData.nationality} onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nomor Whatsapp</label>
+                                    <input 
+                                        type="text" name="whatsapp_number"
+                                        value={formData.whatsapp_number} onChange={handleInputChange}
+                                        placeholder="08xxxxxxxxxx"
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                     />
                                 </div>
@@ -472,20 +438,8 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-slate-500 block mb-1">Pekerjaan</label>
-                                    <div className="font-medium text-slate-800">{previewCreator.occupation}</div>
-                                </div>
-                                <div>
                                     <label className="text-xs text-slate-500 block mb-1">Kewarganegaraan</label>
                                     <div className="font-medium text-slate-800">{previewCreator.nationality}</div>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-slate-500 block mb-1">Agama</label>
-                                    <div className="font-medium text-slate-800">{previewCreator.religion}</div>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-slate-500 block mb-1">Status Pernikahan</label>
-                                    <div className="font-medium text-slate-800">{previewCreator.marital_status}</div>
                                 </div>
                                 <div className="col-span-2">
                                     <label className="text-xs text-slate-500 block mb-1">Alamat</label>

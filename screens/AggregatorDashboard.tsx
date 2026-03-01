@@ -36,7 +36,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
     singles: releases.filter(r => r.type === 'SINGLE').length,
     albums: releases.filter(r => r.type === 'ALBUM').length,
     tracks: releases.reduce((sum, r) => sum + (r.tracks?.length || 0), 0),
-    artists: new Set(releases.flatMap(r => r.primaryArtists || [])).size
+    artists: new Set(releases.flatMap(r => (r.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name))).size
   };
 
   // Filter Recent Activity: Only Pending & Processing
@@ -192,8 +192,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                              return (
                                 <tr 
                                     key={release.id} 
-                                    onClick={() => onViewRelease(release)}
-                                    className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
+                                    className="hover:bg-blue-50/30 transition-colors group"
                                 >
                                     <td className="px-6 py-2.5">
                                         <div className="w-8 h-8 rounded-md bg-gray-100 overflow-hidden border border-gray-200">
@@ -202,8 +201,8 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                                                     src={typeof release.coverArt === 'string' ? assetUrl(release.coverArt) : URL.createObjectURL(release.coverArt)} 
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => {
-                                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
-                                                        console.error("Failed to load image:", release.coverArt);
+                                                        (e.target as HTMLImageElement).src = '/assets/placeholder-cover.jpg';
+                                                        (e.target as HTMLImageElement).onerror = null;
                                                     }} 
                                                 />
                                             ) : (
@@ -215,7 +214,11 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                                         {release.title}
                                     </td>
                                     <td className="px-6 py-2.5 text-xs text-slate-600">
-                                        {(release.primaryArtists || [])[0] || "Unknown"}
+                                        {(() => {
+                                            const first = (release.primaryArtists || [])[0];
+                                            if (!first) return "Unknown";
+                                            return typeof first === 'string' ? first : first.name;
+                                        })()}
                                     </td>
                                     <td className="px-6 py-2.5 text-xs">
                                         {release.aggregator ? (

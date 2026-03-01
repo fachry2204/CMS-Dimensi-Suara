@@ -74,7 +74,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
 
     const searchMatch = 
         title.toLowerCase().includes(searchLower) || 
-        artists.some(a => (a || '').toLowerCase().includes(searchLower)) ||
+        artists.some(a => (typeof a === 'string' ? a : (a?.name || '')).toLowerCase().includes(searchLower)) ||
         upc.includes(searchLower) ||
         aggregator.toLowerCase().includes(searchLower);
 
@@ -89,7 +89,12 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
         case 'title':
             return a.title.localeCompare(b.title) * direction;
         case 'artist':
-            return ((a.primaryArtists || [])[0] || '').localeCompare((b.primaryArtists || [])[0] || '') * direction;
+            const getFirstArtist = (r: ReleaseData) => {
+                const list = r.primaryArtists || [];
+                const first = list[0];
+                return typeof first === 'string' ? first : (first?.name || '');
+            };
+            return getFirstArtist(a).localeCompare(getFirstArtist(b)) * direction;
         case 'aggregator':
             return (a.aggregator || '').localeCompare(b.aggregator || '') * direction;
         case 'status':
@@ -130,7 +135,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
 
   const ThSortable = ({ label, sortKey, align = 'left' }: { label: string, sortKey: SortKey, align?: 'left'|'right' }) => (
       <th 
-        className={`px-4 py-2 text-[10px] text-slate-500 tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group text-${align}`}
+        className={`px-4 py-2 text-[13px] text-slate-500 tracking-wider cursor-pointer hover:bg-slate-100 transition-colors group text-${align}`}
         onClick={() => handleSort(sortKey)}
       >
         <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
@@ -144,9 +149,9 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   const StatCard = ({ title, count, icon, colorClass, bgClass, subtext, cardClass }: any) => (
     <div className={`p-5 rounded-2xl shadow-sm border flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md ${cardClass || 'bg-white border-gray-100'}`}>
         <div>
-            <p className="text-slate-500 text-[10px] font-medium uppercase tracking-wider mb-1">{title}</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
             <h3 className="text-2xl font-bold text-slate-800">{count}</h3>
-            <p className="text-[9px] text-slate-400 mt-1.5 font-normal">{subtext}</p>
+            <p className="text-[12px] text-slate-400 mt-1.5 font-normal">{subtext}</p>
         </div>
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${bgClass} ${colorClass}`}>
             {icon}
@@ -159,7 +164,8 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   releases.forEach(r => {
       if (Array.isArray(r.primaryArtists)) {
           r.primaryArtists.forEach(a => {
-              if (a) uniqueArtists.add(a.trim());
+              const name = typeof a === 'string' ? a : a.name;
+              if (name) uniqueArtists.add(name.trim());
           });
       } else if (typeof r.primaryArtists === 'string') {
           if (r.primaryArtists) uniqueArtists.add((r.primaryArtists as string).trim());
@@ -179,26 +185,6 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             <div className="md:hidden">
                 <h1 className="text-[15px] text-slate-800 tracking-tight">All Releases</h1>
                 <p className="text-slate-500 mt-0.5 text-[10px]">Manage and track your music catalog status.</p>
-            </div>
-            <div className="w-full md:w-auto flex items-center gap-3">
-                <div className="relative w-full md:w-80">
-                    <input 
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search Title, Artist, UPC, Aggregator..." 
-                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all text-[13px]"
-                    />
-                    <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
-                </div>
-                <button
-                    onClick={() => navigate('/new-release')}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-[11px] font-normal shadow-sm"
-                    title="Create New Release"
-                >
-                    <Plus size={14} />
-                    New Release
-                </button>
             </div>
         </div>
 
@@ -252,7 +238,8 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             </div>
         )}
 
-        <div className="flex overflow-x-auto pb-2 mb-6 gap-2 no-scrollbar">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar w-full md:w-auto">
             {tabs.map((tab) => {
                 const isActive = activeStatusTab === tab.id;
                 const count = getCount(tab.statusMap);
@@ -318,23 +305,46 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                     </button>
                 );
             })}
+            </div>
+
+            <div className="w-full md:w-auto flex items-center gap-3">
+                <div className="relative w-full md:w-80">
+                    <input 
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search Title, Artist, UPC, Aggregator..." 
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all text-[13px]"
+                    />
+                    <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+                </div>
+                <button
+                    onClick={() => navigate('/new-release')}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-[14px] font-bold shadow-sm"
+                    title="Create New Release"
+                >
+                    <Plus size={14} />
+                    New Release
+                </button>
+            </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100/80 overflow-hidden flex flex-col min-h-[500px]">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-300 overflow-hidden flex flex-col min-h-[500px]">
             <div className="overflow-x-auto flex-1">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b border-gray-100">
+                    <thead className="bg-slate-50 border-b-2 border-gray-300">
                         <tr>
                             <ThSortable label="Release" sortKey="title" />
+                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider">User</th>
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
-                            <th className="px-4 py-2 text-[10px] text-slate-500 tracking-wider">Submit Date</th>
+                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider">Submit Date</th>
                             {userRole === 'Admin' && <ThSortable label="Aggregator" sortKey="aggregator" />}
                             <ThSortable label="Status" sortKey="status" />
-                            <th className="px-4 py-2 text-[10px] text-slate-500 tracking-wider text-right">Action</th>
+                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-300">
                         {displayedReleases.map((release) => {
                             // Determine type
                             const type = (release.tracks || []).length > 1 ? "Album/EP" : "Single";
@@ -364,7 +374,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                 : undefined;
 
                             return (
-                                <tr key={release.id || Math.random()} className="hover:bg-blue-50/30 transition-colors group text-[10px]">
+                                <tr key={release.id || Math.random()} className="even:bg-slate-50 hover:bg-blue-50 transition-colors group text-[13px]">
                                     <td className="px-4 py-2">
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
@@ -377,7 +387,8 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                         alt="Art" 
                                                         className="w-full h-full object-cover" 
                                                         onError={(e) => {
-                                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Error';
+                                                            (e.target as HTMLImageElement).src = '/assets/placeholder-cover.jpg'; // Local fallback
+                                                            (e.target as HTMLImageElement).onerror = null; // Prevent infinite loop
                                                             console.error("Failed to load image:", release.coverArt);
                                                         }}
                                                     />
@@ -386,39 +397,50 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                 )}
                                             </div>
                                             <div className="min-w-[150px]">
-                                                <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{ownerName || "Unknown User"}</div>
-                                                <div className="font-medium text-slate-800 truncate max-w-[200px] text-[11px]" title={release.title}>{release.title || "Untitled Release"}</div>
-                                                <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{(release.primaryArtists || [])[0] || "Unknown Artist"}</div>
+                                                <div className="font-bold text-slate-800 truncate max-w-[200px] text-[13px]" title={release.title}>{release.title || "Untitled Release"}</div>
+                                                <div className="text-[13px] text-slate-500 truncate max-w-[200px] font-bold" title={(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ')}>
+                                                    {(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ') || "Unknown Artist"}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
+                                    <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <Users size={12} className="text-slate-400" />
+                                            {ownerName || "-"}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-2">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white text-slate-600 border border-gray-200 whitespace-nowrap shadow-sm">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[13px] font-bold whitespace-nowrap shadow-sm border ${
+                                            type === "Single" 
+                                                ? "bg-blue-100 text-blue-700 border-blue-200" 
+                                                : "bg-green-100 text-green-700 border-green-200"
+                                        }`}>
                                             <Music size={10} />
                                             {type}
                                         </span>
                                     </td>
-                                <td className="px-4 py-2 text-[11px] text-slate-600 whitespace-nowrap">
+                                <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
                                             <Calendar size={12} className="text-slate-400" />
                                             {formatDMY(displayDateRaw)}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 text-[11px] text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
                                             <Calendar size={12} className="text-slate-400" />
                                             {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
                                     {userRole === 'Admin' && (
-                                    <td className="px-4 py-2 text-[11px]">
+                                    <td className="px-4 py-2 text-[13px]">
                                         {release.aggregator ? (
-                                            <div className="flex items-center gap-1 text-[10px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
+                                            <div className="flex items-center gap-1 text-[13px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
                                                 <Globe size={10} />
                                                 {release.aggregator}
                                             </div>
                                         ) : (
-                                            <span className="text-[10px] text-slate-300 italic">Not set</span>
+                                            <span className="text-[13px] text-slate-300 italic">Not set</span>
                                         )}
                                     </td>
                                     )}
@@ -426,7 +448,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                         <div className="flex flex-col items-start gap-1">
                                             <span 
                                                 title={rejectionTooltip}
-                                                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap border ${statusClass}`}
+                                                className={`inline-block px-2 py-0.5 rounded-full text-[13px] font-bold whitespace-nowrap border ${statusClass}`}
                                             >
                                                 {status === 'Live' ? 'Released' : status}
                                             </span>
@@ -438,7 +460,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                 onClick={() => {
                                                     onViewDetails(release);
                                                 }}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[11px] font-semibold shadow-sm whitespace-nowrap"
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[14px] font-bold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
                                             >
                                                 <Eye size={12} /> View
@@ -469,63 +491,60 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             )}
 
             {/* Pagination Footer */}
-            <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
-                <div className="flex items-center gap-4">
-                     <span className="text-[11px] text-slate-500">
-                        Showing {displayedReleases.length} of {totalItems} results
-                     </span>
-                     <button 
-                        onClick={() => setIsViewAll(!isViewAll)}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-2 transition-colors ${isViewAll ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-600 border-gray-200 hover:bg-slate-50'}`}
-                     >
-                        <List size={14} />
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div className="text-[13px] text-slate-500 font-medium">
+                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min((currentPage - 1) * ITEMS_PER_PAGE + ITEMS_PER_PAGE, sortedReleases.length)} of {sortedReleases.length} results
+                </div>
+                <div className="flex gap-2">
+                     <button onClick={() => setIsViewAll(!isViewAll)} className="px-3 py-1.5 text-[14px] font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         {isViewAll ? "Show Paged" : "View All"}
                      </button>
+                     {!isViewAll && totalPages > 1 && (
+                     <div className="flex items-center gap-1">
+                         <button
+                             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                             disabled={currentPage === 1}
+                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                         >
+                             <ChevronLeft size={16} />
+                         </button>
+                         
+                         {Array.from({ length: totalPages }, (_, i) => i + 1)
+                             .filter(page => {
+                                 const distance = Math.abs(page - currentPage);
+                                 return distance < 2 || page === 1 || page === totalPages;
+                             })
+                             .map((page, index, array) => {
+                                 if (index > 0 && page - array[index - 1] > 1) {
+                                     return (
+                                         <span key={`ellipsis-${page}`} className="w-8 h-8 flex items-center justify-center text-slate-400">...</span>
+                                     );
+                                 }
+                                 return (
+                                     <button
+                                         key={page}
+                                         onClick={() => setCurrentPage(page)}
+                                         className={`w-8 h-8 flex items-center justify-center rounded-lg text-[13px] font-bold transition-all ${
+                                             currentPage === page
+                                                 ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                                                 : 'text-slate-500 hover:bg-white hover:shadow-sm'
+                                         }`}
+                                     >
+                                         {page}
+                                     </button>
+                                 );
+                             })}
+
+                         <button
+                             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                             disabled={currentPage === totalPages}
+                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                         >
+                             <ChevronRight size={16} />
+                         </button>
+                     </div>
+                     )}
                 </div>
-
-                {!isViewAll && totalPages > 1 && (
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className="p-2 rounded-lg border border-gray-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-                        >
-                            <ChevronLeft size={16} />
-                        </button>
-                        
-                        <div className="flex items-center gap-1">
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                // Logic to show window of pages around current
-                                let pageNum = i + 1;
-                                if (totalPages > 5) {
-                                    if (currentPage > 3) pageNum = currentPage - 2 + i;
-                                    if (pageNum > totalPages) pageNum = pageNum - (pageNum - totalPages);
-                                }
-                                
-                                return (
-                                    <button
-                                        key={pageNum}
-                                        onClick={() => setCurrentPage(pageNum)}
-                                        className={`w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center transition-colors
-                                            ${currentPage === pageNum 
-                                                ? 'bg-blue-600 text-white shadow-sm' 
-                                                : 'text-slate-600 hover:bg-slate-100'}`}
-                                    >
-                                        {pageNum}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <button
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className="p-2 rounded-lg border border-gray-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
-                        >
-                            <ChevronRight size={16} />
-                        </button>
-                    </div>
-                )}
             </div>
         </div>
     </div>

@@ -2,6 +2,7 @@
 export interface TrackArtist {
   name: string;
   role: string;
+  spotifyLink?: string;
 }
 
 export interface TrackContributor {
@@ -74,8 +75,14 @@ export interface Track {
   analysis?: AnalysisResult;
 }
 
+export interface PrimaryArtist {
+  name: string;
+  spotifyLink?: string;
+}
+
 export interface ReleaseData {
   id?: string; // Unique ID for the list
+  userId?: string | number; // Owner ID
   status?: 'Pending' | 'Request Edit' | 'Processing' | 'Live' | 'Rejected' | 'Draft';
   submissionDate?: string;
   aggregator?: string; // New Field
@@ -92,7 +99,7 @@ export interface ReleaseData {
   isrc?: string; // Added ISRC for Single releases in Step 3
   title: string;
   language: string; 
-  primaryArtists: string[];
+  primaryArtists: (string | PrimaryArtist)[];
   label: string;
   genre?: string;
   subGenre?: string;

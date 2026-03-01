@@ -55,7 +55,8 @@ const storage = multer.diskStorage({
         try {
             if (req.body && typeof req.body.data === 'string') {
                 const payload = JSON.parse(req.body.data);
-                const primaryArtist = (Array.isArray(payload.primaryArtists) && payload.primaryArtists[0]) ? payload.primaryArtists[0] : 'Unknown_Artist';
+                const p = (Array.isArray(payload.primaryArtists) && payload.primaryArtists[0]) ? payload.primaryArtists[0] : 'Unknown_Artist';
+                const primaryArtist = (typeof p === 'object' && p !== null && p.name) ? p.name : p;
                 artist = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
                 title = sanitizeName(payload.title).substring(0, 80) || 'Untitled_Release';
             }
@@ -96,7 +97,8 @@ const storageTmp = multer.diskStorage({
         try {
             if (req.body && typeof req.body.data === 'string') {
                 const payload = JSON.parse(req.body.data);
-                const primaryArtist = (Array.isArray(payload.primaryArtists) && payload.primaryArtists[0]) ? payload.primaryArtists[0] : 'Unknown_Artist';
+                const p = (Array.isArray(payload.primaryArtists) && payload.primaryArtists[0]) ? payload.primaryArtists[0] : 'Unknown_Artist';
+                const primaryArtist = (typeof p === 'object' && p !== null && p.name) ? p.name : p;
                 artist = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
                 title = sanitizeName(payload.title).substring(0, 80) || 'Untitled_Release';
             }
@@ -186,7 +188,8 @@ const handleUpload = (uploader) => (req, res, next) => {
 router.post('/upload', authenticateToken, handleUpload(upload.any()), async (req, res) => {
     try {
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
-        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const p = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const primaryArtist = (typeof p === 'object' && p !== null && p.name) ? p.name : p;
         const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
         const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
@@ -238,7 +241,8 @@ router.post('/upload-tmp', authenticateToken, handleUpload(uploadTmp.any()), asy
     try {
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
         const userId = req.user.id;
-        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const p = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const primaryArtist = (typeof p === 'object' && p !== null && p.name) ? p.name : p;
         const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
         const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(TMP_DIR, String(userId), artistDirName, releaseDirName);
@@ -277,7 +281,8 @@ router.post('/upload-tmp-chunk', authenticateToken, handleUpload(uploadTmpChunk.
     try {
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
         const userId = req.user.id;
-        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const p = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const primaryArtist = (typeof p === 'object' && p !== null && p.name) ? p.name : p;
         const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
         const releaseDirName = sanitizeName(releaseData.title).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(TMP_DIR, String(userId), artistDirName, releaseDirName);
@@ -320,7 +325,8 @@ router.post('/tmp/cleanup', authenticateToken, async (req, res) => {
     try {
         const { title, primaryArtists } = req.body || {};
         const userId = req.user.id;
-        const primaryArtist = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
+        const p = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
+        const primaryArtist = (typeof p === 'object' && p !== null && p.name) ? p.name : p;
         const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
         const releaseDirName = sanitizeName(title).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(TMP_DIR, String(userId), artistDirName, releaseDirName);
@@ -411,10 +417,14 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
     try {
         // Parse JSON payload from 'data' field when using multipart/form-data
         const releaseData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
-        const userId = req.user.id;
+        let userId = req.user.id;
+        if (req.user.role === 'Admin' && releaseData.userId) {
+            userId = releaseData.userId;
+        }
         const isUpdate = !!releaseData.id;
 
-        const primaryArtist = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const p = (Array.isArray(releaseData.primaryArtists) && releaseData.primaryArtists[0]) ? releaseData.primaryArtists[0] : 'Unknown_Artist';
+        const primaryArtist = (typeof p === 'object' && p !== null && p.name) ? p.name : p;
         const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
         // Folder name: Artist - Release Title
         const releaseDirName = sanitizeName(`${primaryArtist} - ${releaseData.title}`).substring(0, 80) || 'Untitled_Release';
@@ -787,6 +797,13 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                 releaseId = releaseResult.insertId;
             }
         } else {
+            // Ensure ownership is preserved (or corrected) when Admin updates
+            // Only update user_id if explicitly provided to avoid accidental overwrite
+            if (req.user.role === 'Admin' && releaseData.userId) {
+                cols.push('user_id');
+                vals.push(releaseData.userId);
+            }
+
             const setParts = cols.map(col => `${col} = ?`);
             await db.query(
                 `UPDATE releases SET ${setParts.join(', ')} WHERE id = ?`,

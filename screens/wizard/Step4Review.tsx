@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ReleaseData } from '../../types';
 import { api } from '../../utils/api';
 import { assetUrl } from '../../utils/url';
-import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle, ChevronLeft, X, Check } from 'lucide-react';
+import { Disc, CheckCircle, Loader2, AlertCircle, FileAudio, User, Music2, FileText, Calendar, Globe, Tag, Mic2, Users, PlayCircle, ChevronLeft, X, Check, ExternalLink } from 'lucide-react';
 import { AlertModal } from '../../components/AlertModal';
 
 interface Props {
@@ -50,6 +50,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
     if (!data.title) errors.push("Release Title is required.");
     if (!data.primaryArtists || data.primaryArtists.length === 0 || !data.primaryArtists[0]) {
         errors.push("Primary Artist is required.");
+    } else {
+        const firstArtist = data.primaryArtists[0];
+        const name = typeof firstArtist === 'string' ? firstArtist : firstArtist.name;
+        if (!name || name.trim() === '') {
+             errors.push("Primary Artist Name is required.");
+        }
     }
     // Genre is only required for ALBUM/EP, not Single
     if (data.type !== 'SINGLE') {
@@ -100,6 +106,12 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         
         const prepped: ReleaseData = {
           ...data,
+          // Filter out empty artists and handle object structure
+          primaryArtists: (data.primaryArtists || []).filter(a => {
+             const name = typeof a === 'string' ? a : a?.name;
+             return name && name.trim().length > 0;
+          }),
+          userId: data.userId, // Ensure original owner is preserved
           tracks: (data.tracks || []).map(t => ({ ...t }))
         };
 
@@ -316,6 +328,7 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
         onSave(finalizedData);
         setSuccessMsg(result.message || 'Release submitted successfully');
         try {
+          // Backend now handles object-based primaryArtists correctly
           await api.cleanupTmp(token, { title: prepped.title, primaryArtists: prepped.primaryArtists });
         } catch (e) {
           console.warn('TMP cleanup after submit failed:', (e as any)?.message || e);
@@ -406,12 +419,13 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
                             src={
                               typeof data.coverArt === 'string'
                                 ? assetUrl(data.coverArt)
-                                : (data.coverArt instanceof Blob ? URL.createObjectURL(data.coverArt) : '')
+                                : (data.coverArt instanceof Blob ? URL.createObjectURL(data.coverArt) : '/assets/placeholder-cover.jpg')
                             }
                             alt="Cover"
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/3000?text=No+Cover';
+                              (e.target as HTMLImageElement).src = '/assets/placeholder-cover.jpg';
+                              (e.target as HTMLImageElement).onerror = null;
                             }}
                         />
                     ) : (
@@ -431,7 +445,35 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
             {/* Metadata Grid */}
             <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-4">
                 <MetaItem label="Release Title" value={data.title} icon={<FileText size={10} />} />
-                <MetaItem label="Primary Artist" value={data.primaryArtists.join(", ")} icon={<User size={10} />} />
+                <MetaItem 
+                    label="Primary Artist" 
+                    value={
+                        <div className="flex flex-col gap-1">
+                            {data.primaryArtists.map((a, idx) => {
+                                const name = typeof a === 'string' ? a : a.name;
+                                const link = typeof a === 'object' && a.spotifyLink ? a.spotifyLink : null;
+                                return (
+                                    <div key={idx} className="flex items-center gap-1.5">
+                                        <span>{name}</span>
+                                        {link && (
+                                            <a 
+                                                href={link} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                className="text-green-500 hover:text-green-600 inline-flex items-center" 
+                                                title="Spotify Artist Link"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <ExternalLink size={12} />
+                                            </a>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    } 
+                    icon={<User size={10} />} 
+                />
                 <MetaItem label="Label" value={data.label} icon={<Users size={10} />} />
                 
                 <MetaItem label="Language" value={data.language} icon={<Globe size={10} />} />
@@ -733,13 +775,11 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
 
 // --- Helper Components ---
 
-const MetaItem: React.FC<{ label: string; value: string; icon: React.ReactNode }> = ({ label, value, icon }) => (
+const MetaItem: React.FC<{ label: string; value: React.ReactNode; icon: React.ReactNode }> = ({ label, value, icon }) => (
     <div className="flex flex-col border border-gray-200 rounded p-3 bg-slate-50/50">
         <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
             {React.cloneElement(icon as React.ReactElement, { size: 14 })} {label}
         </span>
-        <span className="text-[11px] font-medium text-slate-700 truncate" title={value}>
-            {value || "-"}
-        </span>
+        <div className="text-xs font-semibold text-slate-800 break-words">{value || "-"}</div>
     </div>
 );
