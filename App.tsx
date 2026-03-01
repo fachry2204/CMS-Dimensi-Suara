@@ -40,6 +40,7 @@ import { api, API_BASE_URL } from './utils/api';
 import socialLogo from './assets/platforms/social.svg';
 import youtubeMusicLogo from './assets/platforms/youtube-music.svg';
 import allDspLogo from './assets/platforms/alldsp.svg';
+import PublishingWriterDetail from './screens/publishing/PublishingWriterDetail';
 import { getProfileImageUrl } from './utils/imageUtils';
 
 const App: React.FC = () => {
@@ -1088,6 +1089,7 @@ const App: React.FC = () => {
             
             {/* Publishing Routes */}
             <Route path="/publishing/writer" element={<PublishingWriter token={token} />} />
+            <Route path="/publishing/writers/:id" element={<PublishingWriterDetail token={token} />} />
             <Route path="/publishing/songs" element={<PublishingSongs token={token} />} />
             <Route path="/publishing/analytics" element={<PublishingAnalytics token={token} />} />
             <Route path="/publishing/reports" element={<PublishingReports token={token} />} />

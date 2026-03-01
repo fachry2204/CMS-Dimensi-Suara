@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
-    Plus, Search, Edit2, Trash2, FileText, CreditCard, User, MapPin, Calendar, Briefcase, Eye, CheckCircle, AlertTriangle, XCircle
+    Plus, Search, Edit2, Trash2, FileText, CreditCard, User, MapPin, Calendar, Briefcase, Eye, CheckCircle, AlertTriangle, XCircle, MessageCircle
 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { assetUrl } from '../../utils/url';
@@ -26,12 +27,13 @@ interface Props {
 }
 
 export const PublishingWriter: React.FC<Props> = ({ token }) => {
+    const navigate = useNavigate();
     const [creators, setCreators] = useState<Creator[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
-    const [showPreviewModal, setShowPreviewModal] = useState(false);
-    const [previewCreator, setPreviewCreator] = useState<Creator | null>(null);
+    // const [showPreviewModal, setShowPreviewModal] = useState(false); // Removed modal state
+    // const [previewCreator, setPreviewCreator] = useState<Creator | null>(null); // Removed modal state
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState<number | null>(null);
 
@@ -126,8 +128,9 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
     };
 
     const handlePreview = (creator: Creator) => {
-        setPreviewCreator(creator);
-        setShowPreviewModal(true);
+        // setPreviewCreator(creator);
+        // setShowPreviewModal(true);
+        navigate(`/publishing/writers/${creator.id}`);
     };
 
     const openEditModal = (creator: Creator) => {
@@ -196,11 +199,12 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                     <table className="w-full text-left text-xs text-slate-600">
                         <thead className="bg-slate-50 text-slate-700">
                             <tr>
-                                <th className="px-6 py-3 font-normal">Nama</th>
-                                <th className="px-6 py-3 font-normal">NIK / NPWP</th>
-                                <th className="px-6 py-3 font-normal">Kontak & Alamat</th>
-                                <th className="px-6 py-3 font-normal">Bank</th>
-                                <th className="px-6 py-3 text-right font-normal">Aksi</th>
+                                <th className="px-6 py-3 font-bold">Nama</th>
+                                <th className="px-6 py-3 font-bold">NIK / NPWP</th>
+                                <th className="px-6 py-3 font-bold">Kontak & Alamat</th>
+                                <th className="px-6 py-3 font-bold">Bank</th>
+                                <th className="px-6 py-3 font-bold">WhatsApp</th>
+                                <th className="px-6 py-3 text-right font-bold">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
@@ -212,7 +216,7 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                 filteredCreators.map((creator) => (
                                     <tr key={creator.id} className="hover:bg-slate-50">
                                         <td className="px-6 py-4">
-                                            <div className="text-slate-900">{creator.name}</div>
+                                            <div className="text-slate-900 font-bold">{creator.name}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
@@ -232,6 +236,22 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                             <div className="text-xs">{creator.bank_name}</div>
                                             <div className="text-xs">{creator.bank_account_number}</div>
                                             <div className="text-xs text-slate-500">{creator.bank_account_name}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {creator.whatsapp_number ? (
+                                                <a 
+                                                    href={`https://wa.me/${creator.whatsapp_number.replace(/^0/, '62').replace(/\D/g, '')}`}
+                                                    target="_blank" 
+                                                    rel="noreferrer"
+                                                    className="flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors text-xs font-medium w-fit"
+                                                    title="Chat WhatsApp"
+                                                >
+                                                    <MessageCircle size={14} />
+                                                    <span>WhatsApp</span>
+                                                </a>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">-</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-right space-x-2">
                                             <button 
@@ -412,7 +432,7 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                 </div>
             )}
 
-            {/* Preview Modal */}
+{/* Preview Modal - Removed */}{/*
             {showPreviewModal && previewCreator && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -440,6 +460,10 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                                 <div>
                                     <label className="text-xs text-slate-500 block mb-1">Kewarganegaraan</label>
                                     <div className="font-medium text-slate-800">{previewCreator.nationality}</div>
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="text-xs text-slate-500 block mb-1">Nomor Whatsapp</label>
+                                    <div className="font-medium text-slate-800">{previewCreator.whatsapp_number || '-'}</div>
                                 </div>
                                 <div className="col-span-2">
                                     <label className="text-xs text-slate-500 block mb-1">Alamat</label>
@@ -507,6 +531,7 @@ export const PublishingWriter: React.FC<Props> = ({ token }) => {
                     </div>
                 </div>
             )}
+            */}
 
             {/* Success Modal */}
             {showSuccessModal && (

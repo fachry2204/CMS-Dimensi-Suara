@@ -26,7 +26,8 @@ const parseResponse = async (res: Response) => {
         } catch {
             const t = await res.text().catch(() => '');
             console.error('API Error Response Text:', t, 'Status:', res.status);
-            const err: any = new Error(t || `Request failed (Status: ${res.status} ${res.statusText})`);
+            const msg = t || (res.status === 404 ? 'Resource not found (404)' : `Request failed (Status: ${res.status} ${res.statusText})`);
+            const err: any = new Error(msg);
             (err as any).status = res.status;
             throw err;
         }
@@ -102,6 +103,14 @@ export const api = {
     publishing: {
         getCreators: async (token) => {
             const res = await fetch(`${API_BASE_URL}/publishing/creators`, { 
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                credentials: 'include' 
+            });
+            return parseResponse(res);
+        },
+        getCreatorById: async (token, id: string) => {
+            console.log('API Request:', `${API_BASE_URL}/publishing/creators/${id}`);
+            const res = await fetch(`${API_BASE_URL}/publishing/creators/${id}`, { 
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {},
                 credentials: 'include' 
             });

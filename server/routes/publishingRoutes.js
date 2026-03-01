@@ -65,6 +65,37 @@ router.get('/creators', authenticateToken, async (req, res) => {
     }
 });
 
+// Get single creator
+router.get('/creators/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [writer] = await db.query('SELECT * FROM writers WHERE id = ?', [id]);
+        
+        if (writer.length === 0) {
+            return res.status(404).json({ message: 'Writer not found' });
+        }
+
+        // Security check
+        if (req.user.role !== 'Admin' && writer[0].user_id !== req.user.id) {
+             return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        // Fetch songs associated with this writer (by name)
+        const [songs] = await db.query(`
+            SELECT s.id, s.title, s.status, sw.share_percent, sw.role
+            FROM songs s
+            JOIN song_writers sw ON s.id = sw.song_id
+            WHERE sw.name = ?
+            ORDER BY s.created_at DESC
+        `, [writer[0].name]);
+
+        res.json({ ...writer[0], songs });
+    } catch (error) {
+        console.error('Error fetching writer:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Create writer
 router.post('/creators', authenticateToken, upload.fields([{ name: 'ktp', maxCount: 1 }, { name: 'npwp', maxCount: 1 }]), async (req, res) => {
     try {
