@@ -39,17 +39,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   const getLinkClass = (isActive: boolean) => 
     `w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] ${
       isActive
-        ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100'
-        : 'text-slate-600 hover:bg-gray-50 hover:text-slate-900'
+        ? 'bg-white text-black shadow-sm ring-1 ring-white/20'
+        : 'text-white/80 hover:bg-white/10 hover:text-white'
     }`;
 
   const getIconClass = (isActive: boolean) =>
-    isActive ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600';
+    isActive ? 'text-black' : 'text-white/70 group-hover:text-white';
 
   return (
-    <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-white/50 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
+    <aside className="w-64 bg-black backdrop-blur-xl border-r border-white/10 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
       {/* Brand Logo */}
-      <div className="min-h-[80px] h-auto py-4 flex flex-col items-center justify-center px-6 border-b border-gray-100 flex-shrink-0">
+      <div className="min-h-[80px] h-auto py-4 flex flex-col items-center justify-center px-6 border-b border-white/10 flex-shrink-0">
         {logo ? (
             <img src={logo} alt="Logo" className="w-auto h-auto max-h-[150px] object-contain mb-2" />
         ) : (
@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
             </div>
         )}
         <div className="text-center">
-            <span className="text-xs font-bold text-slate-700 block tracking-wide">Aggregator & Publishing</span>
+            <span className="text-xs font-bold text-white block tracking-wide">Aggregator & Publishing</span>
         </div>
       </div>
 
@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         {/* Dashboard Menu */}
         <div>
           <h3 
-            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            className="px-4 text-[14px] font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSection('dashboard')}
           >
             Dashboard
@@ -93,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         {/* Aggregator Menu */}
         <div>
           <h3 
-            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            className="px-4 text-[14px] font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSection('aggregator')}
           >
             Aggregator
@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         {/* Publishing Menu */}
         <div>
           <h3 
-            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            className="px-4 text-[14px] font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSection('publishing')}
           >
             Publishing
@@ -156,30 +156,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 )}
               </NavLink>
             </li>
-            {userRole !== 'User' && (
-            <li>
-              <NavLink to="/publishing/analytics" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <BarChart3 size={20} className={getIconClass(isActive)} />
-                    Analitik
-                  </>
-                )}
-              </NavLink>
-            </li>
-            )}
-            {userRole !== 'User' && (
-            <li>
-              <NavLink to="/publishing/reports" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <ClipboardList size={20} className={getIconClass(isActive)} />
-                    Report
-                  </>
-                )}
-              </NavLink>
-            </li>
-            )}
           </ul>
           )}
         </div>
@@ -188,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         {userRole !== 'User' && (
         <div>
           <h3 
-            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            className="px-4 text-[14px] font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSection('report')}
           >
             Report
@@ -253,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         {userRole === 'User' && (
         <div>
           <h3 
-            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            className="px-4 text-[14px] font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSection('reportUser')}
           >
             Report User
@@ -290,7 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         {userRole !== 'User' && (
         <div>
             <h3 
-              className="px-4 text-[14px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+              className="px-4 text-[14px] font-bold text-white/60 uppercase tracking-wider mb-4 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
               onClick={() => toggleSection('system')}
             >
               System
@@ -326,15 +302,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         )}
         {userRole === 'User' && (
         <div>
-            <h3 
-              className="px-4 text-[14px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
-              onClick={() => toggleSection('dataSaya')}
-            >
-              Data Saya
-              {expandedSections.dataSaya ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </h3>
-            {expandedSections.dataSaya && (
-              <ul className="space-y-2">
+          <h3 
+            className="px-4 text-[14px] font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
+            onClick={() => toggleSection('dataSaya')}
+          >
+            Data Saya
+            {expandedSections.dataSaya ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </h3>
+          {expandedSections.dataSaya && (
+            <ul className="space-y-2">
             <li>
               <NavLink to="/me/profile" className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
@@ -360,10 +336,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         </div>
         )}
 
-        {/* Support Section */}
+        {/* Bantuan Section */}
         <div>
           <h3 
-            className="px-4 text-[14px] font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-slate-600 transition-colors"
+            className="px-4 text-[14px] font-bold text-white/60 uppercase tracking-wider mb-4 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSection('bantuan')}
           >
             Bantuan

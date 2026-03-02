@@ -21,6 +21,7 @@ import { UserDetailPage } from './screens/UserDetailPage';
 import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
 import { PaymentScreen } from './screens/PaymentScreen';
+import { PaymentDetailScreen } from './screens/PaymentDetailScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { RegisterScreen } from './screens/RegisterScreen';
 import { UserStatusScreen } from './screens/UserStatusScreen';
@@ -790,6 +791,7 @@ const App: React.FC = () => {
       if (path === '/import-reports') return "Import Laporan";
       if (path === '/revenue') return "Pendapatan";
       if (path === '/reports/payments') return "Menu Pembayaran";
+      if (path.startsWith('/reports/payments/detail')) return "Detail Pembayaran";
       if (path === '/statistics') return "Analytics & Reports";
       if (path.startsWith('/publishing')) return "Publishing";
       return "Dashboard";
@@ -1132,6 +1134,7 @@ const App: React.FC = () => {
             } />
             <Route path="/revenue" element={<RevenueScreen data={reportData} token={token} />} />
             <Route path="/reports/payments" element={<PaymentScreen token={token} />} />
+            <Route path="/reports/payments/detail/:id" element={<PaymentDetailScreen />} />
           </Routes>
         </div>
 
