@@ -200,7 +200,8 @@ router.post('/branding', authenticateToken, upload.fields([{ name: 'logo', maxCo
             'login_footer_color',
             'login_form_bg_opacity',
             'login_bg_opacity',
-            'login_glass_effect'
+            'login_glass_effect',
+            'login_form_text_color'
         ];
 
         textFields.forEach(field => {

@@ -20,6 +20,7 @@ interface BrandingSettings {
     login_form_bg_opacity: number;
     login_bg_opacity: number;
     login_glass_effect: string; // 'true' or 'false'
+    login_form_text_color: string;
 }
 
 interface SystemCheckResult {
@@ -77,7 +78,8 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
       login_footer_color: '#94a3b8',
       login_form_bg_opacity: 90,
       login_bg_opacity: 100,
-      login_glass_effect: 'false'
+      login_glass_effect: 'false',
+      login_form_text_color: '#334155'
   });
   const [isLoadingBranding, setIsLoadingBranding] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -148,6 +150,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
       formData.append('login_form_bg_opacity', String(branding.login_form_bg_opacity ?? 90));
       formData.append('login_bg_opacity', String(branding.login_bg_opacity ?? 100));
       formData.append('login_glass_effect', String(branding.login_glass_effect ?? 'false'));
+      formData.append('login_form_text_color', String(branding.login_form_text_color || '#334155'));
 
       // Append files LAST
       if (logoFile) formData.append('logo', logoFile);
@@ -759,6 +762,24 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                                     value={branding.login_form_bg_color || ''}
                                     onChange={(e) => setBranding({...branding, login_form_bg_color: e.target.value})}
                                     placeholder="rgba(255, 255, 255, 0.9)"
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Warna Text Form Login</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={branding.login_form_text_color?.startsWith('#') ? branding.login_form_text_color : '#334155'}
+                                    onChange={(e) => setBranding({...branding, login_form_text_color: e.target.value})}
+                                    className="h-10 w-10 rounded-lg cursor-pointer border-0 p-0"
+                                />
+                                <input 
+                                    type="text" 
+                                    value={branding.login_form_text_color || ''}
+                                    onChange={(e) => setBranding({...branding, login_form_text_color: e.target.value})}
+                                    placeholder="#334155"
                                     className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
                                 />
                             </div>

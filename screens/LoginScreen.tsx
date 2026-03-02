@@ -126,7 +126,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       login_footer_color: string,
       login_form_bg_opacity: number,
       login_bg_opacity: number,
-      login_glass_effect: string
+      login_glass_effect: string,
+      login_form_text_color: string
   }>({
       logo: null,
       login_background: null,
@@ -139,7 +140,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
       login_footer_color: '#94a3b8',
       login_form_bg_opacity: 90,
       login_bg_opacity: 100,
-      login_glass_effect: 'false'
+      login_glass_effect: 'false',
+      login_form_text_color: '#334155'
   });
 
   useEffect(() => {
@@ -230,7 +232,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         )}
 
         <div className="space-y-1.5">
-          <label className={`text-xs font-bold ${textColor} ml-1`}>Email</label>
+          <label className="text-xs font-bold ml-1" style={{ color: branding.login_form_text_color || '#334155' }}>Email</label>
           <div className="relative group">
             <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${subTextColor} group-focus-within:text-blue-500 transition-colors`}>
               <Mail size={16} />
@@ -240,7 +242,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full pl-9 pr-3 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
-              style={{ color: textColor === 'text-white' ? '#fff' : '#334155' }}
+              style={{ color: branding.login_form_text_color || '#334155' }}
               placeholder="Enter email"
               required
             />
@@ -248,7 +250,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         </div>
 
         <div className="space-y-1.5">
-          <label className={`text-xs font-bold ${textColor} ml-1`}>Password</label>
+          <label className="text-xs font-bold ml-1" style={{ color: branding.login_form_text_color || '#334155' }}>Password</label>
           <div className="relative group">
             <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${subTextColor} group-focus-within:text-blue-500 transition-colors`}>
               <Lock size={16} />
@@ -258,7 +260,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full pl-9 pr-10 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
-              style={{ color: textColor === 'text-white' ? '#fff' : '#334155' }}
+              style={{ color: branding.login_form_text_color || '#334155' }}
               placeholder="Enter password"
               required
             />

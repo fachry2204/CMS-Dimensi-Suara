@@ -546,6 +546,7 @@ const initDb = async () => {
                         login_form_bg_opacity INT DEFAULT 90,
                         login_bg_opacity INT DEFAULT 100,
                         login_glass_effect ENUM('true', 'false') DEFAULT 'false',
+                        login_form_text_color VARCHAR(20) DEFAULT '#334155',
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 `);
@@ -553,8 +554,8 @@ const initDb = async () => {
                 // Insert default row
                 console.log('🔨 Seeding default login_settings...');
                 await connection.query(`
-                    INSERT INTO login_settings (id, login_title, login_footer, login_button_color, login_form_bg_color, enable_registration)
-                    VALUES (1, 'Agregator & Publishing Musik', 'Protected CMS Area. Authorized personnel only.', 'linear-gradient(to right, #2563eb, #0891b2)', 'rgba(255, 255, 255, 0.9)', 'true')
+                    INSERT INTO login_settings (id, login_title, login_footer, login_button_color, login_form_bg_color, enable_registration, login_form_text_color)
+                    VALUES (1, 'Agregator & Publishing Musik', 'Protected CMS Area. Authorized personnel only.', 'linear-gradient(to right, #2563eb, #0891b2)', 'rgba(255, 255, 255, 0.9)', 'true', '#334155')
                 `);
             }
         }
@@ -565,7 +566,8 @@ const initDb = async () => {
             { name: 'login_footer_color', type: "VARCHAR(20) DEFAULT '#94a3b8'" }, // slate-400
             { name: 'login_form_bg_opacity', type: "INT DEFAULT 90" }, // 0-100
             { name: 'login_bg_opacity', type: "INT DEFAULT 100" }, // 0-100 (Background image opacity)
-            { name: 'login_glass_effect', type: "ENUM('true', 'false') DEFAULT 'false'" }
+            { name: 'login_glass_effect', type: "ENUM('true', 'false') DEFAULT 'false'" },
+            { name: 'login_form_text_color', type: "VARCHAR(20) DEFAULT '#334155'" } // slate-700
         ];
 
         for (const col of loginSettingsCols) {
