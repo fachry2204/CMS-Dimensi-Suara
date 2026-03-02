@@ -275,6 +275,12 @@ const App: React.FC = () => {
         const fetchNotifications = async () => {
              try {
                  const apiNotifs = await api.getNotifications(token);
+                 // Filter out Login success notifications as requested
+                 const filteredApiNotifs = apiNotifs.filter((n: any) => 
+                    n.type !== 'LOGIN_SUCCESS' && 
+                    !n.message?.toLowerCase().includes('login success')
+                 );
+
                  let localNotifs: Notification[] = [];
                  try {
                      localNotifs = JSON.parse(localStorage.getItem('cms_local_notifs') || '[]');
@@ -358,7 +364,7 @@ const App: React.FC = () => {
                      localStorage.setItem('cms_local_notifs', JSON.stringify(localNotifs));
                  }
 
-                 const combined = [...apiNotifs, ...localNotifs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                 const combined = [...filteredApiNotifs, ...localNotifs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                  setNotifications(combined);
                  setUnreadCount(combined.filter((n: any) => !n.is_read).length);
 

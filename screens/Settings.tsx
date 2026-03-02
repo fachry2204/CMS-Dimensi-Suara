@@ -351,9 +351,11 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
               headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {
-              const data = await res.json();
-              setSecurityLogs(data);
-          }
+                const data = await res.json();
+                // Filter out LOGIN_SUCCESS logs as requested
+                const filteredData = data.filter((log: SecurityLog) => log.attack_type !== 'LOGIN_SUCCESS');
+                setSecurityLogs(filteredData);
+            }
       } catch (err) {
           console.error("Failed to fetch security logs:", err);
       } finally {
