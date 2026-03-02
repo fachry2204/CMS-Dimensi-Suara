@@ -150,7 +150,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         )}
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-700 ml-1">Email</label>
+          <label className="text-xs font-bold text-slate-700 ml-1">Email</label>
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
               <Mail size={16} />
@@ -167,7 +167,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-700 ml-1">Password</label>
+          <label className="text-xs font-bold text-slate-700 ml-1">Password</label>
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
               <Lock size={16} />

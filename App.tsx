@@ -20,6 +20,7 @@ import { RoleUserPage } from './screens/RoleUserPage';
 import { UserDetailPage } from './screens/UserDetailPage';
 import { ReportScreen } from './screens/ReportScreen';
 import { RevenueScreen } from './screens/RevenueScreen';
+import { PaymentScreen } from './screens/PaymentScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { RegisterScreen } from './screens/RegisterScreen';
 import { UserStatusScreen } from './screens/UserStatusScreen';
@@ -788,6 +789,7 @@ const App: React.FC = () => {
       if (path === '/reports') return "Laporan";
       if (path === '/import-reports') return "Import Laporan";
       if (path === '/revenue') return "Pendapatan";
+      if (path === '/reports/payments') return "Menu Pembayaran";
       if (path === '/statistics') return "Analytics & Reports";
       if (path.startsWith('/publishing')) return "Publishing";
       return "Dashboard";
@@ -1090,7 +1092,7 @@ const App: React.FC = () => {
             {/* Publishing Routes */}
             <Route path="/publishing/writer" element={<PublishingWriter token={token} userRole={userRole} />} />
             <Route path="/publishing/writers/:id" element={<PublishingWriterDetail token={token} />} />
-            <Route path="/publishing/songs" element={<PublishingSongs token={token} />} />
+            <Route path="/publishing/songs" element={<PublishingSongs token={token} userRole={userRole} />} />
             <Route path="/publishing/analytics" element={<PublishingAnalytics token={token} />} />
             <Route path="/publishing/reports" element={<PublishingReports token={token} />} />
 
@@ -1115,6 +1117,7 @@ const App: React.FC = () => {
                     releases={allReleases}
                     onImport={setReportData}
                     aggregators={aggregators}
+                    token={token}
                 />
             } />
             <Route path="/import-reports" element={
@@ -1124,9 +1127,11 @@ const App: React.FC = () => {
                     releases={allReleases}
                     onImport={setReportData}
                     aggregators={aggregators}
+                    token={token}
                 />
             } />
-            <Route path="/revenue" element={<RevenueScreen data={reportData} />} />
+            <Route path="/revenue" element={<RevenueScreen data={reportData} token={token} />} />
+            <Route path="/reports/payments" element={<PaymentScreen token={token} />} />
           </Routes>
         </div>
 

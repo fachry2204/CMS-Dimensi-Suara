@@ -94,32 +94,18 @@ export const Statistics: React.FC<Props> = ({ releases, reportData, token }) => 
        </div>
 
        {/* Tab Navigation */}
-       <div className="flex items-center gap-6 mb-8 border-b border-slate-200">
-            <button
-                onClick={() => setActiveTab('aggregator')}
-                className={`pb-3 text-sm font-medium transition-all relative px-1 ${
-                    activeTab === 'aggregator' 
-                    ? 'text-blue-600' 
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
+       <div className="flex items-center gap-4 mb-8">
+            <button 
+              onClick={() => setActiveTab('aggregator')}
+              className={`px-4 py-2 rounded-lg border font-bold transition-colors ${activeTab === 'aggregator' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
             >
-                Agregator
-                {activeTab === 'aggregator' && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full" />
-                )}
+              Aggregator
             </button>
-            <button
-                onClick={() => setActiveTab('publishing')}
-                className={`pb-3 text-sm font-medium transition-all relative px-1 ${
-                    activeTab === 'publishing' 
-                    ? 'text-blue-600' 
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
+            <button 
+              onClick={() => setActiveTab('publishing')}
+              className={`px-4 py-2 rounded-lg border font-bold transition-colors ${activeTab === 'publishing' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
             >
-                Publishing
-                {activeTab === 'publishing' && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full" />
-                )}
+              Publishing
             </button>
        </div>
 

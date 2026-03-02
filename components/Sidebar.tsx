@@ -236,6 +236,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 )}
               </NavLink>
             </li>
+            <li>
+              <NavLink to="/reports/payments" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <DollarSign size={20} className={getIconClass(isActive)} />
+                    Pembayaran
+                  </>
+                )}
+              </NavLink>
+            </li>
           </ul>
           )}
         </div>

@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { Upload, FileText, AlertCircle, CheckCircle, CheckCircle2, Download, Calendar, Clock, ChevronLeft, Search, User, XCircle } from 'lucide-react';
 import { ReportData, ReleaseData } from '../types';
 import { formatDMY, formatHM } from '../utils/date';
+import { PublishingReports } from './publishing/PublishingReports';
 
 interface ReportScreenProps {
   onImport: (data: ReportData[]) => void;
@@ -10,9 +11,12 @@ interface ReportScreenProps {
   releases: ReleaseData[];
   aggregators?: string[];
   mode?: 'view' | 'import';
+  token?: string | null;
 }
 
-export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: propData, releases: propReleases, aggregators = [], mode = 'view' }) => {
+export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: propData, releases: propReleases, aggregators = [], mode = 'view', token = null }) => {
+  const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>('aggregator');
+
   const data = propData || [];
   const releases = propReleases || [];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -186,8 +190,27 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
 
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setActiveTab('aggregator')}
+            className={`px-4 py-2 rounded-lg border font-bold transition-colors ${activeTab === 'aggregator' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+          >
+            Aggregator
+          </button>
+          <button 
+            onClick={() => setActiveTab('publishing')}
+            className={`px-4 py-2 rounded-lg border font-bold transition-colors ${activeTab === 'publishing' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+          >
+            Publishing
+          </button>
+      </div>
+
+      {activeTab === 'publishing' ? (
+          <PublishingReports token={token} mode={mode} />
+      ) : (
+          <>
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-800">
             {mode === 'import' ? 'Import Laporan' : 'Laporan'}
@@ -474,6 +497,8 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                 </div>
             )}
         </>
+      )}
+      </>
       )}
     </div>
   );

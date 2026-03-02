@@ -3,6 +3,7 @@ import {
     Plus, Search, Edit2, Trash2, FileText, Music, User, Globe, Clock, Tag, FileAudio, Eye, CheckCircle, XCircle, AlertTriangle 
 } from 'lucide-react';
 import { api } from '../../utils/api';
+import { TRACK_GENRES, COUNTRIES_WITH_DIAL_CODES } from '../../constants';
 
 import { AlertModal } from '../../components/AlertModal';
 
@@ -35,9 +36,10 @@ interface Song {
 
 interface Props {
   token: string | null;
+  userRole?: string;
 }
 
-export const PublishingSongs: React.FC<Props> = ({ token }) => {
+export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
     const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
         isOpen: false,
         title: '',
@@ -79,7 +81,7 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
         duration: '',
         genre: '',
         language: 'Indonesia',
-        region: 'Indonesia',
+        region: '',
         iswc: '',
         isrc: '',
         note: ''
@@ -142,6 +144,24 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
+    };
+
+    const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+        if (value.length > 4) value = value.slice(0, 4); // Limit to 4 digits
+
+        if (value.length >= 2) {
+            const minutes = value.slice(0, 2);
+            const seconds = value.slice(2);
+            // If deleting and we are at the colon, remove it
+            if (formData.duration.length > value.length && formData.duration.endsWith(':')) {
+                // Logic handled naturally by removing char from value
+            }
+             value = `${minutes}:${seconds}`;
+        }
+        
+        // Simple MM:SS format enforcement
+        setFormData({ ...formData, duration: value });
     };
 
     const handleWriterChange = (index: number, field: keyof Writer, value: string | number) => {
@@ -269,6 +289,68 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
+        // Basic Validation
+        if (!formData.title) {
+            setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Judul Lagu wajib diisi',
+                type: 'warning'
+            });
+            return;
+        }
+
+        if (!formData.performer) {
+            setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Artis / Performer wajib diisi',
+                type: 'warning'
+            });
+            return;
+        }
+
+        if (!formData.genre) {
+            setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Genre wajib diisi',
+                type: 'warning'
+            });
+            return;
+        }
+
+        if (!formData.duration || formData.duration.length < 5) {
+            setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Durasi wajib diisi dengan format MM:SS',
+                type: 'warning'
+            });
+            return;
+        }
+
+        if (!formData.region) {
+            setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Region / Negara wajib diisi',
+                type: 'warning'
+            });
+            return;
+        }
+
+        // Validate writers name
+        if (writers.some(w => !w.name || !w.name.trim())) {
+             setAlertState({
+                isOpen: true,
+                title: 'Validasi',
+                message: 'Nama Penulis wajib diisi untuk semua penulis',
+                type: 'warning'
+            });
+            return;
+        }
+        
         // Validate writers share
         const totalShare = writers.reduce((sum, w) => sum + Number(w.share_percent), 0);
         if (Math.abs(totalShare - 100) > 0.1) { // Floating point tolerance
@@ -314,7 +396,7 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
         setCurrentSongId(null);
         setFormData({
             song_id: '', title: '', other_title: '', authorized_rights: '100', performer: '',
-            duration: '', genre: '', language: 'Indonesia', region: 'Indonesia',
+            duration: '', genre: '', language: 'Indonesia', region: '',
             iswc: '', isrc: '', note: ''
         });
         setWriters([{ name: '', role: 'Composer', share_percent: 100 }]);
@@ -340,12 +422,12 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Data Lagu (Songs)</h1>
+                    <h1 className="text-2xl font-extrabold text-slate-800">Data Lagu (Songs)</h1>
                     <p className="text-slate-500 text-sm">Kelola katalog lagu dan pembagian royalti</p>
                 </div>
                 <button 
                     onClick={() => { resetForm(); setShowModal(true); }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors font-bold"
                 >
                     <Plus size={20} />
                     Tambah Lagu
@@ -370,41 +452,44 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                     <table className="w-full text-left text-xs text-slate-600">
                         <thead className="bg-slate-50 text-slate-700">
                             <tr>
-                                <th className="px-6 py-3 font-normal">Judul Lagu</th>
-                                <th className="px-6 py-3 font-normal">Artis & Genre</th>
-                                <th className="px-6 py-3 font-normal">Writers (Share)</th>
-                                <th className="px-6 py-3 text-center font-normal">Status</th>
-                                <th className="px-6 py-3 text-center font-normal">Aksi</th>
+                                <th className="px-6 py-3 font-bold">Song ID</th>
+                                <th className="px-6 py-3 font-bold">Judul Lagu</th>
+                                <th className="px-6 py-3 font-bold">Artis & Genre</th>
+                                <th className="px-6 py-3 font-bold">Writers (Share)</th>
+                                <th className="px-6 py-3 text-center font-bold">Status</th>
+                                <th className="px-6 py-3 text-center font-bold">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                             {isLoading ? (
-                                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Loading...</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Loading...</td></tr>
                             ) : currentItems.length === 0 ? (
-                                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Tidak ada data lagu</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Tidak ada data lagu</td></tr>
                             ) : (
                                 currentItems.map((song) => (
                                     <tr key={song.id} className="hover:bg-slate-50">
                                         <td className="px-6 py-4">
-                                            <div className="text-slate-900">{song.title}</div>
-                                            {song.other_title && <div className="text-xs text-slate-500">Alt: {song.other_title}</div>}
-                                            {song.song_id && <div className="text-xs font-mono text-indigo-600 mt-1">{song.song_id}</div>}
+                                            <div className="text-xs font-mono text-indigo-600 font-bold">{song.song_id || '-'}</div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-1 text-slate-900">
+                                            <div className="text-slate-900 font-bold">{song.title}</div>
+                                            {song.other_title && <div className="text-xs text-slate-500 font-bold">Alt: {song.other_title}</div>}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1 text-slate-900 font-bold">
                                                 <User size={14} className="text-slate-400" />
                                                 {song.performer || '-'}
                                             </div>
-                                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-1 font-bold">
                                                 <Tag size={12} /> {song.genre || '-'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
                                                 {Array.isArray(song.writers) && song.writers.map((w, idx) => (
-                                                    <div key={idx} className="text-xs bg-slate-100 px-2 py-1 rounded flex justify-between w-full max-w-[200px]">
-                                                        <span className="truncate mr-2 text-slate-700">{w.name}</span>
-                                                        <span className="text-slate-500">{w.share_percent}%</span>
+                                                    <div key={idx} className="text-xs bg-slate-100 px-2 py-1 rounded flex justify-between w-full max-w-[200px] font-bold">
+                                                        <span className="truncate mr-2 text-slate-700 font-bold">{w.name}</span>
+                                                        <span className="text-slate-500 font-bold">{w.share_percent}%</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -456,9 +541,9 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                 {/* Pagination Controls */}
                 <div className="flex justify-between items-center px-6 py-4 border-t border-slate-200 bg-slate-50">
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-600">Show</span>
+                        <span className="text-sm font-bold text-slate-600">Show</span>
                         <select 
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            className="border rounded px-2 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                             value={itemsPerPage}
                             onChange={(e) => setItemsPerPage(Number(e.target.value))}
                         >
@@ -467,24 +552,24 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                             <option value={50}>50</option>
                             <option value={100}>100</option>
                         </select>
-                        <span className="text-sm text-slate-600">entries</span>
+                        <span className="text-sm font-bold text-slate-600">entries</span>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button 
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            className="px-3 py-1 border rounded text-sm bg-white hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="px-3 py-1 border rounded text-sm font-bold bg-white hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             Prev
                         </button>
-                        <span className="text-sm text-slate-600 min-w-[80px] text-center">
+                        <span className="text-sm font-bold text-slate-600 min-w-[80px] text-center">
                             Page {currentPage} of {totalPages || 1}
                         </span>
                         <button 
                             disabled={currentPage === totalPages || totalPages === 0}
                             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            className="px-3 py-1 border rounded text-sm bg-white hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="px-3 py-1 border rounded text-sm font-bold bg-white hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             Next
                         </button>
@@ -501,7 +586,7 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                             <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
                         </div>
                         
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6" noValidate>
                             {/* General Info */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
@@ -510,7 +595,7 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                     </h3>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Judul Lagu</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Judul Lagu</label>
                                     <input 
                                         type="text" name="title" required
                                         value={formData.title} onChange={handleInputChange}
@@ -518,7 +603,17 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Judul Alternatif</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Song ID</label>
+                                    <input 
+                                        type="text" name="song_id"
+                                        value={formData.song_id} onChange={handleInputChange}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${userRole !== 'Admin' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
+                                        placeholder="Song ID"
+                                        disabled={userRole !== 'Admin'}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Judul Alternatif</label>
                                     <input 
                                         type="text" name="other_title"
                                         value={formData.other_title} onChange={handleInputChange}
@@ -526,7 +621,7 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Artis / Performer</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Artis / Performer</label>
                                     <input 
                                         type="text" name="performer" required
                                         value={formData.performer} onChange={handleInputChange}
@@ -534,28 +629,52 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Genre</label>
-                                    <input 
-                                        type="text" name="genre"
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Genre <span className="text-red-500">*</span></label>
+                                    <select 
+                                        name="genre" required
                                         value={formData.genre} onChange={handleInputChange}
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    />
+                                    >
+                                        <option value="">Pilih Genre</option>
+                                        {TRACK_GENRES.map(g => (
+                                            <option key={g} value={g}>{g}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Durasi (MM:SS)</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Durasi (MM:SS) <span className="text-red-500">*</span></label>
                                     <input 
-                                        type="text" name="duration" placeholder="03:45"
-                                        value={formData.duration} onChange={handleInputChange}
+                                        type="text" name="duration" placeholder="MM:SS" required
+                                        value={formData.duration} onChange={handleDurationChange}
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        maxLength={5}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Bahasa</label>
-                                    <input 
-                                        type="text" name="language"
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Bahasa</label>
+                                    <select 
+                                        name="language"
                                         value={formData.language} onChange={handleInputChange}
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    />
+                                    >
+                                        <option value="">Pilih Bahasa</option>
+                                        {COUNTRIES_WITH_DIAL_CODES.map(c => (
+                                            <option key={c.name} value={c.name}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Region / Negara <span className="text-red-500">*</span></label>
+                                    <select 
+                                        name="region" required
+                                        value={formData.region} onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        <option value="">Pilih Negara</option>
+                                        {COUNTRIES_WITH_DIAL_CODES.map(c => (
+                                            <option key={c.name} value={c.name}>{c.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
@@ -567,7 +686,7 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                     </h3>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">ISRC</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">ISRC</label>
                                     <input 
                                         type="text" name="isrc"
                                         value={formData.isrc} onChange={handleInputChange}
@@ -575,12 +694,34 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">ISWC</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">ISWC</label>
                                     <input 
                                         type="text" name="iswc"
                                         value={formData.iswc} onChange={handleInputChange}
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                     />
+                                </div>
+                            </div>
+
+                            {/* File Upload */}
+                            <div className="border-t pt-4">
+                                <h3 className="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                                    <FileAudio size={16} /> Upload Lirik / Dokumen
+                                </h3>
+                                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
+                                    <input 
+                                        type="file" 
+                                        name="lyrics"
+                                        onChange={handleFileChange}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        accept=".pdf,.doc,.docx,.txt"
+                                    />
+                                    <div className="flex flex-col items-center gap-2 text-slate-500">
+                                        <FileText size={32} />
+                                        <span className="text-sm font-medium">
+                                            {lyricsFile ? lyricsFile.name : 'Klik untuk upload lirik (PDF/DOC)'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -603,7 +744,7 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                     {writers.map((writer, index) => (
                                         <div key={index} className="flex gap-3 items-end bg-slate-50 p-3 rounded-lg relative">
                                             <div className="flex-1 relative">
-                                                <label className="block text-xs text-slate-500 mb-1">Nama Penulis</label>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Penulis <span className="text-red-500">*</span></label>
                                                 <input 
                                                     type="text" required
                                                     value={writer.name}
@@ -639,19 +780,20 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                                 )}
                                             </div>
                                             <div className="w-1/4">
-                                                <label className="block text-xs text-slate-500 mb-1">Peran</label>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">Peran <span className="text-red-500">*</span></label>
                                                 <select 
                                                     value={writer.role}
                                                     onChange={(e) => handleWriterChange(index, 'role', e.target.value)}
                                                     className="w-full px-3 py-2 border rounded text-sm"
                                                 >
                                                     <option value="Composer">Composer</option>
+                                                    <option value="Composer & Lyrics">Composer & Lyrics</option>
                                                     <option value="Lyricist">Lyricist</option>
                                                     <option value="Arranger">Arranger</option>
                                                 </select>
                                             </div>
                                             <div className="w-1/5">
-                                                <label className="block text-xs text-slate-500 mb-1">Share (%)</label>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1">Share (%) <span className="text-red-500">*</span></label>
                                                 <input 
                                                     type="number" required min="0" max="100"
                                                     value={writer.share_percent}
@@ -671,28 +813,18 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
 
-                            {/* File Upload */}
-                            <div className="border-t pt-4">
-                                <h3 className="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                                    <FileAudio size={16} /> Upload Lirik / Dokumen
-                                </h3>
-                                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
-                                    <input 
-                                        type="file" 
-                                        name="lyrics"
-                                        onChange={handleFileChange}
-                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                        accept=".pdf,.doc,.docx,.txt"
-                                    />
-                                    <div className="flex flex-col items-center gap-2 text-slate-500">
-                                        <FileText size={32} />
-                                        <span className="text-sm font-medium">
-                                            {lyricsFile ? lyricsFile.name : 'Klik untuk upload lirik (PDF/DOC)'}
-                                        </span>
-                                    </div>
-                                </div>
+                                {/* Total Share Display */}
+                            <div className={`flex justify-end items-center gap-2 mt-3 font-bold text-sm ${
+                                Math.abs(writers.reduce((sum, w) => sum + Number(w.share_percent || 0), 0) - 100) > 0.1 
+                                    ? 'text-red-600' 
+                                    : 'text-green-600'
+                            }`}>
+                                <span className="font-bold">Total Share: {writers.reduce((sum, w) => sum + Number(w.share_percent || 0), 0)}%</span>
+                                {Math.abs(writers.reduce((sum, w) => sum + Number(w.share_percent || 0), 0) - 100) > 0.1 && (
+                                    <span className="text-xs text-red-500 font-bold">(Harus 100%)</span>
+                                )}
+                            </div>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4 border-t mt-6">
@@ -729,6 +861,10 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                                 <div>
                                     <label className="text-xs text-slate-500 block mb-1">Judul Lagu</label>
                                     <div className="font-medium text-slate-800">{previewSong.title}</div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 block mb-1">Song ID</label>
+                                    <div className="font-medium text-slate-800">{previewSong.song_id || '-'}</div>
                                 </div>
                                 <div>
                                     <label className="text-xs text-slate-500 block mb-1">Judul Alternatif</label>
@@ -794,54 +930,92 @@ export const PublishingSongs: React.FC<Props> = ({ token }) => {
                             <div className="border-t pt-4">
                                 <h3 className="text-sm font-semibold text-slate-800 mb-3">Status Lagu</h3>
                                 <div className="space-y-4 bg-slate-50 p-4 rounded-lg">
-                                    <div>
-                                        <label className="text-xs text-slate-500 block mb-1">Ubah Status</label>
-                                        <select
-                                            value={statusUpdate}
-                                            onChange={(e) => setStatusUpdate(e.target.value)}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        >
-                                            <option value="pending">Pending</option>
-                                            <option value="review">Review</option>
-                                            <option value="accepted">Diterima (Approved)</option>
-                                            <option value="rejected">Ditolak (Rejected)</option>
-                                        </select>
-                                    </div>
+                                    {userRole === 'Admin' ? (
+                                        <>
+                                            <div>
+                                                <label className="text-xs text-slate-500 block mb-1">Ubah Status</label>
+                                                <select
+                                                    value={statusUpdate}
+                                                    onChange={(e) => setStatusUpdate(e.target.value)}
+                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                                    <option value="pending">Pending</option>
+                                                    <option value="review">Review</option>
+                                                    <option value="accepted">Diterima (Approved)</option>
+                                                    <option value="rejected">Ditolak (Rejected)</option>
+                                                </select>
+                                            </div>
 
-                                    {statusUpdate === 'accepted' && (
-                                        <div>
-                                            <label className="text-xs text-slate-500 block mb-1">Song ID <span className="text-red-500">*</span></label>
-                                            <input
-                                                type="text"
-                                                value={songIdUpdate}
-                                                onChange={(e) => setSongIdUpdate(e.target.value)}
-                                                placeholder="Masukkan Song ID"
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                            />
+                                            {statusUpdate === 'accepted' && (
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Song ID <span className="text-red-500">*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        value={songIdUpdate}
+                                                        onChange={(e) => setSongIdUpdate(e.target.value)}
+                                                        placeholder="Masukkan Song ID"
+                                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {statusUpdate === 'rejected' && (
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Alasan Penolakan <span className="text-red-500">*</span></label>
+                                                    <textarea
+                                                        value={rejectionReasonUpdate}
+                                                        onChange={(e) => setRejectionReasonUpdate(e.target.value)}
+                                                        placeholder="Masukkan alasan penolakan"
+                                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        rows={3}
+                                                    />
+                                                </div>
+                                            )}
+                                            
+                                            <div className="flex justify-end pt-2">
+                                                <button 
+                                                    onClick={handleStatusUpdate}
+                                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                                                >
+                                                    Simpan Perubahan Status
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="text-xs text-slate-500 block mb-1">Status Saat Ini</label>
+                                                <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                                                    previewSong.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                                                    previewSong.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                    previewSong.status === 'review' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                    {previewSong.status === 'accepted' ? 'Approved' : 
+                                                     previewSong.status === 'rejected' ? 'Rejected' : 
+                                                     previewSong.status === 'review' ? 'Review' : 'Pending'}
+                                                </div>
+                                            </div>
+                                            
+                                            {previewSong.status === 'accepted' && previewSong.song_id && (
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Song ID</label>
+                                                    <div className="text-sm font-mono text-slate-800 bg-white p-2 rounded border border-slate-200">
+                                                        {previewSong.song_id}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {previewSong.status === 'rejected' && previewSong.rejection_reason && (
+                                                <div>
+                                                    <label className="text-xs text-slate-500 block mb-1">Alasan Penolakan</label>
+                                                    <div className="text-sm text-red-700 bg-red-50 p-3 rounded border border-red-100">
+                                                        {previewSong.rejection_reason}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
-
-                                    {statusUpdate === 'rejected' && (
-                                        <div>
-                                            <label className="text-xs text-slate-500 block mb-1">Alasan Penolakan <span className="text-red-500">*</span></label>
-                                            <textarea
-                                                value={rejectionReasonUpdate}
-                                                onChange={(e) => setRejectionReasonUpdate(e.target.value)}
-                                                placeholder="Masukkan alasan penolakan"
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                rows={3}
-                                            />
-                                        </div>
-                                    )}
-                                    
-                                    <div className="flex justify-end pt-2">
-                                        <button 
-                                            onClick={handleStatusUpdate}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                                        >
-                                            Simpan Perubahan Status
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
 
