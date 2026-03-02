@@ -10,6 +10,16 @@ interface Props {
 interface BrandingSettings {
     logo: string | null;
     login_background: string | null;
+    login_title: string;
+    login_footer: string;
+    login_button_color: string;
+    login_form_bg_color: string;
+    enable_registration: string; // 'true' or 'false'
+    login_title_color: string;
+    login_footer_color: string;
+    login_form_bg_opacity: number;
+    login_bg_opacity: number;
+    login_glass_effect: string; // 'true' or 'false'
 }
 
 interface SystemCheckResult {
@@ -45,7 +55,7 @@ interface SystemLog {
 }
 
 export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'system' | 'security'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'login_page' | 'system' | 'security'>('general');
   const [token] = useState(localStorage.getItem('cms_token') || '');
 
   // --- AGGREGATOR LOGIC ---
@@ -55,7 +65,20 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
   // --- BRANDING LOGIC ---
-  const [branding, setBranding] = useState<BrandingSettings>({ logo: null, login_background: null });
+  const [branding, setBranding] = useState<BrandingSettings>({ 
+      logo: null, 
+      login_background: null,
+      login_title: '',
+      login_footer: '',
+      login_button_color: '#2563eb', // Fallback
+      login_form_bg_color: '#ffffff', // Fallback
+      enable_registration: 'true',
+      login_title_color: '#1e293b',
+      login_footer_color: '#94a3b8',
+      login_form_bg_opacity: 90,
+      login_bg_opacity: 100,
+      login_glass_effect: 'false'
+  });
   const [isLoadingBranding, setIsLoadingBranding] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bgFile, setBgFile] = useState<File | null>(null);
@@ -77,7 +100,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   useEffect(() => {
-      if (activeTab === 'general') {
+      if (activeTab === 'general' || activeTab === 'login_page') {
           fetchBranding();
       } else if (activeTab === 'system') {
           // handleCheckSystem(); // Removed auto-check
@@ -89,9 +112,8 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
 
   const fetchBranding = async () => {
       try {
-          const res = await fetch('/api/settings/branding');
-          if (res.ok) {
-              const data = await res.json();
+          const data = await api.getBranding();
+          if (data) {
               setBranding(data);
           }
       } catch (err) {
@@ -112,35 +134,38 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   };
 
   const handleSaveBranding = async () => {
-      if (!logoFile && !bgFile) return;
-
       setIsLoadingBranding(true);
       const formData = new FormData();
+      
+      // Append text fields FIRST (best practice for multer/busboy)
+      formData.append('login_title', branding.login_title || '');
+      formData.append('login_footer', branding.login_footer || '');
+      formData.append('login_button_color', branding.login_button_color || '#2563eb');
+      formData.append('login_form_bg_color', branding.login_form_bg_color || '#ffffff');
+      formData.append('enable_registration', String(branding.enable_registration)); // Ensure string
+      formData.append('login_title_color', branding.login_title_color || '#1e293b');
+      formData.append('login_footer_color', branding.login_footer_color || '#94a3b8');
+      formData.append('login_form_bg_opacity', String(branding.login_form_bg_opacity ?? 90));
+      formData.append('login_bg_opacity', String(branding.login_bg_opacity ?? 100));
+      formData.append('login_glass_effect', String(branding.login_glass_effect ?? 'false'));
+
+      // Append files LAST
       if (logoFile) formData.append('logo', logoFile);
       if (bgFile) formData.append('login_background', bgFile);
-
+      
       try {
-          const res = await fetch('/api/settings/branding', {
-              method: 'POST',
-              headers: {
-                  'Authorization': `Bearer ${token}`
-              },
-              body: formData
-          });
-
-          if (res.ok) {
-              const data = await res.json();
+          const data = await api.updateBranding(token, formData);
+          if (data && data.branding) {
               setBranding(data.branding);
               setLogoFile(null);
               setBgFile(null);
               alert('Branding updated successfully!');
-              window.location.reload();
           } else {
-              alert('Failed to update branding');
+              alert('Failed to update branding: No data returned');
           }
       } catch (err) {
           console.error("Error updating branding:", err);
-          alert('Error updating branding');
+          alert('Error updating branding: ' + (err as Error).message);
       } finally {
           setIsLoadingBranding(false);
       }
@@ -385,6 +410,15 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                {activeTab === 'general' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
            </button>
            <button 
+               onClick={() => setActiveTab('login_page')}
+               className={`pb-3 px-4 text-sm font-medium transition-colors relative whitespace-nowrap ${
+                   activeTab === 'login_page' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+               }`}
+           >
+               Halaman Login
+               {activeTab === 'login_page' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
+           </button>
+           <button 
                onClick={() => setActiveTab('system')}
                className={`pb-3 px-4 text-sm font-medium transition-colors relative whitespace-nowrap ${
                    activeTab === 'system' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
@@ -407,114 +441,6 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
        {/* GENERAL TAB */}
        {activeTab === 'general' && (
            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               {/* Branding Configuration */}
-               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                            <ImageIcon size={24} />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800">Branding & Appearance</h2>
-                            <p className="text-sm text-slate-500">Customize the login page and sidebar logo.</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Logo Upload */}
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-3">Logo (Sidebar & Login)</label>
-                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
-                                {logoFile ? (
-                                    <div className="relative">
-                                        <img src={URL.createObjectURL(logoFile)} alt="Preview" className="h-32 object-contain mb-2" />
-                                        <button onClick={() => setLogoFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
-                                        <p className="text-xs text-slate-500 text-center">{logoFile.name}</p>
-                                    </div>
-                                ) : branding.logo ? (
-                                    <div className="text-center">
-                                        <img src={branding.logo} alt="Current Logo" className="h-32 object-contain mb-3 mx-auto" />
-                                        <p className="text-xs text-slate-400">Current Logo</p>
-                                    </div>
-                                ) : (
-                                    <div className="text-center text-slate-400">
-                                        <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
-                                        <p className="text-xs">No logo set</p>
-                                    </div>
-                                )}
-                                
-                                <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    onChange={handleLogoChange}
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                />
-                                <div className="mt-4 pointer-events-none">
-                                    <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
-                                        {logoFile ? 'Change File' : 'Upload Logo'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Login Background Upload */}
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-3">Login Background</label>
-                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
-                                 {bgFile ? (
-                                    <div className="relative w-full h-32">
-                                        <img src={URL.createObjectURL(bgFile)} alt="Preview" className="w-full h-full object-cover rounded-lg mb-2" />
-                                        <button onClick={() => setBgFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
-                                        <p className="text-xs text-slate-500 text-center mt-1">{bgFile.name}</p>
-                                    </div>
-                                ) : branding.login_background ? (
-                                    <div className="w-full text-center">
-                                        <div className="h-32 w-full rounded-lg overflow-hidden mb-3 relative group">
-                                            <img src={branding.login_background} alt="Current Background" className="w-full h-full object-cover" />
-                                        </div>
-                                        <p className="text-xs text-slate-400">Current Background</p>
-                                    </div>
-                                ) : (
-                                    <div className="text-center text-slate-400">
-                                        <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
-                                        <p className="text-xs">No background set</p>
-                                    </div>
-                                )}
-                                
-                                <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    onChange={handleBgChange}
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                />
-                                <div className="mt-4 pointer-events-none">
-                                    <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
-                                        {bgFile ? 'Change File' : 'Upload Background'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {(logoFile || bgFile) && (
-                        <div className="mt-6 flex justify-end">
-                            <button 
-                                onClick={handleSaveBranding}
-                                disabled={isLoadingBranding}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isLoadingBranding ? (
-                                    <>Uploading...</>
-                                ) : (
-                                    <>
-                                        <Upload size={18} />
-                                        Save Branding Changes
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    )}
-               </div>
-
                {/* Release Configuration */}
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                     <div className="flex items-center gap-3 mb-6">
@@ -600,6 +526,279 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                             </ul>
                         </div>
                         <p className="text-xs text-slate-400 mt-3">These options will appear when changing a release status to "Processing".</p>
+                    </div>
+               </div>
+           </div>
+       )}
+
+       {/* LOGIN PAGE TAB */}
+       {activeTab === 'login_page' && (
+           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                            <ImageIcon size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-800">Tampilan Halaman Login</h2>
+                            <p className="text-sm text-slate-500">Sesuaikan tampilan halaman login dan registrasi.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        {/* Logo Upload */}
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-3">Logo System</label>
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
+                                {logoFile ? (
+                                    <div className="relative">
+                                        <img src={URL.createObjectURL(logoFile)} alt="Preview" className="h-32 object-contain mb-2" />
+                                        <button onClick={() => setLogoFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
+                                        <p className="text-xs text-slate-500 text-center">{logoFile.name}</p>
+                                    </div>
+                                ) : branding.logo ? (
+                                    <div className="text-center">
+                                        <img src={branding.logo} alt="Current Logo" className="h-32 object-contain mb-3 mx-auto" />
+                                        <p className="text-xs text-slate-400">Logo Saat Ini</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-slate-400">
+                                        <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-xs">Belum ada logo</p>
+                                    </div>
+                                )}
+                                
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={handleLogoChange}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                                <div className="mt-4 pointer-events-none">
+                                    <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
+                                        {logoFile ? 'Ganti File' : 'Upload Logo'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Login Background Upload */}
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-3">Background Login Page</label>
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
+                                 {bgFile ? (
+                                    <div className="relative w-full h-32">
+                                        <img src={URL.createObjectURL(bgFile)} alt="Preview" className="w-full h-full object-cover rounded-lg mb-2" />
+                                        <button onClick={() => setBgFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
+                                        <p className="text-xs text-slate-500 text-center mt-1">{bgFile.name}</p>
+                                    </div>
+                                ) : branding.login_background ? (
+                                    <div className="w-full text-center">
+                                        <div className="h-32 w-full rounded-lg overflow-hidden mb-3 relative group">
+                                            <img src={branding.login_background} alt="Current Background" className="w-full h-full object-cover" />
+                                        </div>
+                                        <p className="text-xs text-slate-400">Background Saat Ini</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-slate-400">
+                                        <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-xs">Belum ada background</p>
+                                    </div>
+                                )}
+                                
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={handleBgChange}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                                <div className="mt-4 pointer-events-none">
+                                    <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
+                                        {bgFile ? 'Ganti File' : 'Upload Background'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Warna Teks Judul</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={branding.login_title_color?.startsWith('#') ? branding.login_title_color : '#1e293b'}
+                                    onChange={(e) => setBranding({...branding, login_title_color: e.target.value})}
+                                    className="h-10 w-10 rounded-lg cursor-pointer border-0 p-0"
+                                />
+                                <input 
+                                    type="text" 
+                                    value={branding.login_title_color || ''}
+                                    onChange={(e) => setBranding({...branding, login_title_color: e.target.value})}
+                                    placeholder="#1e293b"
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Warna Teks Footer</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={branding.login_footer_color?.startsWith('#') ? branding.login_footer_color : '#94a3b8'}
+                                    onChange={(e) => setBranding({...branding, login_footer_color: e.target.value})}
+                                    className="h-10 w-10 rounded-lg cursor-pointer border-0 p-0"
+                                />
+                                <input 
+                                    type="text" 
+                                    value={branding.login_footer_color || ''}
+                                    onChange={(e) => setBranding({...branding, login_footer_color: e.target.value})}
+                                    placeholder="#94a3b8"
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Opacity Background Form (%)</label>
+                            <div className="flex items-center gap-4">
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="100" 
+                                    value={branding.login_form_bg_opacity ?? 90}
+                                    onChange={(e) => setBranding({...branding, login_form_bg_opacity: parseInt(e.target.value)})}
+                                    className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                />
+                                <span className="w-12 text-center font-mono text-sm font-bold text-slate-700 bg-slate-100 py-1 rounded-lg">
+                                    {branding.login_form_bg_opacity ?? 90}%
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Opacity Background Halaman (%)</label>
+                            <div className="flex items-center gap-4">
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="100" 
+                                    value={branding.login_bg_opacity ?? 100}
+                                    onChange={(e) => setBranding({...branding, login_bg_opacity: parseInt(e.target.value)})}
+                                    className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                />
+                                <span className="w-12 text-center font-mono text-sm font-bold text-slate-700 bg-slate-100 py-1 rounded-lg">
+                                    {branding.login_bg_opacity ?? 100}%
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Glass Effect Toggle */}
+                        <div className="mb-4 col-span-1 md:col-span-2">
+                            <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                                <input 
+                                    type="checkbox"
+                                    checked={branding.login_glass_effect === 'true'}
+                                    onChange={(e) => setBranding({...branding, login_glass_effect: e.target.checked ? 'true' : 'false'})}
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                />
+                                <div>
+                                    <span className="block text-sm font-bold text-slate-700">Aktifkan Glass Effect</span>
+                                    <span className="block text-xs text-slate-500">Jika aktif, form login akan menjadi transparan dengan efek blur dan shadow berwarna.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Text & Color Settings */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Judul System (H2)</label>
+                            <input 
+                                type="text" 
+                                value={branding.login_title || ''}
+                                onChange={(e) => setBranding({...branding, login_title: e.target.value})}
+                                placeholder="Contoh: Agregator & Publishing Musik"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Footer Text (P)</label>
+                            <input 
+                                type="text" 
+                                value={branding.login_footer || ''}
+                                onChange={(e) => setBranding({...branding, login_footer: e.target.value})}
+                                placeholder="Contoh: Protected CMS Area"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Warna Tombol Login Page</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={branding.login_button_color?.startsWith('#') ? branding.login_button_color : '#2563eb'}
+                                    onChange={(e) => setBranding({...branding, login_button_color: e.target.value})}
+                                    className="h-10 w-10 rounded-lg cursor-pointer border-0 p-0"
+                                />
+                                <input 
+                                    type="text" 
+                                    value={branding.login_button_color || ''}
+                                    onChange={(e) => setBranding({...branding, login_button_color: e.target.value})}
+                                    placeholder="#2563eb or linear-gradient(...)"
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Warna Background Form Login</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={branding.login_form_bg_color?.startsWith('#') ? branding.login_form_bg_color : '#ffffff'}
+                                    onChange={(e) => setBranding({...branding, login_form_bg_color: e.target.value})}
+                                    className="h-10 w-10 rounded-lg cursor-pointer border-0 p-0"
+                                />
+                                <input 
+                                    type="text" 
+                                    value={branding.login_form_bg_color || ''}
+                                    onChange={(e) => setBranding({...branding, login_form_bg_color: e.target.value})}
+                                    placeholder="rgba(255, 255, 255, 0.9)"
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Registration Toggle */}
+                    <div className="mb-8">
+                        <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                            <input 
+                                type="checkbox"
+                                checked={branding.enable_registration === 'true' || branding.enable_registration === true}
+                                onChange={(e) => setBranding({...branding, enable_registration: e.target.checked ? 'true' : 'false'})}
+                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                            />
+                            <div>
+                                <span className="block text-sm font-bold text-slate-700">Aktifkan Pendaftaran User</span>
+                                <span className="block text-xs text-slate-500">Jika dinonaktifkan, tombol "Register" akan disembunyikan di halaman login.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div className="flex justify-end border-t border-gray-100 pt-6">
+                        <button 
+                            onClick={handleSaveBranding}
+                            disabled={isLoadingBranding}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isLoadingBranding ? (
+                                <>
+                                    <Loader2 size={18} className="animate-spin" />
+                                    Menyimpan...
+                                </>
+                            ) : (
+                                <>
+                                    <Upload size={18} />
+                                    Simpan Perubahan
+                                </>
+                            )}
+                        </button>
                     </div>
                </div>
            </div>

@@ -10,6 +10,60 @@ interface Props {
   onLogin: (user: any, token: string) => void;
 }
 
+const getTextColorClass = (bgColor: string) => {
+    if (!bgColor) return 'text-slate-700';
+
+    // Handle transparent explicitly
+    if (bgColor.toLowerCase().includes('transparent')) return 'text-white';
+    
+    // Handle RGBA
+    if (bgColor.startsWith('rgba')) {
+        const match = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        if (match) {
+            const r = parseInt(match[1]);
+            const g = parseInt(match[2]);
+            const b = parseInt(match[3]);
+            const a = match[4] ? parseFloat(match[4]) : 1;
+            
+            // If very transparent, assume dark background behind it (user preference: transparent -> white font)
+            if (a < 0.5) return 'text-white';
+            
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            return (yiq >= 128) ? 'text-slate-700' : 'text-white';
+        }
+    }
+    
+    // Handle Hex
+    if (bgColor.startsWith('#')) {
+        let hex = bgColor.substring(1);
+        if (hex.length === 3) {
+            hex = hex.split('').map(c => c + c).join('');
+        }
+        if (hex.length === 6) {
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            return (yiq >= 128) ? 'text-slate-700' : 'text-white';
+        }
+    }
+
+    return 'text-slate-700';
+};
+
+const getShadowColor = (btnColor: string) => {
+    // Try to find a hex code
+    const hexMatch = (btnColor || '').match(/#[0-9a-fA-F]{6}/);
+    if (hexMatch) {
+        const hex = hexMatch[0];
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, 0.5)`; // 50% opacity for shadow
+    }
+    return 'rgba(37, 99, 235, 0.5)'; // Default blue shadow
+};
+
 export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
@@ -60,9 +114,32 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const [statusModalUser, setStatusModalUser] = useState<string | null>(null);
 
   // Branding State
-  const [branding, setBranding] = useState<{logo: string | null, login_background: string | null}>({
+  const [branding, setBranding] = useState<{
+      logo: string | null, 
+      login_background: string | null,
+      login_title: string,
+      login_footer: string,
+      login_button_color: string,
+      login_form_bg_color: string,
+      enable_registration: string,
+      login_title_color: string,
+      login_footer_color: string,
+      login_form_bg_opacity: number,
+      login_bg_opacity: number,
+      login_glass_effect: string
+  }>({
       logo: null,
-      login_background: null
+      login_background: null,
+      login_title: 'Agregator & Publishing Musik',
+      login_footer: 'Protected CMS Area. Authorized personnel only.',
+      login_button_color: 'linear-gradient(to right, #2563eb, #0891b2)',
+      login_form_bg_color: '#ffffff',
+      enable_registration: 'true',
+      login_title_color: '#1e293b',
+      login_footer_color: '#94a3b8',
+      login_form_bg_opacity: 90,
+      login_bg_opacity: 100,
+      login_glass_effect: 'false'
   });
 
   useEffect(() => {
@@ -139,6 +216,9 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   // register mode removed
 
+  const textColor = React.useMemo(() => getTextColorClass(branding.login_form_bg_color), [branding.login_form_bg_color]);
+  const subTextColor = textColor === 'text-white' ? 'text-slate-300' : 'text-slate-400';
+
   const renderLogin = () => (
     <>
       <form onSubmit={handleLogin} className="space-y-4 mt-4">
@@ -150,16 +230,17 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         )}
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-700 ml-1">Email</label>
+          <label className={`text-xs font-bold ${textColor} ml-1`}>Email</label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+            <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${subTextColor} group-focus-within:text-blue-500 transition-colors`}>
               <Mail size={16} />
             </div>
             <input
               type="email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400"
+              className="w-full pl-9 pr-3 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
+              style={{ color: textColor === 'text-white' ? '#fff' : '#334155' }}
               placeholder="Enter email"
               required
             />
@@ -167,23 +248,24 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-700 ml-1">Password</label>
+          <label className={`text-xs font-bold ${textColor} ml-1`}>Password</label>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+            <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${subTextColor} group-focus-within:text-blue-500 transition-colors`}>
               <Lock size={16} />
             </div>
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400"
+              className="w-full pl-9 pr-10 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
+              style={{ color: textColor === 'text-white' ? '#fff' : '#334155' }}
               placeholder="Enter password"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+              className={`absolute inset-y-0 right-0 pr-3 flex items-center ${subTextColor} hover:text-slate-600 transition-colors`}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -194,10 +276,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
           type="submit"
           disabled={isLoading}
           className={`w-full py-3 rounded-lg font-medium text-white shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-95 text-xs
-            ${isLoading 
-              ? 'bg-slate-300 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:brightness-110 hover:-translate-y-1'
-            }`}
+            ${isLoading ? 'bg-slate-300 cursor-not-allowed' : 'hover:brightness-110 hover:-translate-y-1'}`}
+          style={{ 
+            background: isLoading ? undefined : branding.login_button_color,
+            opacity: 1 // Ensure not transparent
+          }}
         >
           {isLoading ? (
             <>
@@ -212,24 +295,28 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
           )}
         </button>
 
-        <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px]">ATAU</span>
-            <div className="flex-grow border-t border-slate-200"></div>
-        </div>
+        {branding.enable_registration === 'true' && (
+            <>
+                <div className="relative flex py-1 items-center">
+                    <div className="flex-grow border-t border-slate-200"></div>
+                    <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px]">ATAU</span>
+                    <div className="flex-grow border-t border-slate-200"></div>
+                </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/register')}
-          className="w-full py-3 rounded-lg font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 shadow-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 text-[12px]"
-        >
-          Belum punya akun? Daftar di sini
-        </button>
+                <button
+                    type="button"
+                    onClick={() => navigate('/register')}
+                    className="w-full py-3 rounded-lg font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 shadow-sm flex items-center justify-center gap-2 transition-all transform active:scale-95 text-[12px]"
+                >
+                    Belum punya akun? Daftar di sini
+                </button>
+            </>
+        )}
       </form>
 
       <div className="mt-6 text-center space-y-3">
-        <p className="text-[10px] text-slate-400">
-          Protected CMS Area. Authorized personnel only.
+        <p className="text-[10px]" style={{ color: branding.login_footer_color }}>
+          {branding.login_footer}
         </p>
       </div>
     </>
@@ -255,9 +342,17 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
 
   return (
     <div 
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4 bg-cover bg-center relative"
-        style={branding.login_background ? { backgroundImage: `url(${branding.login_background})` } : {}}
+        className="min-h-screen flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden"
     >
+      {/* Background Layer with Opacity */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-500 bg-gradient-to-br from-blue-50 via-white to-blue-100"
+        style={{ 
+            backgroundImage: branding.login_background ? `url(${branding.login_background})` : undefined,
+            opacity: (branding.login_bg_opacity ?? 100) / 100
+        }}
+      />
+
       {/* Server Status Top Right */}
       <div className="absolute top-6 right-6 z-10 animate-fade-in-down">
          <div className="flex justify-center gap-3 text-[10px] font-medium bg-white/90 backdrop-blur-sm border border-white/50 shadow-sm px-4 py-2 rounded-xl text-slate-600">
@@ -278,7 +373,28 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
          </div>
       </div>
 
-      <div className="w-full max-w-sm bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl shadow-blue-900/10 border border-white/50 px-6 pb-6 pt-6 md:px-8 md:pb-8 md:pt-8 animate-fade-in-up">
+      <div 
+        className={`w-full max-w-sm rounded-2xl px-6 pb-6 pt-6 md:px-8 md:pb-8 md:pt-8 animate-fade-in-up relative z-10 
+            ${branding.login_glass_effect !== 'true' ? 'backdrop-blur-sm shadow-2xl shadow-blue-900/10 border border-white/50' : ''}`}
+        style={branding.login_glass_effect === 'true' ? {
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: `0 8px 32px 0 ${getShadowColor(branding.login_button_color)}`
+        } : undefined}
+      >
+        {/* Form Background Layer with Opacity - Only when NOT glass effect */}
+        {branding.login_glass_effect !== 'true' && (
+            <div 
+                className="absolute inset-0 rounded-2xl -z-10 transition-opacity duration-300"
+                style={{ 
+                    background: branding.login_form_bg_color,
+                    opacity: (branding.login_form_bg_opacity ?? 90) / 100
+                }}
+            />
+        )}
+
         <div className="flex flex-col items-center mb-2">
             {branding.logo ? (
                 <img src={branding.logo} alt="Logo" className="max-h-[80px] w-auto object-contain mb-3 drop-shadow-md" />
@@ -288,7 +404,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
                 </div>
             )}
             <div className="px-4 py-1 rounded-xl">
-                <h2 className="text-sm font-bold text-slate-800 tracking-wide text-center">Agregator & Publishing Musik</h2>
+                <h2 className="text-sm font-bold tracking-wide text-center" style={{ color: branding.login_title_color }}>{branding.login_title}</h2>
             </div>
         </div>
         {renderLogin()}

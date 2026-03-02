@@ -10,6 +10,25 @@ type Props = {
 
 export const RegisterScreen: React.FC<Props> = () => {
   const navigate = useNavigate();
+  const [checkingRegistration, setCheckingRegistration] = useState(true);
+
+  useEffect(() => {
+    // Check if registration is enabled
+    fetch('/api/settings/branding')
+      .then(res => res.json())
+      .then(data => {
+        if (data.enable_registration === 'false') {
+          alert('Pendaftaran pengguna baru sedang dinonaktifkan.');
+          navigate('/login');
+        } else {
+            setCheckingRegistration(false);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to check registration status:", err);
+        setCheckingRegistration(false);
+      });
+  }, [navigate]);
 
   const [accountType, setAccountType] = useState<'PERSONAL' | 'COMPANY' | null>(null);
   const [step, setStep] = useState(1);
@@ -87,6 +106,14 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [wilayahError, setWilayahError] = useState('');
   const [isWilayahLoading, setIsWilayahLoading] = useState(false);
   const [isPostalLoading, setIsPostalLoading] = useState(false);
+
+  if (checkingRegistration) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+    );
+  }
 
   useEffect(() => {
     if (country !== 'Indonesia') {

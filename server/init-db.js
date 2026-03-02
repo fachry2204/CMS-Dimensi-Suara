@@ -527,6 +527,58 @@ const initDb = async () => {
             }
         }
 
+        // 13. Check 'login_settings' table (Special Structure requested by user)
+        try {
+            await connection.query('SELECT 1 FROM login_settings LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: login_settings');
+                await connection.query(`
+                    CREATE TABLE login_settings (
+                        id INT PRIMARY KEY,
+                        logo VARCHAR(255),
+                        login_background VARCHAR(255),
+                        login_title VARCHAR(255) DEFAULT 'Agregator & Publishing Musik',
+                        login_footer TEXT,
+                        login_button_color VARCHAR(100) DEFAULT 'linear-gradient(to right, #2563eb, #0891b2)',
+                        login_form_bg_color VARCHAR(100) DEFAULT 'rgba(255, 255, 255, 0.9)',
+                        enable_registration ENUM('true', 'false') DEFAULT 'true',
+                        login_form_bg_opacity INT DEFAULT 90,
+                        login_bg_opacity INT DEFAULT 100,
+                        login_glass_effect ENUM('true', 'false') DEFAULT 'false',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+                
+                // Insert default row
+                console.log('🔨 Seeding default login_settings...');
+                await connection.query(`
+                    INSERT INTO login_settings (id, login_title, login_footer, login_button_color, login_form_bg_color, enable_registration)
+                    VALUES (1, 'Agregator & Publishing Musik', 'Protected CMS Area. Authorized personnel only.', 'linear-gradient(to right, #2563eb, #0891b2)', 'rgba(255, 255, 255, 0.9)', 'true')
+                `);
+            } else {
+                // 13b. Check for new columns in existing login_settings
+                const loginSettingsCols = [
+                    { name: 'login_title_color', type: "VARCHAR(20) DEFAULT '#1e293b'" }, // slate-800
+                    { name: 'login_footer_color', type: "VARCHAR(20) DEFAULT '#94a3b8'" }, // slate-400
+                    { name: 'login_form_bg_opacity', type: "INT DEFAULT 90" }, // 0-100
+                    { name: 'login_bg_opacity', type: "INT DEFAULT 100" }, // 0-100 (Background image opacity)
+                    { name: 'login_glass_effect', type: "ENUM('true', 'false') DEFAULT 'false'" }
+                ];
+
+                for (const col of loginSettingsCols) {
+                    try {
+                        await connection.query(`SELECT \`${col.name}\` FROM login_settings LIMIT 1`);
+                    } catch (err) {
+                        if (err.code === 'ER_BAD_FIELD_ERROR') {
+                            console.log(`⚠️ Adding missing column: ${col.name} to login_settings table`);
+                            await connection.query(`ALTER TABLE login_settings ADD COLUMN \`${col.name}\` ${col.type}`);
+                        }
+                    }
+                }
+            }
+        }
+
         console.log('✅ Database initialized successfully!');
         try {
             await writeLastDbName(dbName);

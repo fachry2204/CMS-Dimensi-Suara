@@ -7,10 +7,17 @@ const router = express.Router();
 // GET Notifications for Current User
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const [rows] = await db.query(
-            'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', 
-            [req.user.id]
-        );
+        let query = 'SELECT * FROM notifications WHERE user_id = ?';
+        const params = [req.user.id];
+
+        // Filter out login notifications for non-Admin users
+        if (req.user.role !== 'Admin') {
+            query += " AND message NOT LIKE 'Login baru terdeteksi%'";
+        }
+
+        query += ' ORDER BY created_at DESC LIMIT 50';
+
+        const [rows] = await db.query(query, params);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -550,6 +550,27 @@ export const api = {
     // Songwriters removed
     
     // Settings
+    getBranding: async () => {
+        const res = await fetch(`${API_BASE_URL}/settings/branding`, {
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to fetch branding');
+        return res.json();
+    },
+
+    updateBranding: async (token, formData: FormData) => {
+        const res = await fetch(`${API_BASE_URL}/settings/branding`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData,
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to update branding');
+        return res.json();
+    },
+
     getAggregators: async (token) => {
         const res = await fetch(`${API_BASE_URL}/settings/aggregators`, {
             headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },

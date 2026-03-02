@@ -146,18 +146,22 @@ router.get('/security/logs', authenticateToken, async (req, res) => {
 // BRANDING ROUTES
 router.get('/branding', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT setting_key, setting_value FROM settings WHERE setting_key IN (?, ?)', ['logo', 'login_background']);
-        const settings = {
-            logo: null,
-            login_background: null
-        };
+        // Use the new login_settings table (Struktur Khusus)
+        const [rows] = await db.query('SELECT * FROM login_settings WHERE id = 1');
         
-        rows.forEach(row => {
-            if (row.setting_key === 'logo') settings.logo = row.setting_value;
-            if (row.setting_key === 'login_background') settings.login_background = row.setting_value;
-        });
+        if (rows.length === 0) {
+            return res.json({
+                logo: null,
+                login_background: null,
+                login_title: 'Agregator & Publishing Musik',
+                login_footer: 'Protected CMS Area. Authorized personnel only.',
+                login_button_color: 'linear-gradient(to right, #2563eb, #0891b2)',
+                login_form_bg_color: 'rgba(255, 255, 255, 0.9)',
+                enable_registration: 'true'
+            });
+        }
         
-        res.json(settings);
+        res.json(rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -165,40 +169,62 @@ router.get('/branding', async (req, res) => {
 
 router.post('/branding', authenticateToken, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'login_background', maxCount: 1 }]), async (req, res) => {
     try {
-        const updates = [];
-        const files = req.files;
-        const baseUrl = '/uploads/settings/';
+        const files = req.files || {};
+        const body = req.body;
+        console.log('Branding Update Request:', { body, files }); // DEBUG LOG
 
+        const baseUrl = '/uploads/settings/';
+        
+        const updateFields = [];
+        const updateValues = [];
+
+        // Handle Files
         if (files['logo']) {
-            const logoPath = baseUrl + files['logo'][0].filename;
-            updates.push(db.query(
-                'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
-                ['logo', logoPath, logoPath]
-            ));
+            updateFields.push('logo = ?');
+            updateValues.push(baseUrl + files['logo'][0].filename);
         }
 
         if (files['login_background']) {
-            const bgPath = baseUrl + files['login_background'][0].filename;
-            updates.push(db.query(
-                'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
-                ['login_background', bgPath, bgPath]
-            ));
+            updateFields.push('login_background = ?');
+            updateValues.push(baseUrl + files['login_background'][0].filename);
         }
 
-        await Promise.all(updates);
-        
-        // Fetch updated
-        const [rows] = await db.query('SELECT setting_key, setting_value FROM settings WHERE setting_key IN (?, ?)', ['logo', 'login_background']);
-        const settings = {
-            logo: null,
-            login_background: null
-        };
-        rows.forEach(row => {
-            if (row.setting_key === 'logo') settings.logo = row.setting_value;
-            if (row.setting_key === 'login_background') settings.login_background = row.setting_value;
+        // Handle Text Fields
+        const textFields = [
+            'login_title', 
+            'login_footer', 
+            'login_button_color', 
+            'login_form_bg_color',
+            'enable_registration',
+            'login_title_color',
+            'login_footer_color',
+            'login_form_bg_opacity',
+            'login_bg_opacity',
+            'login_glass_effect'
+        ];
+
+        textFields.forEach(field => {
+            if (body[field] !== undefined) {
+                updateFields.push(`${field} = ?`);
+                updateValues.push(body[field]);
+            }
         });
 
-        res.json({ message: 'Branding updated', branding: settings });
+        if (updateFields.length > 0) {
+            // Ensure row 1 exists
+            const [check] = await db.query('SELECT 1 FROM login_settings WHERE id = 1');
+            if (check.length === 0) {
+                 await db.query(`INSERT INTO login_settings (id) VALUES (1)`);
+            }
+
+            const sql = `UPDATE login_settings SET ${updateFields.join(', ')} WHERE id = 1`;
+            await db.query(sql, updateValues);
+        }
+        
+        // Fetch updated settings
+        const [rows] = await db.query('SELECT * FROM login_settings WHERE id = 1');
+        
+        res.json({ message: 'Branding updated', branding: rows[0] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
