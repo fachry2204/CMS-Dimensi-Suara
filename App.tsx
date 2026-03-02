@@ -44,10 +44,35 @@ import youtubeMusicLogo from './assets/platforms/youtube-music.svg';
 import allDspLogo from './assets/platforms/alldsp.svg';
 import PublishingWriterDetail from './screens/publishing/PublishingWriterDetail';
 import { getProfileImageUrl } from './utils/imageUtils';
+import { getTextColorClass } from './utils/colorUtils';
 
 const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Header Branding State
+  const [headerBgColor, setHeaderBgColor] = useState<string>('rgba(255, 255, 255, 0.8)');
+  const [headerTitleColor, setHeaderTitleColor] = useState<string>('#1e293b'); // Default slate-800
+
+  useEffect(() => {
+    const fetchBranding = async () => {
+        try {
+            const res = await fetch('/api/settings/branding');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.login_button_color) {
+                    setHeaderBgColor(data.login_button_color);
+                }
+                if (data.login_title_color) {
+                    setHeaderTitleColor(data.login_title_color);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch branding for header:", error);
+        }
+    };
+    fetchBranding();
+  }, []);
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -830,45 +855,48 @@ const App: React.FC = () => {
       <main className="flex-1 w-full md:ml-0 overflow-x-hidden min-h-screen flex flex-col relative">
         
         {/* GLOBAL HEADER */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-white/50 px-6 py-3 flex items-center justify-between shadow-sm">
+        <header 
+            className="sticky top-0 z-30 backdrop-blur-xl border-b border-white/20 px-6 py-3 flex items-center justify-between shadow-sm transition-colors duration-300"
+            style={{ background: headerBgColor }}
+        >
             {location.pathname === '/dashboard' ? (
                 <div className="hidden md:flex flex-col leading-tight">
-                    <span className="text-sm text-slate-800 tracking-tight">
+                    <span className="text-sm tracking-tight" style={{ color: headerTitleColor }}>
                         Dashboard
                     </span>
                 </div>
             ) : location.pathname === '/aggregator' ? (
                 <div className="hidden md:flex flex-col leading-tight">
-                    <span className="text-sm text-slate-800 tracking-tight">
+                    <span className="text-sm tracking-tight" style={{ color: headerTitleColor }}>
                         Aggregator Overview
                     </span>
                 </div>
             ) : location.pathname === '/releases' ? (
                 <div className="hidden md:flex flex-col leading-tight">
-                    <span className="text-sm text-slate-800 tracking-tight">
+                    <span className="text-sm tracking-tight" style={{ color: headerTitleColor }}>
                         All Releases
                     </span>
                 </div>
             ) : location.pathname === '/settings' ? (
                 <div className="hidden md:flex flex-col leading-tight">
-                    <span className="text-sm text-slate-800 tracking-tight">
+                    <span className="text-sm tracking-tight" style={{ color: headerTitleColor }}>
                         Settings
                     </span>
                 </div>
             ) : location.pathname === '/users' ? (
                 <div className="hidden md:flex flex-col leading-tight">
-                    <span className="text-sm text-slate-800 tracking-tight">
+                    <span className="text-sm tracking-tight" style={{ color: headerTitleColor }}>
                         User Management
                     </span>
                 </div>
             ) : location.pathname === '/statistics' ? (
                 <div className="hidden md:flex flex-col leading-tight">
-                    <span className="text-sm text-slate-800 tracking-tight">
+                    <span className="text-sm tracking-tight" style={{ color: headerTitleColor }}>
                         statistik &amp; laporan
                     </span>
                 </div>
             ) : (
-                <h2 className="text-base text-slate-800 tracking-tight hidden md:block">
+                <h2 className="text-base tracking-tight hidden md:block" style={{ color: headerTitleColor }}>
                     {getPageTitle()}
                 </h2>
             )}
@@ -876,7 +904,8 @@ const App: React.FC = () => {
                 {/* Notifications */}
                 <div className="relative">
                     <button 
-                        className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors group"
+                        className="relative p-2 rounded-full transition-colors group hover:bg-black/5"
+                        style={{ color: headerTitleColor }}
                         onClick={() => setShowNotifications(!showNotifications)}
                     >
                         <Bell size={20} />
@@ -938,12 +967,13 @@ const App: React.FC = () => {
 
                 {/* Profile Dropdown */}
                 <div 
-                    className="flex items-center gap-3 pl-6 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                    className="flex items-center gap-3 pl-6 border-l cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{ borderColor: headerTitleColor ? headerTitleColor + '40' : 'rgba(226, 232, 240, 0.5)' }}
                     onClick={() => setShowProfileModal(true)}
                 >
                     <div className="text-right hidden sm:block">
-                        <div className="text-sm font-bold text-slate-800 capitalize">{currentUserData?.full_name || currentUserData?.name || currentUser}</div>
-                        <div className="text-[10px] text-slate-500 font-medium">
+                        <div className="text-sm font-bold capitalize" style={{ color: headerTitleColor }}>{currentUserData?.full_name || currentUserData?.name || currentUser}</div>
+                        <div className="text-[10px] font-medium opacity-70" style={{ color: headerTitleColor }}>
                             {userRole === 'Admin' 
                                 ? 'Super Administrator' 
                                 : userRole === 'Operator' 
