@@ -17,6 +17,25 @@ export const checkDbIntegrity = async () => {
         
         const missingTables = requiredTables.filter(t => !existingTables.includes(t));
         
+        // Check for critical columns in login_settings
+        if (existingTables.includes('login_settings')) {
+            const [cols] = await db.query('SHOW COLUMNS FROM login_settings');
+            const existingCols = cols.map(c => c.Field);
+            const requiredCols = [
+                'login_title_color', 
+                'login_footer_color', 
+                'login_form_bg_opacity', 
+                'login_bg_opacity',
+                'login_glass_effect'
+            ];
+            
+            requiredCols.forEach(col => {
+                if (!existingCols.includes(col)) {
+                    missingTables.push(`Column: ${col} (in login_settings)`);
+                }
+            });
+        }
+
         return {
             status: missingTables.length === 0 ? 'OK' : 'MISSING_TABLES',
             missing: missingTables,

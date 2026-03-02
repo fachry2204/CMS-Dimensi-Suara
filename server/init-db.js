@@ -556,25 +556,25 @@ const initDb = async () => {
                     INSERT INTO login_settings (id, login_title, login_footer, login_button_color, login_form_bg_color, enable_registration)
                     VALUES (1, 'Agregator & Publishing Musik', 'Protected CMS Area. Authorized personnel only.', 'linear-gradient(to right, #2563eb, #0891b2)', 'rgba(255, 255, 255, 0.9)', 'true')
                 `);
-            } else {
-                // 13b. Check for new columns in existing login_settings
-                const loginSettingsCols = [
-                    { name: 'login_title_color', type: "VARCHAR(20) DEFAULT '#1e293b'" }, // slate-800
-                    { name: 'login_footer_color', type: "VARCHAR(20) DEFAULT '#94a3b8'" }, // slate-400
-                    { name: 'login_form_bg_opacity', type: "INT DEFAULT 90" }, // 0-100
-                    { name: 'login_bg_opacity', type: "INT DEFAULT 100" }, // 0-100 (Background image opacity)
-                    { name: 'login_glass_effect', type: "ENUM('true', 'false') DEFAULT 'false'" }
-                ];
+            }
+        }
 
-                for (const col of loginSettingsCols) {
-                    try {
-                        await connection.query(`SELECT \`${col.name}\` FROM login_settings LIMIT 1`);
-                    } catch (err) {
-                        if (err.code === 'ER_BAD_FIELD_ERROR') {
-                            console.log(`⚠️ Adding missing column: ${col.name} to login_settings table`);
-                            await connection.query(`ALTER TABLE login_settings ADD COLUMN \`${col.name}\` ${col.type}`);
-                        }
-                    }
+        // 13b. Check for new columns in existing login_settings (Always run this check)
+        const loginSettingsCols = [
+            { name: 'login_title_color', type: "VARCHAR(20) DEFAULT '#1e293b'" }, // slate-800
+            { name: 'login_footer_color', type: "VARCHAR(20) DEFAULT '#94a3b8'" }, // slate-400
+            { name: 'login_form_bg_opacity', type: "INT DEFAULT 90" }, // 0-100
+            { name: 'login_bg_opacity', type: "INT DEFAULT 100" }, // 0-100 (Background image opacity)
+            { name: 'login_glass_effect', type: "ENUM('true', 'false') DEFAULT 'false'" }
+        ];
+
+        for (const col of loginSettingsCols) {
+            try {
+                await connection.query(`SELECT \`${col.name}\` FROM login_settings LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to login_settings table`);
+                    await connection.query(`ALTER TABLE login_settings ADD COLUMN \`${col.name}\` ${col.type}`);
                 }
             }
         }
