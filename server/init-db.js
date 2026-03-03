@@ -547,6 +547,8 @@ const initDb = async () => {
                         login_bg_opacity INT DEFAULT 100,
                         login_glass_effect ENUM('true', 'false') DEFAULT 'false',
                         login_form_text_color VARCHAR(20) DEFAULT '#334155',
+                        login_title_color VARCHAR(20) DEFAULT '#1e293b',
+                        login_footer_color VARCHAR(20) DEFAULT '#94a3b8',
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 `);
