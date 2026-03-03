@@ -719,7 +719,7 @@ export const RegisterScreen: React.FC<Props> = () => {
   const renderDocUploadItem = (label: string, field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature', file: File | null, required: boolean) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-semibold text-slate-700">
+        <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         {file && (
@@ -779,7 +779,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       </div>
       {accountType === 'COMPANY' && (
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">Nama Perusahaan</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Nama Perusahaan</label>
           <input
             type="text"
             value={companyName}
@@ -791,7 +791,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       )}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">NIK</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>NIK</label>
           <input
             type="text"
             value={nik}
@@ -802,7 +802,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           />
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>{accountType === 'COMPANY' ? 'Nama Direktur' : 'Nama Lengkap'}</label>
           <input
             type="text"
             value={fullName}
@@ -813,7 +813,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         </div>
       </div>
       <div className="space-y-2">
-        <label className="text-[10px] font-semibold text-slate-700">Alamat Lengkap</label>
+        <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Alamat Lengkap</label>
         <textarea
           value={address}
           onChange={(e) => setAddress(e.target.value)}
@@ -824,7 +824,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       {country === 'Indonesia' ? (
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold text-slate-700">Negara</label>
+            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Negara</label>
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
@@ -837,7 +837,7 @@ export const RegisterScreen: React.FC<Props> = () => {
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold text-slate-700">Provinsi</label>
+            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Provinsi</label>
             {provinces.length > 0 ? (
               <select
                 value={provinceCode}
@@ -869,7 +869,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         </div>
       ) : (
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">Negara</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Negara</label>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
@@ -886,7 +886,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3">
             <div className="space-y-2">
-              <label className="text-[10px] font-semibold text-slate-700">Kota / Kabupaten</label>
+              <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Kota / Kabupaten</label>
               {regencies.length > 0 ? (
                 <select
                   value={regencyCode}
@@ -917,7 +917,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           </div>
           <div className="grid grid-cols-[2fr_2fr_1fr] gap-3">
             <div className="space-y-2">
-              <label className="text-[10px] font-semibold text-slate-700">Kecamatan</label>
+              <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Kecamatan</label>
               {districts.length > 0 ? (
                 <select
                   value={districtCode}
@@ -945,7 +945,7 @@ export const RegisterScreen: React.FC<Props> = () => {
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-semibold text-slate-700">Kelurahan</label>
+              <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Kelurahan</label>
               {villages.length > 0 ? (
                 <select
                   value={villageCode}
@@ -992,7 +992,7 @@ export const RegisterScreen: React.FC<Props> = () => {
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-semibold text-slate-700">Kodepos</label>
+              <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Kodepos</label>
               <input
                 type="text"
                 value={postalCode}
@@ -1005,7 +1005,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         </div>
       ) : country ? (
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">Kota</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Kota</label>
           <input
             type="text"
             value={city}
@@ -1022,7 +1022,7 @@ export const RegisterScreen: React.FC<Props> = () => {
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">Email</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Email</label>
           <input
             type="email"
             value={regEmail}
@@ -1032,7 +1032,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           />
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">No Handphone</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>No Handphone</label>
            <div className="flex items-center gap-2">
             <div className="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px] text-slate-700 min-w-[80px] text-center">
               {selectedCountryDialCode || '+..'}
@@ -1049,7 +1049,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">Password</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Password</label>
           <input
             type="password"
             value={regPassword}
@@ -1081,7 +1081,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold text-slate-700">Retype Password</label>
+          <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Retype Password</label>
           <input
             type="password"
             value={regPasswordConfirm}
@@ -1095,7 +1095,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         <>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label className="text-[10px] font-semibold text-slate-700">Nama PIC</label>
+              <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Nama PIC</label>
               <input
                 type="text"
                 value={picName}
@@ -1105,7 +1105,7 @@ export const RegisterScreen: React.FC<Props> = () => {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-semibold text-slate-700">Posisi PIC</label>
+              <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Posisi PIC</label>
               <input
                 type="text"
                 value={picPosition}
@@ -1116,7 +1116,7 @@ export const RegisterScreen: React.FC<Props> = () => {
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold text-slate-700">No Handphone PIC</label>
+            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>No Handphone PIC</label>
             <div className="flex items-center gap-2">
               <div className="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px] text-slate-700 min-w-[80px] text-center">
                 {selectedCountryDialCode || '+..'}
