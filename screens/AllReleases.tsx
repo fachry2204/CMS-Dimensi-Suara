@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReleaseData } from '../types';
 import { formatDMY } from '../utils/date';
 import { assetUrl } from '../utils/url';
+import { useBranding } from '../contexts/BrandingContext';
 
 interface Props {
   releases: ReleaseData[];
@@ -26,6 +27,7 @@ interface SortConfig {
 
 export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availableAggregators, error, userRole }) => {
   const navigate = useNavigate();
+  const { getButtonColor } = useBranding();
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -320,7 +322,8 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                 </div>
                 <button
                     onClick={() => navigate('/new-release')}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-[#aa91cc] text-white rounded hover:bg-[#aa91cc]/90 transition-colors text-[14px] font-bold shadow-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 text-white rounded hover:opacity-90 transition-colors text-[14px] font-bold shadow-sm"
+                    style={{ backgroundColor: getButtonColor() }}
                     title="Create New Release"
                 >
                     <Plus size={14} />

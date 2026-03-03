@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { assetUrl } from '../../utils/url';
+import { useBranding } from '../../contexts/BrandingContext';
 
 interface Creator {
     id: number;
@@ -29,6 +30,7 @@ interface Props {
 
 export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
     const navigate = useNavigate();
+    const { getButtonColor } = useBranding();
     const [creators, setCreators] = useState<Creator[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -176,7 +178,8 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
                 {userRole !== 'User' && (
                     <button 
                         onClick={() => { resetForm(); setShowModal(true); }}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                        className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors hover:opacity-90"
+                        style={{ backgroundColor: getButtonColor() }}
                     >
                         <Plus size={20} />
                         Tambah Pencipta

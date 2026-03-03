@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DollarSign, FileText, Download, Upload, CheckCircle, Clock, AlertCircle, Plus, Search, Filter, X, ChevronRight } from 'lucide-react';
 import { User } from '../types';
 import { api } from '../utils/api';
+import { useBranding } from '../contexts/BrandingContext';
 
 // Mock types for Payment
 interface PaymentInvoice {
@@ -28,6 +29,7 @@ interface Props {
 
 export const PaymentScreen: React.FC<Props> = ({ token }) => {
     const navigate = useNavigate();
+    const { getButtonColor } = useBranding();
     const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>('aggregator');
     const [invoices, setInvoices] = useState<PaymentInvoice[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -131,7 +133,8 @@ export const PaymentScreen: React.FC<Props> = ({ token }) => {
                 </div>
                 <button 
                     onClick={() => setShowGenerateModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all font-medium"
+                    className="flex items-center gap-2 px-4 py-2 text-white rounded-xl shadow-lg transition-all font-medium hover:opacity-90"
+                    style={{ backgroundColor: getButtonColor() }}
                 >
                     <Plus size={18} />
                     Generate Pembayaran

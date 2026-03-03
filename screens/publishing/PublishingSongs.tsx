@@ -3,6 +3,7 @@ import {
     Plus, Search, Edit2, Trash2, FileText, Music, User, Globe, Clock, Tag, FileAudio, Eye, CheckCircle, XCircle, AlertTriangle 
 } from 'lucide-react';
 import { api } from '../../utils/api';
+import { useBranding } from '../../contexts/BrandingContext';
 import { TRACK_GENRES, COUNTRIES_WITH_DIAL_CODES } from '../../constants';
 
 import { AlertModal } from '../../components/AlertModal';
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
+    const { getButtonColor } = useBranding();
     const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' | 'success' }>({
         isOpen: false,
         title: '',
@@ -427,7 +429,8 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
                 </div>
                 <button 
                     onClick={() => { resetForm(); setShowModal(true); }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors font-bold"
+                    className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold hover:opacity-90"
+                    style={{ backgroundColor: getButtonColor() }}
                 >
                     <Plus size={20} />
                     Tambah Lagu

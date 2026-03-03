@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, Upload, Filter, FileSpreadsheet, Download, Search, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { api } from '../../utils/api';
+import { useBranding } from '../../contexts/BrandingContext';
 import { AlertModal } from '../../components/AlertModal';
 
 interface Report {
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export const PublishingReports: React.FC<Props> = ({ token, mode = 'view' }) => {
+    const { getButtonColor } = useBranding();
     const [reports, setReports] = useState<Report[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -153,7 +155,8 @@ export const PublishingReports: React.FC<Props> = ({ token, mode = 'view' }) => 
                         </div>
                         <button 
                             onClick={() => setShowUploadModal(true)}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
+                            className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm hover:opacity-90"
+                            style={{ backgroundColor: getButtonColor() }}
                         >
                             <Upload size={20} />
                             Upload Laporan
@@ -264,7 +267,8 @@ export const PublishingReports: React.FC<Props> = ({ token, mode = 'view' }) => 
                         </div>
                         <button 
                             onClick={() => setShowUploadModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all font-medium text-xs"
+                            className="flex items-center gap-2 px-4 py-2 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all font-medium text-xs hover:opacity-90"
+                            style={{ backgroundColor: getButtonColor() }}
                         >
                             <Upload size={16} />
                             Import Excel

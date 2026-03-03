@@ -4,6 +4,7 @@ import { Upload, FileText, AlertCircle, CheckCircle, CheckCircle2, Download, Cal
 import { ReportData, ReleaseData } from '../types';
 import { formatDMY, formatHM } from '../utils/date';
 import { PublishingReports } from './publishing/PublishingReports';
+import { useBranding } from '../contexts/BrandingContext';
 
 interface ReportScreenProps {
   onImport: (data: ReportData[]) => void;
@@ -15,6 +16,7 @@ interface ReportScreenProps {
 }
 
 export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: propData, releases: propReleases, aggregators = [], mode = 'view', token = null }) => {
+  const { getButtonColor } = useBranding();
   const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>('aggregator');
 
   const data = propData || [];
@@ -251,7 +253,8 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                     <button 
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isProcessing}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all font-medium text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-4 py-2 text-white rounded-xl shadow-lg transition-all font-medium text-xs disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                        style={{ backgroundColor: getButtonColor() }}
                     >
                         {isProcessing ? (
                             <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
@@ -436,7 +439,8 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
                         </div>
                         <button 
                             onClick={handleCheckMatches}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all font-medium text-sm"
+                            className="flex items-center gap-2 px-4 py-2 text-white rounded-xl shadow-lg transition-all font-medium text-sm hover:opacity-90"
+                            style={{ backgroundColor: getButtonColor() }}
                         >
                             <Search size={18} />
                             Cek UPC & ISRC
