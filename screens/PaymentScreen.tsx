@@ -269,7 +269,8 @@ export const PaymentScreen: React.FC<Props> = ({ token }) => {
                             <div className="pt-4">
                                 <button 
                                     onClick={handleGenerate}
-                                    className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20"
+                                    className="w-full py-3 text-white rounded-xl font-bold transition-colors shadow-lg hover:opacity-90"
+                                    style={{ backgroundColor: getButtonColor() }}
                                 >
                                     Generate Laporan
                                 </button>

@@ -372,8 +372,9 @@ export const PublishingReports: React.FC<Props> = ({ token, mode = 'view' }) => 
                                     type="submit" 
                                     disabled={uploading}
                                     className={`w-full py-2.5 rounded-lg text-white font-medium flex justify-center items-center gap-2
-                                        ${uploading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}
+                                        ${uploading ? 'cursor-not-allowed opacity-70' : 'hover:opacity-90'}
                                     `}
+                                    style={{ backgroundColor: getButtonColor() }}
                                 >
                                     {uploading ? 'Uploading...' : 'Proses Upload'}
                                 </button>

@@ -9,15 +9,29 @@ type Props = {
 };
 
 export const RegisterScreen: React.FC<Props> = () => {
+  console.log('RegisterScreen rendering...');
   const navigate = useNavigate();
   const [checkingRegistration, setCheckingRegistration] = useState(true);
 
   useEffect(() => {
+    console.log('RegisterScreen mounted, checking branding...');
+    
+    // Safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      console.warn('Branding check timed out, forcing render');
+      setCheckingRegistration(false);
+    }, 3000);
+
     // Check if registration is enabled
     fetch('/api/settings/branding')
-      .then(res => res.json())
+      .then(res => {
+        console.log('Branding fetch response:', res.status);
+        return res.json();
+      })
       .then(data => {
-        if (data.enable_registration === 'false') {
+        clearTimeout(safetyTimeout);
+        console.log('Branding data:', data);
+        if (data && data.enable_registration === 'false') {
           alert('Pendaftaran pengguna baru sedang dinonaktifkan.');
           navigate('/login');
         } else {
@@ -25,9 +39,12 @@ export const RegisterScreen: React.FC<Props> = () => {
         }
       })
       .catch(err => {
+        clearTimeout(safetyTimeout);
         console.error("Failed to check registration status:", err);
         setCheckingRegistration(false);
       });
+      
+    return () => clearTimeout(safetyTimeout);
   }, [navigate]);
 
   const [accountType, setAccountType] = useState<'PERSONAL' | 'COMPANY' | null>(null);
@@ -106,6 +123,8 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [wilayahError, setWilayahError] = useState('');
   const [isWilayahLoading, setIsWilayahLoading] = useState(false);
   const [isPostalLoading, setIsPostalLoading] = useState(false);
+
+  console.log('RegisterScreen rendering... checkingRegistration:', checkingRegistration, 'step:', step);
 
   if (checkingRegistration) {
     return (
@@ -648,8 +667,8 @@ export const RegisterScreen: React.FC<Props> = () => {
         signatureDocPath: docPaths.signatureDocPath
       };
       await api.register(payload);
-      navigate('/user-status');
-    } catch (e: any) {
+              navigate('/user-status', { state: { username: regEmail, status: 'Pending' } });
+            } catch (e: any) {
       const dup = e?.payload?.duplicate;
       if (Array.isArray(dup) && dup.length > 0) {
         const mapLabel: Record<string, string> = { EMAIL: 'Email', PHONE: 'Nomor WhatsApp', COMPANY: 'Nama Perusahaan' };
@@ -1179,7 +1198,7 @@ export const RegisterScreen: React.FC<Props> = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
-      <div className="w-full bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-6 md:p-8 animate-fade-in-up max-w-3xl">
+      <div className="w-full bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-6 md:p-8 max-w-3xl">
         <div className="flex items-center justify-between mb-6">
           <button
             type="button"

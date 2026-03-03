@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useBranding } from '../contexts/BrandingContext';
 import { ReleaseData } from '../types';
 import { 
     LayoutDashboard, 
@@ -7,7 +9,8 @@ import {
     CheckCircle, 
     AlertTriangle, 
     Music, 
-    FileText
+    FileText,
+    Plus
 } from 'lucide-react';
 import { api } from '../utils/api';
 
@@ -22,6 +25,8 @@ interface Song {
 }
 
 export const Dashboard: React.FC<Props> = ({ releases, token }) => {
+  const navigate = useNavigate();
+  const { getButtonColor } = useBranding();
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoadingSongs, setIsLoadingSongs] = useState(true);
 
@@ -83,9 +88,19 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
 
        {/* AGGREGATOR / RELEASES SECTION */}
        <div className="mb-10">
-            <div className="flex items-center gap-2 mb-4">
-                <Music className="text-blue-600" size={18} />
-                <h2 className="text-sm font-bold text-slate-700">Aggregator Status</h2>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Music className="text-blue-600" size={18} />
+                    <h2 className="text-sm font-bold text-slate-700">Aggregator Status</h2>
+                </div>
+                <button 
+                    onClick={() => navigate('/new-release')}
+                    className="flex items-center gap-2 px-3 py-1.5 text-white rounded-lg shadow-sm hover:opacity-90 transition-all text-xs font-bold"
+                    style={{ backgroundColor: getButtonColor() }}
+                >
+                    <Plus size={14} />
+                    New Release
+                </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 

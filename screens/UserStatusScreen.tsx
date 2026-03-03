@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface Props {
   username: string;
@@ -7,7 +7,13 @@ interface Props {
 }
 
 export const UserStatusScreen: React.FC<Props> = ({ username, status }) => {
-  const normalized = (status || 'Pending') as string;
+  const location = useLocation();
+  const finalUsername = location.state?.username || username;
+  const finalStatus = location.state?.status || status;
+
+  console.log('UserStatusScreen rendering, finalUsername:', finalUsername, 'finalStatus:', finalStatus);
+  
+  const normalized = (finalStatus || 'Pending') as string;
   const navigate = useNavigate();
 
   const getLabel = () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useBranding } from './contexts/BrandingContext';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
 import { ReleaseTypeSelection } from './screens/ReleaseTypeSelection';
@@ -49,30 +50,22 @@ import { getTextColorClass } from './utils/colorUtils';
 const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { branding } = useBranding();
 
   // Header Branding State
   const [headerBgColor, setHeaderBgColor] = useState<string>('rgba(255, 255, 255, 0.8)');
   const [headerTitleColor, setHeaderTitleColor] = useState<string>('#1e293b'); // Default slate-800
 
   useEffect(() => {
-    const fetchBranding = async () => {
-        try {
-            const res = await fetch('/api/settings/branding');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.login_button_color) {
-                    setHeaderBgColor(data.login_button_color);
-                }
-                if (data.login_title_color) {
-                    setHeaderTitleColor(data.login_title_color);
-                }
-            }
-        } catch (error) {
-            console.error("Failed to fetch branding for header:", error);
-        }
-    };
-    fetchBranding();
-  }, []);
+    if (branding) {
+      if (branding.login_button_color) {
+        setHeaderBgColor(branding.login_button_color);
+      }
+      if (branding.login_title_color) {
+        setHeaderTitleColor(branding.login_title_color);
+      }
+    }
+  }, [branding]);
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -799,6 +792,7 @@ const App: React.FC = () => {
   if (isAuthChecking) return null;
 
   if (!isAuthenticated) {
+    console.log('App: User not authenticated, rendering auth routes');
     return (
       <Routes>
         <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />

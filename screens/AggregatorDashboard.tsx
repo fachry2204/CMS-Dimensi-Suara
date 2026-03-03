@@ -1,6 +1,8 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ReleaseData } from '../types';
+import { useBranding } from '../contexts/BrandingContext';
 import { 
     LayoutDashboard, 
     Clock, 
@@ -11,7 +13,8 @@ import {
     Disc,
     ArrowRight,
     Globe,
-    Users
+    Users,
+    Plus
 } from 'lucide-react';
 import { assetUrl } from '../utils/url';
 
@@ -22,6 +25,8 @@ interface Props {
 }
 
 export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigateToAll }) => {
+  const navigate = useNavigate();
+  const { getButtonColor } = useBranding();
   
   // Calculate Stats
   const stats = {
@@ -59,9 +64,19 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
 
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
-       <div className="mb-6 md:hidden">
-            <h1 className="text-lg text-slate-800 tracking-tight">Dashboard</h1>
-            <p className="text-slate-500 mt-0.5 text-[12px]">Welcome back, here is your catalog overview.</p>
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+           <div>
+                <h1 className="text-lg text-slate-800 tracking-tight font-bold">Dashboard</h1>
+                <p className="text-slate-500 mt-0.5 text-[12px]">Welcome back, here is your catalog overview.</p>
+           </div>
+           <button 
+                onClick={() => navigate('/new-release')}
+                className="flex items-center gap-2 px-4 py-2 text-white rounded-lg shadow-sm hover:opacity-90 transition-all text-xs font-bold"
+                style={{ backgroundColor: getButtonColor() }}
+            >
+                <Plus size={16} />
+                New Release
+            </button>
        </div>
 
        {/* STATS CARDS */}
