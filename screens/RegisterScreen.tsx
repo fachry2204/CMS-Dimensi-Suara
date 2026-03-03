@@ -9,28 +9,23 @@ type Props = {
 };
 
 export const RegisterScreen: React.FC<Props> = () => {
-  console.log('RegisterScreen rendering...');
   const navigate = useNavigate();
   const [checkingRegistration, setCheckingRegistration] = useState(true);
 
   useEffect(() => {
-    console.log('RegisterScreen mounted, checking branding...');
     
     // Safety timeout to prevent infinite loading
     const safetyTimeout = setTimeout(() => {
-      console.warn('Branding check timed out, forcing render');
       setCheckingRegistration(false);
     }, 3000);
 
     // Check if registration is enabled
     fetch('/api/settings/branding')
       .then(res => {
-        console.log('Branding fetch response:', res.status);
         return res.json();
       })
       .then(data => {
         clearTimeout(safetyTimeout);
-        console.log('Branding data:', data);
         if (data && data.enable_registration === 'false') {
           alert('Pendaftaran pengguna baru sedang dinonaktifkan.');
           navigate('/login');
@@ -40,7 +35,6 @@ export const RegisterScreen: React.FC<Props> = () => {
       })
       .catch(err => {
         clearTimeout(safetyTimeout);
-        console.error("Failed to check registration status:", err);
         setCheckingRegistration(false);
       });
       
@@ -125,14 +119,6 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [isPostalLoading, setIsPostalLoading] = useState(false);
 
   console.log('RegisterScreen rendering... checkingRegistration:', checkingRegistration, 'step:', step);
-
-  if (checkingRegistration) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-    );
-  }
 
   useEffect(() => {
     if (country !== 'Indonesia') {
@@ -360,6 +346,18 @@ export const RegisterScreen: React.FC<Props> = () => {
     };
     loadVillages();
   }, [districtCode]);
+
+  // Early return is moved here to ensure all hooks are called first
+  if (checkingRegistration) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-slate-600">Memeriksa status pendaftaran...</p>
+            </div>
+        </div>
+    );
+  }
 
   const handleSelectAccountType = (type: 'PERSONAL' | 'COMPANY') => {
     setAccountType(type);
@@ -1001,7 +999,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         </div>
         <div className="space-y-2">
           <label className="text-[10px] font-semibold text-slate-700">No Handphone</label>
-          <div className="flex items-center gap-2">
+           <div className="flex items-center gap-2">
             <div className="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-[10px] text-slate-700 min-w-[80px] text-center">
               {selectedCountryDialCode || '+..'}
             </div>

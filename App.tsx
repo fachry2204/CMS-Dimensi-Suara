@@ -46,6 +46,7 @@ import allDspLogo from './assets/platforms/alldsp.svg';
 import PublishingWriterDetail from './screens/publishing/PublishingWriterDetail';
 import { getProfileImageUrl } from './utils/imageUtils';
 import { getTextColorClass } from './utils/colorUtils';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -789,17 +790,50 @@ const App: React.FC = () => {
       }
   };
 
-  if (isAuthChecking) return null;
+  if (isAuthChecking) {
+    // Allow public routes to render immediately if they are being accessed
+    const path = location.pathname.toLowerCase();
+    if (path === '/register' || path.startsWith('/register/')) {
+      return (
+        <ErrorBoundary>
+            <Routes>
+            <Route path="/register" element={<RegisterScreen onLogin={handleLogin} />} />
+            <Route path="*" element={<Navigate to="/register" replace />} />
+            </Routes>
+        </ErrorBoundary>
+      );
+    }
+    // Also allow login to bypass the check to avoid blank screen if check is slow
+    if (path === '/login' || path.startsWith('/login/')) {
+         return (
+            <Routes>
+                <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
+                <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+         );
+    }
+    
+    // Fallback UI instead of null to identify if we are stuck here
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Memuat aplikasi...</p>
+            </div>
+        </div>
+    );
+  }
 
   if (!isAuthenticated) {
-    console.log('App: User not authenticated, rendering auth routes');
     return (
-      <Routes>
-        <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
-        <Route path="/register" element={<RegisterScreen onLogin={handleLogin} />} />
-        <Route path="/user-status" element={<UserStatusScreen username={''} status={'Pending'} />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+            <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
+            <Route path="/register" element={<RegisterScreen onLogin={handleLogin} />} />
+            <Route path="/user-status" element={<UserStatusScreen username={''} status={'Pending'} />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </ErrorBoundary>
     );
   }
 
