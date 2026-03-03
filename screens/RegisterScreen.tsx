@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Building2, CheckCircle2, ChevronLeft } from 'lucide-react';
 import { api } from '../utils/api';
 import { COUNTRIES_WITH_DIAL_CODES } from '../constants';
+import { getShadowColor } from '../utils/colorUtils';
 
 type Props = {
   onLogin: (user: any, token: string) => void;
@@ -12,20 +13,53 @@ export const RegisterScreen: React.FC<Props> = () => {
   const navigate = useNavigate();
   const [checkingRegistration, setCheckingRegistration] = useState(true);
 
+  // Branding State (Copied from LoginScreen)
+  const [branding, setBranding] = useState<{
+      logo: string | null, 
+      login_background: string | null,
+      login_title: string,
+      login_footer: string,
+      login_button_color: string,
+      login_form_bg_color: string,
+      enable_registration: string,
+      login_title_color: string,
+      login_footer_color: string,
+      login_form_bg_opacity: number,
+      login_bg_opacity: number,
+      login_glass_effect: string,
+      login_form_text_color: string
+  }>({
+      logo: null,
+      login_background: null,
+      login_title: 'Agregator & Publishing Musik',
+      login_footer: 'Protected CMS Area. Authorized personnel only.',
+      login_button_color: 'linear-gradient(to right, #2563eb, #0891b2)',
+      login_form_bg_color: '#ffffff',
+      enable_registration: 'true',
+      login_title_color: '#1e293b',
+      login_footer_color: '#94a3b8',
+      login_form_bg_opacity: 90,
+      login_bg_opacity: 100,
+      login_glass_effect: 'false',
+      login_form_text_color: '#334155'
+  });
+
   useEffect(() => {
-    
     // Safety timeout to prevent infinite loading
     const safetyTimeout = setTimeout(() => {
       setCheckingRegistration(false);
     }, 3000);
 
-    // Check if registration is enabled
+    // Check if registration is enabled & fetch branding
     fetch('/api/settings/branding')
       .then(res => {
         return res.json();
       })
       .then(data => {
         clearTimeout(safetyTimeout);
+        if (data) {
+             setBranding(prev => ({ ...prev, ...data }));
+        }
         if (data && data.enable_registration === 'false') {
           alert('Pendaftaran pengguna baru sedang dinonaktifkan.');
           navigate('/login');
@@ -1195,20 +1229,51 @@ export const RegisterScreen: React.FC<Props> = () => {
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
-      <div className="w-full bg-white rounded-3xl shadow-2xl shadow-blue-900/10 border border-white p-6 md:p-8 max-w-3xl">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden">
+      {/* Background Layer with Opacity */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-500 bg-gradient-to-br from-blue-50 via-white to-blue-100"
+        style={{ 
+            backgroundImage: branding.login_background ? `url(${branding.login_background})` : undefined,
+            opacity: (branding.login_bg_opacity ?? 100) / 100
+        }}
+      />
+
+      <div 
+        className={`w-full max-w-3xl rounded-3xl p-6 md:p-8 animate-fade-in-up relative z-10 
+            ${branding.login_glass_effect !== 'true' ? 'backdrop-blur-sm shadow-2xl shadow-blue-900/10 border border-white/50' : ''}`}
+        style={branding.login_glass_effect === 'true' ? {
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: `0 8px 32px 0 ${getShadowColor(branding.login_button_color)}`
+        } : undefined}
+      >
+        {/* Form Background Layer with Opacity - Only when NOT glass effect */}
+        {branding.login_glass_effect !== 'true' && (
+            <div 
+                className="absolute inset-0 rounded-3xl -z-10 transition-opacity duration-300 bg-white"
+                style={{ 
+                    background: branding.login_form_bg_color || '#ffffff',
+                    opacity: (branding.login_form_bg_opacity ?? 90) / 100
+                }}
+            />
+        )}
+
         <div className="flex items-center justify-between mb-6">
           <button
             type="button"
             onClick={() => navigate('/login')}
             className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700"
+            style={{ color: branding.login_form_text_color }}
           >
             <ChevronLeft size={12} />
             Kembali ke Login
           </button>
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Pendaftaran Akun</p>
-            <p className="text-[10px] font-bold text-slate-800">{accountType === 'COMPANY' ? 'Perusahaan' : accountType === 'PERSONAL' ? 'Personal' : 'Pilih Tipe Akun'}</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold" style={{ color: branding.login_form_text_color, opacity: 0.7 }}>Pendaftaran Akun</p>
+            <p className="text-[10px] font-bold text-slate-800" style={{ color: branding.login_form_text_color }}>{accountType === 'COMPANY' ? 'Perusahaan' : accountType === 'PERSONAL' ? 'Personal' : 'Pilih Tipe Akun'}</p>
           </div>
         </div>
         <div className="flex items-center justify-between mb-4">
