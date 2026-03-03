@@ -91,8 +91,8 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [dupPhone, setDupPhone] = useState(false);
   const [isCheckingDup, setIsCheckingDup] = useState(false);
 
-  const [countries] = useState(COUNTRIES_WITH_DIAL_CODES);
-  const selectedCountryDialCode = countries.find((c) => c.name === country)?.dialCode || '';
+  const [countries] = useState(COUNTRIES_WITH_DIAL_CODES || []);
+  const selectedCountryDialCode = (countries || []).find((c) => c?.name === country)?.dialCode || '';
 
   type WilayahItem = { code: string; name: string };
   const [provinces, setProvinces] = useState<WilayahItem[]>([]);
@@ -780,8 +780,8 @@ export const RegisterScreen: React.FC<Props> = () => {
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-[10px]"
             >
               <option value="">Pilih negara</option>
-              {countries.map((c) => (
-                <option key={c.name} value={c.name}>{c.name}</option>
+              {(countries || []).map((c) => (
+                <option key={c?.name || Math.random()} value={c?.name}>{c?.name}</option>
               ))}
             </select>
           </div>
