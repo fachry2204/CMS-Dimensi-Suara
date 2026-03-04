@@ -13,11 +13,16 @@ interface ReportScreenProps {
   aggregators?: string[];
   mode?: 'view' | 'import';
   token?: string | null;
+  defaultTab?: 'aggregator' | 'publishing';
 }
 
-export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: propData, releases: propReleases, aggregators = [], mode = 'view', token = null }) => {
+export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: propData, releases: propReleases, aggregators = [], mode = 'view', token = null, defaultTab = 'aggregator' }) => {
   const { getButtonColor } = useBranding();
-  const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>('aggregator');
+  const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>(defaultTab);
+
+  React.useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   const data = propData || [];
   const releases = propReleases || [];
@@ -192,7 +197,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
 
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in space-y-8">
-      <div className="flex items-center gap-4">
+      {/* <div className="flex items-center gap-4">
           <button 
             onClick={() => setActiveTab('aggregator')}
             className={`px-4 py-2 rounded-lg border font-bold transition-colors ${activeTab === 'aggregator' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
@@ -205,7 +210,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({ onImport, data: prop
           >
             Publishing
           </button>
-      </div>
+      </div> */}
 
       {activeTab === 'publishing' ? (
           <PublishingReports token={token} mode={mode} />

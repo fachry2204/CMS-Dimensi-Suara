@@ -17,7 +17,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
     reportUser: true,
     system: true,
     dataSaya: true,
-    bantuan: true
+    bantuan: true,
+    statistics: false,
+    payments: false,
+    reportList: false,
+    revenue: false,
+    importReports: false,
+    kontrak: false
   });
 
   const toggleSection = (section: string) => {
@@ -45,6 +51,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
 
   const getIconClass = (isActive: boolean) =>
     isActive ? 'text-black' : 'text-white/70 group-hover:text-white';
+
+  const getSubLinkClass = (isActive: boolean) => 
+    `w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-[12px] ${
+      isActive
+        ? 'text-white bg-white/10'
+        : 'text-white/60 hover:text-white hover:bg-white/5'
+    }`;
 
   return (
     <aside className="w-64 bg-black backdrop-blur-xl border-r border-white/10 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
@@ -172,56 +185,180 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
           </h3>
           {expandedSections.report && (
             <ul className="space-y-2">
+            
+            {/* Statistik Dropdown */}
             <li>
-              <NavLink to="/statistics" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <BarChart3 size={20} className={getIconClass(isActive)} />
-                    Statistik
-                  </>
+                <div 
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                    onClick={() => toggleSection('statistics')}
+                >
+                    <div className="flex items-center gap-3">
+                        <BarChart3 size={20} className="text-white/70 group-hover:text-white" />
+                        Statistik
+                    </div>
+                    {expandedSections.statistics ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.statistics && (
+                    <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                        <li>
+                            <NavLink to="/statistics/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Aggregator
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink to="/statistics/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Publishing
+                            </NavLink>
+                        </li>
+                    </ul>
                 )}
-              </NavLink>
             </li>
+
+            {/* Laporan Dropdown */}
             <li>
-              <NavLink to="/reports" className={({ isActive }) => getLinkClass(isActive)}>
-                 {({ isActive }) => (
-                  <>
-                    <ClipboardList size={20} className={getIconClass(isActive)} />
-                    Laporan
-                  </>
+                <div 
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                    onClick={() => toggleSection('reportList')}
+                >
+                    <div className="flex items-center gap-3">
+                        <ClipboardList size={20} className="text-white/70 group-hover:text-white" />
+                        Laporan
+                    </div>
+                    {expandedSections.reportList ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.reportList && (
+                    <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                        <li>
+                            <NavLink to="/reports/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Aggregator
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink to="/reports/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Publishing
+                            </NavLink>
+                        </li>
+                    </ul>
                 )}
-              </NavLink>
             </li>
-             <li>
-              <NavLink to="/revenue" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <DollarSign size={20} className={getIconClass(isActive)} />
-                    Pendapatan
-                  </>
+
+            {/* Pendapatan Dropdown - REMOVED */}
+            {/* <li>
+                <div 
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                    onClick={() => toggleSection('revenue')}
+                >
+                    <div className="flex items-center gap-3">
+                        <DollarSign size={20} className="text-white/70 group-hover:text-white" />
+                        Pendapatan
+                    </div>
+                    {expandedSections.revenue ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.revenue && (
+                    <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                        <li>
+                            <NavLink to="/revenue/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Aggregator
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink to="/revenue/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Publishing
+                            </NavLink>
+                        </li>
+                    </ul>
                 )}
-              </NavLink>
-            </li>
+            </li> */}
+
+            {/* Import Laporan Dropdown */}
             <li>
-              <NavLink to="/import-reports" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <Upload size={20} className={getIconClass(isActive)} />
-                    Import Laporan
-                  </>
+                <div 
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                    onClick={() => toggleSection('importReports')}
+                >
+                    <div className="flex items-center gap-3">
+                        <Upload size={20} className="text-white/70 group-hover:text-white" />
+                        Import Laporan
+                    </div>
+                    {expandedSections.importReports ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.importReports && (
+                    <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                        <li>
+                            <NavLink to="/import-reports/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Aggregator
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink to="/import-reports/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Publishing
+                            </NavLink>
+                        </li>
+                    </ul>
                 )}
-              </NavLink>
             </li>
+            
+            {/* Pembayaran Dropdown */}
             <li>
-              <NavLink to="/reports/payments" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <DollarSign size={20} className={getIconClass(isActive)} />
-                    Pembayaran
-                  </>
+                <div 
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                    onClick={() => toggleSection('payments')}
+                >
+                    <div className="flex items-center gap-3">
+                        <DollarSign size={20} className="text-white/70 group-hover:text-white" />
+                        Pembayaran
+                    </div>
+                    {expandedSections.payments ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.payments && (
+                    <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                        <li>
+                            <NavLink to="/reports/payments/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Aggregator
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink to="/reports/payments/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                                Publishing
+                            </NavLink>
+                        </li>
+                    </ul>
                 )}
-              </NavLink>
             </li>
+
+            {/* Kontrak Dropdown (Admin/Operator) */}
+            <li>
+              <div
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] ${
+                  location.pathname.startsWith('/me/contracts')
+                    ? 'bg-white text-black shadow-sm ring-1 ring-white/20'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                } cursor-pointer`}
+                onClick={() => toggleSection('kontrak')}
+              >
+                <div className="flex items-center gap-3">
+                  <FileText size={20} className={location.pathname.startsWith('/me/contracts') ? 'text-black' : 'text-white/70 group-hover:text-white'} />
+                  Kontrak
+                </div>
+                {expandedSections.kontrak ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </div>
+
+              {expandedSections.kontrak && (
+                <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                  <li>
+                    <NavLink to="/me/contracts/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Kontrak Aggregator
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/me/contracts/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Kontrak Publishing
+                    </NavLink>
+                  </li>
+                </ul>
+              )}
+            </li>
+
           </ul>
           )}
         </div>
@@ -322,14 +459,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/me/contracts" className={({ isActive }) => getLinkClass(isActive)}>
-                {({ isActive }) => (
-                  <>
-                    <FileText size={20} className={getIconClass(isActive)} />
-                    Kontrak
-                  </>
-                )}
-              </NavLink>
+              <div
+                className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-all duration-200 border-l-4 ${
+                  location.pathname.startsWith('/me/contracts')
+                    ? 'border-blue-500 bg-white/10 text-white' 
+                    : 'border-transparent text-white/70 hover:bg-white/5 hover:text-white'
+                }`}
+                onClick={() => toggleSection('kontrak')}
+              >
+                <div className="flex items-center gap-3">
+                  <FileText size={20} className={location.pathname.startsWith('/me/contracts') ? 'text-blue-400' : 'text-white/50'} />
+                  <span className="font-medium text-[15px]">Kontrak</span>
+                </div>
+                {expandedSections.kontrak ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </div>
+
+              {expandedSections.kontrak && (
+                <ul className="mt-1 ml-4 space-y-1 border-l border-white/10 pl-2">
+                  <li>
+                    <NavLink to="/me/contracts/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Aggregator
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/me/contracts/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Publishing
+                    </NavLink>
+                  </li>
+                </ul>
+              )}
             </li>
             </ul>
             )}

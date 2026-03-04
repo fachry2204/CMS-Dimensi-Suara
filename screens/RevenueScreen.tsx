@@ -6,10 +6,15 @@ import { PublishingReports } from './publishing/PublishingReports';
 interface Props {
   data: ReportData[];
   token?: string | null;
+  defaultTab?: 'aggregator' | 'publishing';
 }
 
-export const RevenueScreen: React.FC<Props> = ({ data, token }) => {
-  const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>('aggregator');
+export const RevenueScreen: React.FC<Props> = ({ data, token, defaultTab = 'aggregator' }) => {
+  const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>(defaultTab);
+
+  React.useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   const stats = useMemo(() => {
     let totalRevenue = 0;
@@ -50,7 +55,7 @@ export const RevenueScreen: React.FC<Props> = ({ data, token }) => {
 
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in space-y-8">
-      <div className="flex items-center gap-4">
+      {/* <div className="flex items-center gap-4">
           <button 
             onClick={() => setActiveTab('aggregator')}
             className={`px-4 py-2 rounded-lg border font-bold transition-colors ${activeTab === 'aggregator' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
@@ -63,7 +68,7 @@ export const RevenueScreen: React.FC<Props> = ({ data, token }) => {
           >
             Publishing
           </button>
-      </div>
+      </div> */}
 
       {activeTab === 'publishing' ? (
         <PublishingReports token={token || null} />

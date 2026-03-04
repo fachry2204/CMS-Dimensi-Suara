@@ -36,6 +36,87 @@ const parseResponse = async (res: Response) => {
 };
 
 export const api = {
+    // Generic methods
+    get: async (endpoint: string, config?: any) => {
+        const token = config?.headers?.Authorization?.replace('Bearer ', '');
+        const params = new URLSearchParams(config?.params || {}).toString();
+        const url = params ? `${API_BASE_URL}${endpoint}?${params}` : `${API_BASE_URL}${endpoint}`;
+        
+        const res = await fetch(url, {
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(config?.headers || {})
+            },
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    post: async (endpoint: string, data: any, config?: any) => {
+        const token = config?.headers?.Authorization?.replace('Bearer ', '');
+        const isFormData = data instanceof FormData;
+        
+        const headers: any = {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...(config?.headers || {})
+        };
+        
+        if (!isFormData && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
+        
+        if (isFormData && headers['Content-Type'] === 'multipart/form-data') {
+            delete headers['Content-Type'];
+        }
+        
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST',
+            headers,
+            body: isFormData ? data : JSON.stringify(data),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    put: async (endpoint: string, data: any, config?: any) => {
+        const token = config?.headers?.Authorization?.replace('Bearer ', '');
+        const isFormData = data instanceof FormData;
+        
+        const headers: any = {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...(config?.headers || {})
+        };
+        
+        if (!isFormData && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        if (isFormData && headers['Content-Type'] === 'multipart/form-data') {
+            delete headers['Content-Type'];
+        }
+
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'PUT',
+            headers,
+            body: isFormData ? data : JSON.stringify(data),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    delete: async (endpoint: string, config?: any) => {
+        const token = config?.headers?.Authorization?.replace('Bearer ', '');
+        const params = new URLSearchParams(config?.params || {}).toString();
+        const url = params ? `${API_BASE_URL}${endpoint}?${params}` : `${API_BASE_URL}${endpoint}`;
+
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(config?.headers || {})
+            },
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
     // Auth
     login: async (username, password) => {
         const res = await fetch(`${API_BASE_URL}/auth/login`, {

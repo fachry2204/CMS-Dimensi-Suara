@@ -25,12 +25,18 @@ interface PaymentInvoice {
 
 interface Props {
     token: string | null;
+    defaultTab?: 'aggregator' | 'publishing';
 }
 
-export const PaymentScreen: React.FC<Props> = ({ token }) => {
+export const PaymentScreen: React.FC<Props> = ({ token, defaultTab = 'aggregator' }) => {
     const navigate = useNavigate();
     const { getButtonColor } = useBranding();
-    const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>('aggregator');
+    const [activeTab, setActiveTab] = useState<'aggregator' | 'publishing'>(defaultTab);
+
+    // Update activeTab if defaultTab changes
+    useEffect(() => {
+        setActiveTab(defaultTab);
+    }, [defaultTab]);
     const [invoices, setInvoices] = useState<PaymentInvoice[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     
@@ -141,8 +147,8 @@ export const PaymentScreen: React.FC<Props> = ({ token }) => {
                 </button>
             </div>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-4">
+            {/* Tabs - REMOVED */}
+            {/* <div className="flex items-center gap-4">
                 <button 
                     onClick={() => setActiveTab('aggregator')}
                     className={`px-4 py-2 rounded-lg border font-bold transition-colors ${activeTab === 'aggregator' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
@@ -155,7 +161,7 @@ export const PaymentScreen: React.FC<Props> = ({ token }) => {
                 >
                     Publishing
                 </button>
-            </div>
+            </div> */}
 
             {/* Content */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

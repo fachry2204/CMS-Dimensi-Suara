@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Eye, Download, XCircle, FileText, CheckCircle, FileBadge } from 'lucide-react';
+import { User as UserIcon, Eye, Download, XCircle } from 'lucide-react';
 import { User } from '../types';
 
 interface Props {
@@ -11,70 +11,15 @@ export const MyProfile: React.FC<Props> = ({ currentUserData }) => {
   const [showDocPreview, setShowDocPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewIsPdf, setPreviewIsPdf] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'contracts'>('profile');
-
-  // Mock contracts data based on user info
-  const contracts = [];
-  if (user.aggregator_percentage !== undefined || user.role === 'Admin' || user.account_type) {
-    contracts.push({
-      id: 1,
-      type: 'Aggregator',
-      percentage: user.aggregator_percentage || 0,
-      date: user.joinedDate,
-      status: 'Active',
-      doc: null // Placeholder
-    });
-  }
-  if (user.publishing_percentage !== undefined) {
-    contracts.push({
-      id: 2,
-      type: 'Publishing',
-      percentage: user.publishing_percentage,
-      date: user.joinedDate, // or specific date if available
-      status: 'Active',
-      doc: null // Placeholder
-    });
-  }
 
   return (
     <div className="p-8 max-w-5xl mx-auto min-h-screen">
       <div className="mb-6">
         <h1 className="text-lg text-slate-800 tracking-tight">Profile</h1>
-        <p className="text-slate-500 mt-0.5 text-[12px]">Data akun dan kontrak Anda.</p>
+        <p className="text-slate-500 mt-0.5 text-[12px]">Data akun Anda.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-6 border-b border-gray-200 mb-6">
-        <button
-            onClick={() => setActiveTab('profile')}
-            className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === 'profile' 
-                ? 'text-blue-600' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-        >
-            Profile Info
-            {activeTab === 'profile' && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full" />
-            )}
-        </button>
-        <button
-            onClick={() => setActiveTab('contracts')}
-            className={`pb-3 text-sm font-medium transition-colors relative ${
-                activeTab === 'contracts' 
-                ? 'text-blue-600' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-        >
-            Kontrak
-            {activeTab === 'contracts' && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-t-full" />
-            )}
-        </button>
-      </div>
-
-      {activeTab === 'profile' ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <div className="flex items-center gap-4 mb-6">
             <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
                 <UserIcon size={24} />
@@ -298,64 +243,6 @@ export const MyProfile: React.FC<Props> = ({ currentUserData }) => {
             </div>
             </div>
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-                    <FileBadge size={24} />
-                </div>
-                <div>
-                    <div className="text-xl font-bold text-slate-800">Kontrak</div>
-                    <div className="text-slate-500 text-sm">Daftar kontrak Aggregator dan Publishing.</div>
-                </div>
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-sm text-left border-collapse">
-                    <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
-                        <tr>
-                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">No</th>
-                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Jenis Kontrak</th>
-                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Tanggal Mulai</th>
-                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Persentase</th>
-                            <th className="px-4 py-3 border-r border-slate-200 last:border-r-0">Status</th>
-                            <th className="px-4 py-3">Dokumen</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {contracts.length > 0 ? (
-                            contracts.map((contract, index) => (
-                                <tr key={index} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-b-0">
-                                    <td className="px-4 py-3 text-slate-500 border-r border-slate-100 last:border-r-0">{index + 1}</td>
-                                    <td className="px-4 py-3 font-medium text-slate-800 border-r border-slate-100 last:border-r-0">{contract.type}</td>
-                                    <td className="px-4 py-3 text-slate-600 border-r border-slate-100 last:border-r-0">{contract.date || '-'}</td>
-                                    <td className="px-4 py-3 text-slate-600 border-r border-slate-100 last:border-r-0">{contract.percentage}%</td>
-                                    <td className="px-4 py-3 border-r border-slate-100 last:border-r-0">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600 border border-green-100">
-                                            <CheckCircle size={12} />
-                                            {contract.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <button className="text-blue-600 hover:text-blue-700 font-medium text-xs flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                            <Download size={14} />
-                                            Unduh
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                                    Tidak ada data kontrak.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-      )}
 
       {showDocPreview && previewUrl && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

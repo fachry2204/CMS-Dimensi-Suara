@@ -1135,8 +1135,12 @@ const App: React.FC = () => {
             <Route path="/tickets/:id" element={<TicketDetail token={token} userRole={userRole} onAuthExpired={handleAuthExpired} />} />
 
             <Route path="/me/profile" element={<MyProfile currentUserData={currentUserData} />} />
-            <Route path="/me/contracts" element={<MyContracts />} />
+            <Route path="/me/contracts" element={<MyContracts currentUserData={currentUserData} />} />
+            <Route path="/me/contracts/aggregator" element={<MyContracts currentUserData={currentUserData} defaultTab="aggregator" />} />
+            <Route path="/me/contracts/publishing" element={<MyContracts currentUserData={currentUserData} defaultTab="publishing" />} />
             <Route path="/statistics" element={<Statistics releases={allReleases} reportData={reportData} token={token} />} />
+            <Route path="/statistics/aggregator" element={<Statistics releases={allReleases} reportData={reportData} token={token} defaultTab="aggregator" />} />
+            <Route path="/statistics/publishing" element={<Statistics releases={allReleases} reportData={reportData} token={token} defaultTab="publishing" />} />
             <Route 
                 path="/releases/:id/view" 
                 element={
@@ -1186,6 +1190,28 @@ const App: React.FC = () => {
                     token={token}
                 />
             } />
+            <Route path="/reports/aggregator" element={
+                <ReportScreen 
+                    mode="view" 
+                    data={reportData} 
+                    releases={allReleases}
+                    onImport={setReportData}
+                    aggregators={aggregators}
+                    token={token}
+                    defaultTab="aggregator"
+                />
+            } />
+            <Route path="/reports/publishing" element={
+                <ReportScreen 
+                    mode="view" 
+                    data={reportData} 
+                    releases={allReleases}
+                    onImport={setReportData}
+                    aggregators={aggregators}
+                    token={token}
+                    defaultTab="publishing"
+                />
+            } />
             <Route path="/import-reports" element={
                 <ReportScreen 
                     mode="import" 
@@ -1196,8 +1222,34 @@ const App: React.FC = () => {
                     token={token}
                 />
             } />
+            <Route path="/import-reports/aggregator" element={
+                <ReportScreen 
+                    mode="import" 
+                    data={reportData} 
+                    releases={allReleases}
+                    onImport={setReportData}
+                    aggregators={aggregators}
+                    token={token}
+                    defaultTab="aggregator"
+                />
+            } />
+            <Route path="/import-reports/publishing" element={
+                <ReportScreen 
+                    mode="import" 
+                    data={reportData} 
+                    releases={allReleases}
+                    onImport={setReportData}
+                    aggregators={aggregators}
+                    token={token}
+                    defaultTab="publishing"
+                />
+            } />
             <Route path="/revenue" element={<RevenueScreen data={reportData} token={token} />} />
+            <Route path="/revenue/aggregator" element={<RevenueScreen data={reportData} token={token} defaultTab="aggregator" />} />
+            <Route path="/revenue/publishing" element={<RevenueScreen data={reportData} token={token} defaultTab="publishing" />} />
             <Route path="/reports/payments" element={<PaymentScreen token={token} />} />
+            <Route path="/reports/payments/aggregator" element={<PaymentScreen token={token} defaultTab="aggregator" />} />
+            <Route path="/reports/payments/publishing" element={<PaymentScreen token={token} defaultTab="publishing" />} />
             <Route path="/reports/payments/detail/:id" element={<PaymentDetailScreen />} />
           </Routes>
         </div>
