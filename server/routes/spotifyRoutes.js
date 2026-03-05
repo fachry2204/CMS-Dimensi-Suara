@@ -93,4 +93,29 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Diagnostics (no secrets leaked)
+router.get('/diag', async (req, res) => {
+  try {
+    const hasId = !!process.env.SPOTIFY_CLIENT_ID;
+    const hasSecret = !!process.env.SPOTIFY_CLIENT_SECRET;
+    let tokenOk = false;
+    let status = null;
+    let reason = null;
+    if (hasId && hasSecret) {
+      try {
+        const t = await getClientToken();
+        tokenOk = !!t;
+        if (!tokenOk) reason = 'token_fetch_failed';
+      } catch (e) {
+        reason = 'token_exception';
+      }
+    } else {
+      reason = 'missing_env';
+    }
+    res.json({ hasId, hasSecret, tokenOk, status, reason });
+  } catch (e) {
+    res.status(200).json({ hasId: false, hasSecret: false, tokenOk: false, reason: 'diag_exception' });
+  }
+});
+
 export default router;

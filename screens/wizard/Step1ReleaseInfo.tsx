@@ -234,6 +234,9 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
           setSearchError(null);
           const res = await api.spotify.searchArtist(searchQuery, 5);
           const items = Array.isArray(res?.items) ? res.items : [];
+          if (res && (res as any).unavailable) {
+            setSearchError('Pencarian Spotify tidak tersedia');
+          }
           setSearchResults(items);
           setShowDropdown(true);
         } catch (e: any) {
