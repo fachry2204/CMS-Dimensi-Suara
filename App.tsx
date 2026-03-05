@@ -82,6 +82,7 @@ const App: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [ticketUnreadCount, setTicketUnreadCount] = useState<number>(0);
+  const notifIntervalRef = useRef<any>(null);
   
   // Status Tracking Refs
   const prevReleaseStatusRef = useRef<Record<string, string>>({});
@@ -131,35 +132,36 @@ const App: React.FC = () => {
   };
   
   const belongsToCurrentUser = (r: any) => {
-    if (!r) return false;
-    const uid = (currentUserData as any)?.id;
-    const uname = String((currentUserData as any)?.username || currentUser || '').toLowerCase();
-    const email = String((currentUserData as any)?.email || '').toLowerCase();
-    const company = String((currentUserData as any)?.company_name || '').toLowerCase();
-    const full = String((currentUserData as any)?.full_name || '').toLowerCase();
-    
-    const idMatches =
-      (r.user_id && uid && String(r.user_id) === String(uid)) ||
-      (r.ownerId && uid && String(r.ownerId) === String(uid)) ||
-      (r.userId && uid && String(r.userId) === String(uid));
-    
+    if (!r || !currentUserData) return false;
+    const uid = String((currentUserData as any)?.id || '');
+    const uname = String((currentUserData as any)?.username || currentUser || '').trim().toLowerCase();
+    const email = String((currentUserData as any)?.email || '').trim().toLowerCase();
+    const company = String((currentUserData as any)?.company_name || '').trim().toLowerCase();
+    const full = String((currentUserData as any)?.full_name || '').trim().toLowerCase();
+
+    // Strict user id match if available
+    if (r.user_id && String(r.user_id) === uid) return true;
+    if (r.ownerId && String(r.ownerId) === uid) return true;
+    if (r.userId && String(r.userId) === uid) return true;
+
+    // Strict owner/uploader display names (exact match only)
+    const norm = (v: any) => String(v || '').trim().toLowerCase();
     const nameCandidates = [
-      String((r as any).ownerDisplayName || '').toLowerCase(),
-      String((r as any).ownerName || '').toLowerCase(),
-      String((r as any).uploaderName || '').toLowerCase(),
-      String((r as any).uploader || '').toLowerCase(),
-      String((r as any).user_name || '').toLowerCase(),
-    ];
-    const nameMatches = nameCandidates.some(n => n && (n === company || n === full || n === uname || n === email));
-    
-    const artistMatches =
-      Array.isArray(r.primaryArtists) &&
-      (r.primaryArtists as any[]).some((a: string) => {
-        const al = String(a || '').toLowerCase();
-        return (full && al === full) || (company && al.includes(company));
-      });
-    
-    return idMatches || nameMatches || artistMatches;
+      norm((r as any).ownerDisplayName),
+      norm((r as any).ownerName),
+      norm((r as any).uploaderName),
+      norm((r as any).uploader),
+      norm((r as any).user_name),
+    ].filter(Boolean);
+    if (nameCandidates.some(n => n === full || n === company || n === uname || n === email)) return true;
+
+    // Only exact artist name match (no "includes" for company to avoid false positives)
+    if (Array.isArray(r.primaryArtists)) {
+      const artists = (r.primaryArtists as any[]).map(a => norm(typeof a === 'string' ? a : (a?.name || '')));
+      if (full && artists.includes(full)) return true;
+      if (company && artists.includes(company)) return true;
+    }
+    return false;
   };
   const myReleases = allReleases.filter(r => belongsToCurrentUser(r));
   const resolveOwnerName = (r: any) => {
@@ -240,26 +242,33 @@ const App: React.FC = () => {
                 if (err?.message === 'AUTH') return handleAuthExpired();
                 console.warn('Failed to fetch aggregators, using defaults', err);
             });
-        const p3 = api.getUsers(token)
-            .then(users => {
-                setAllUsers(users || []);
-                const map: Record<string, any> = {};
-                (users || []).forEach((u: any) => { if (u.id !== undefined) map[String(u.id)] = u; });
-                setUsersMap(map);
-                setAllReleases(prev => prev.map((r: any) => ({ ...r, ownerDisplayName: resolveOwnerName(r) })));
-            })
-            .catch((err: any) => {
-                if (err?.message === 'AUTH') return handleAuthExpired();
-                console.warn('Failed to fetch users for owner names', err);
-            });
+        const promises: Promise<any>[] = [p1, p2, p4];
+        if (userRole === 'Admin' || userRole === 'Operator') {
+          const p3 = api.getUsers(token)
+              .then(users => {
+                  setAllUsers(users || []);
+                  const map: Record<string, any> = {};
+                  (users || []).forEach((u: any) => { if (u.id !== undefined) map[String(u.id)] = u; });
+                  setUsersMap(map);
+                  setAllReleases(prev => prev.map((r: any) => ({ ...r, ownerDisplayName: resolveOwnerName(r) })));
+              })
+              .catch((err: any) => {
+                  if (err?.message === 'AUTH') return handleAuthExpired();
+                  console.warn('Failed to fetch users for owner names', err);
+              });
+          promises.push(p3);
+        } else {
+          setAllUsers([]);
+          setUsersMap({});
+        }
 
-        await Promise.allSettled([p1, p2, p4]);
+        await Promise.allSettled(promises);
     };
 
     if (isAuthenticated) {
         fetchData();
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, userRole]);
 
   // Recompute ownerDisplayName once profile (currentUserData) is loaded,
   // so old releases correctly show the current admin/user as owner.
@@ -274,22 +283,6 @@ const App: React.FC = () => {
   // Fetch Notifications & User Profile
   useEffect(() => {
     if (isAuthenticated && token) {
-        // Fetch Profile
-        api.getProfile(token).then(user => {
-            setCurrentUserData(user);
-            if (user.role && user.role !== userRole) {
-                setUserRole(user.role);
-                localStorage.setItem('cms_role', user.role);
-            }
-            if (user.status && user.status !== userStatus) {
-                setUserStatus(user.status);
-                localStorage.setItem('cms_status', user.status);
-            }
-        }).catch(err => {
-            if (err?.message === 'AUTH') return handleAuthExpired();
-            console.error("Failed to fetch profile", err);
-        });
-
         // Fetch Notifications
         const fetchNotifications = async () => {
              try {
@@ -319,8 +312,11 @@ const App: React.FC = () => {
                  // 2. Check Status Changes (Releases)
                  let hasNewLocal = false;
                  try {
-                     const releases = await api.getReleases(token);
-                     if (Array.isArray(releases)) {
+                     const all = await api.getReleases(token);
+                     const releases = Array.isArray(all)
+                        ? (userRole === 'Admin' || userRole === 'Operator' ? all : all.filter((r: any) => belongsToCurrentUser(r)))
+                        : [];
+                     if (releases.length > 0) {
                          releases.forEach((r: any) => {
                              const id = String(r.id);
                              const newStatus = r.status;
@@ -349,34 +345,36 @@ const App: React.FC = () => {
                  }
 
                  // 3. Check Status Changes (Songs)
-                 try {
-                     const songs = await api.publishing.getSongs(token);
-                     if (Array.isArray(songs)) {
-                         songs.forEach((s: any) => {
-                             const id = String(s.id);
-                             const newStatus = s.status;
-                             const oldStatus = prevSongStatusRef.current[id];
-                             
-                             if (oldStatus && oldStatus !== newStatus) {
-                                 const msg = `Status Lagu "${s.title}" berubah menjadi ${newStatus}`;
-                                 prevSongStatusRef.current[id] = newStatus;
-                                 
-                                 localNotifs.unshift({
-                                     id: -Date.now() - Math.floor(Math.random() * 10000),
-                                     user_id: 0,
-                                     type: 'SONG_STATUS', // Using string type as per interface
-                                     message: msg,
-                                     is_read: false,
-                                     created_at: new Date().toISOString()
-                                 });
-                                 hasNewLocal = true;
-                             } else if (!oldStatus) {
-                                 prevSongStatusRef.current[id] = newStatus;
-                             }
-                         });
-                     }
-                 } catch (e) {
-                     // Silent fail if publishing not accessible
+                 if (userRole === 'Admin' || userRole === 'Operator') {
+                   try {
+                       const songs = await api.publishing.getSongs(token);
+                       if (Array.isArray(songs)) {
+                           songs.forEach((s: any) => {
+                               const id = String(s.id);
+                               const newStatus = s.status;
+                               const oldStatus = prevSongStatusRef.current[id];
+                               
+                               if (oldStatus && oldStatus !== newStatus) {
+                                   const msg = `Status Lagu "${s.title}" berubah menjadi ${newStatus}`;
+                                   prevSongStatusRef.current[id] = newStatus;
+                                   
+                                   localNotifs.unshift({
+                                       id: -Date.now() - Math.floor(Math.random() * 10000),
+                                       user_id: 0,
+                                       type: 'SONG_STATUS', // Using string type as per interface
+                                       message: msg,
+                                       is_read: false,
+                                       created_at: new Date().toISOString()
+                                   });
+                                   hasNewLocal = true;
+                               } else if (!oldStatus) {
+                                   prevSongStatusRef.current[id] = newStatus;
+                               }
+                           });
+                       }
+                   } catch (e) {
+                       // Silent fail if publishing not accessible
+                   }
                  }
 
                  if (hasNewLocal) {
@@ -392,14 +390,41 @@ const App: React.FC = () => {
                  console.error("Failed to fetch notifications", err);
              }
         };
+        // immediate run once
         fetchNotifications();
-        
-        // Poll for notifications every 30 seconds
-        const interval = setInterval(fetchNotifications, 30000); 
-        return () => clearInterval(interval);
+        // ensure single interval only
+        if (notifIntervalRef.current) {
+          clearInterval(notifIntervalRef.current);
+          notifIntervalRef.current = null;
+        }
+        notifIntervalRef.current = setInterval(fetchNotifications, 30000);
+        return () => {
+          if (notifIntervalRef.current) {
+            clearInterval(notifIntervalRef.current);
+            notifIntervalRef.current = null;
+          }
+        };
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, userRole, currentUserData]);
 
+  // Profile fetch isolated (avoid retriggering notification interval)
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    api.getProfile(token).then(user => {
+        setCurrentUserData(user);
+        if (user.role && user.role !== userRole) {
+            setUserRole(user.role);
+            localStorage.setItem('cms_role', user.role);
+        }
+        if (user.status && user.status !== userStatus) {
+            setUserStatus(user.status);
+            localStorage.setItem('cms_status', user.status);
+        }
+    }).catch(err => {
+        if (err?.message === 'AUTH') return handleAuthExpired();
+        console.error("Failed to fetch profile", err);
+    });
+  }, [isAuthenticated, token]);
   const handleNotificationClick = async (notif: Notification) => {
     if (!notif.is_read) {
         // Handle local notification

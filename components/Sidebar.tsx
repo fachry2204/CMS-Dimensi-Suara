@@ -27,10 +27,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   });
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    const TOP_SECTIONS = ['dashboard','aggregator','publishing','report','reportUser','system','dataSaya','bantuan'];
+    const REPORT_SUBS = ['statistics','reportList','importReports','payments','revenue','kontrak'];
+    setExpandedSections(prev => {
+      const next = { ...prev };
+      // Accordion for top-level sections
+      if (TOP_SECTIONS.includes(section)) {
+        TOP_SECTIONS.forEach(s => { next[s] = false; });
+        next[section] = !prev[section];
+        return next;
+      }
+      // Accordion for report sub-sections
+      if (REPORT_SUBS.includes(section)) {
+        REPORT_SUBS.forEach(s => { next[s] = false; });
+        next[section] = !prev[section];
+        // ensure parent report container is open
+        next.report = true;
+        return next;
+      }
+      // Default toggle
+      next[section] = !prev[section];
+      return next;
+    });
   };
 
   useEffect(() => {

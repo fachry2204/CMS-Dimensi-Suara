@@ -777,6 +777,13 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
                                                     {/* Column 2: Artists, Credits & Contributors */}
                                                     <div className="space-y-6">
+                                                        {/* Track Title (placed above Artists) */}
+                                                        <div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400">Judul Track</span>
+                                                            <div className="mt-1 text-sm font-medium text-slate-800">
+                                                                {track.title || '-'}
+                                                            </div>
+                                                        </div>
                                                         {/* Artists (moved above composer & lyrics) */}
                                                         <div>
                                                             <span className="text-[10px] uppercase font-bold text-slate-400">Artists</span>
