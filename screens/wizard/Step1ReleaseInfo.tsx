@@ -185,6 +185,102 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
     }
   };
 
+  const detectSpotifyArtist = async (index: number, link: string) => {
+    const val = String(link || '').trim();
+    if (!val) return;
+    try {
+      const result = await api.spotify.getArtistByLink(val);
+      const name = result?.name;
+      if (name) {
+        const newArtists = [...data.primaryArtists];
+        const current = newArtists[index];
+        const currentName = typeof current === 'string' ? current : current?.name || '';
+        if (!currentName || currentName.trim().length === 0) {
+          if (typeof current === 'string') {
+            newArtists[index] = { name, spotifyLink: val };
+          } else {
+            newArtists[index] = { ...(current || {}), name };
+          }
+          updateData({ primaryArtists: newArtists });
+        }
+      }
+    } catch (e) {
+      console.error('Spotify detect failed', e);
+    }
+  };
+
+  const [searchIdx, setSearchIdx] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const toSpotifyUrl = (s: string) => {
+    const v = String(s || '').trim();
+    if (!v) return '';
+    if (v.startsWith('spotify:artist:')) {
+      const id = v.split(':').pop() || '';
+      return id ? `https://open.spotify.com/artist/${id}` : '';
+    }
+    return v;
+  };
+
+  useEffect(() => {
+    let t: any;
+    if (searchIdx !== null && searchQuery && searchQuery.trim().length > 2) {
+      t = setTimeout(async () => {
+        try {
+          setSearchLoading(true);
+          setSearchError(null);
+          const res = await api.spotify.searchArtist(searchQuery, 5);
+          const items = Array.isArray(res?.items) ? res.items : [];
+          setSearchResults(items);
+          setShowDropdown(true);
+        } catch (e: any) {
+          setSearchResults([]);
+          setSearchError('Pencarian Spotify tidak tersedia');
+          setShowDropdown(true);
+        } finally {
+          setSearchLoading(false);
+        }
+      }, 400);
+    } else {
+      setShowDropdown(false);
+      setSearchResults([]);
+      setSearchError(null);
+    }
+    return () => t && clearTimeout(t);
+  }, [searchIdx, searchQuery]);
+
+  const selectArtistResult = (index: number, item: any) => {
+    const newArtists = [...data.primaryArtists];
+    const link = item?.url || (item?.id ? `https://open.spotify.com/artist/${item.id}` : '');
+    if (typeof newArtists[index] === 'string') {
+      newArtists[index] = { name: item?.name || '', spotifyLink: link };
+    } else {
+      newArtists[index] = { ...(newArtists[index] as any), name: item?.name || '', spotifyLink: link };
+    }
+    updateData({ primaryArtists: newArtists });
+    setShowDropdown(false);
+    setSearchResults([]);
+    setSearchIdx(null);
+  };
+  
+  const addCustomArtistFromQuery = (index: number) => {
+    const name = (searchQuery || '').trim();
+    if (!name) return;
+    const newArtists = [...data.primaryArtists];
+    if (typeof newArtists[index] === 'string') {
+      newArtists[index] = { name, spotifyLink: '' };
+    } else {
+      newArtists[index] = { ...(newArtists[index] as any), name, spotifyLink: '' };
+    }
+    updateData({ primaryArtists: newArtists });
+    setShowDropdown(false);
+    setSearchResults([]);
+    setSearchIdx(null);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="text-center mb-6">
@@ -241,13 +337,62 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
 
                         return (
                         <div key={index} className="flex flex-col gap-2 p-3 bg-slate-50 rounded border border-slate-100">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 relative">
                             <input 
                               value={artistName}
-                              onChange={(e) => handleArtistChange(index, 'name', e.target.value)}
+                              onChange={(e) => {
+                                handleArtistChange(index, 'name', e.target.value);
+                                setSearchIdx(index);
+                                setSearchQuery(e.target.value);
+                              }}
+                              onFocus={() => {
+                                setSearchIdx(index);
+                                setSearchQuery(artistName || '');
+                              }}
                               className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
                               placeholder="Artist Name"
                             />
+                            {searchIdx === index && showDropdown && (
+                              <div className="absolute left-0 top-full mt-1 w-full z-20 bg-white border border-slate-200 rounded shadow overflow-hidden">
+                                {searchLoading && (
+                                  <div className="px-3 py-2 text-xs text-slate-500">Searching...</div>
+                                )}
+                                {!searchLoading && searchError && (
+                                  <div className="px-3 py-2 text-xs text-red-600">{searchError}</div>
+                                )}
+                                {!searchLoading && !searchError && searchResults.length > 0 && (
+                                  <div className="max-h-64 overflow-auto">
+                                    {searchResults.map((item, i) => (
+                                      <button
+                                        key={item.id || i}
+                                        type="button"
+                                        onClick={() => selectArtistResult(index, item)}
+                                        className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+                                      >
+                                        {item.image ? (
+                                          <img src={item.image} alt="" className="w-5 h-5 rounded object-cover" />
+                                        ) : (
+                                          <div className="w-5 h-5 rounded bg-slate-200" />
+                                        )}
+                                        <span className="text-slate-700">{item.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                {!searchLoading && !searchError && searchResults.length === 0 && (
+                                  <div className="px-3 py-2 text-xs text-slate-600">Tidak ada hasil untuk “{searchQuery}”.</div>
+                                )}
+                                <div className="border-t border-slate-200 px-3 py-2">
+                                  <button
+                                    type="button"
+                                    className="w-full inline-flex items-center justify-center px-3 py-1.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors text-xs"
+                                    onClick={() => addCustomArtistFromQuery(index)}
+                                  >
+                                    Tambahkan Artist “{(searchQuery || '').trim()}”
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                             {data.primaryArtists.length > 1 && (
                               <button 
                                 type="button"
@@ -258,12 +403,29 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                               </button>
                             )}
                           </div>
-                          <input 
-                              value={spotifyLink}
-                              onChange={(e) => handleArtistChange(index, 'spotifyLink', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
-                              placeholder="Spotify Artist Link (Optional)"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input 
+                                value={spotifyLink}
+                                onChange={(e) => handleArtistChange(index, 'spotifyLink', e.target.value)}
+                                onBlur={(e) => detectSpotifyArtist(index, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder-gray-400 transition-all"
+                                placeholder="Spotify Artist Link (Optional)"
+                            />
+                            {spotifyLink && (spotifyLink.includes('spotify.com') || spotifyLink.startsWith('spotify:')) && (
+                              <a
+                                href={toSpotifyUrl(spotifyLink)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 text-[11px]"
+                                aria-label="Open Spotify Artist Page"
+                              >
+                                <svg viewBox="0 0 168 168" className="w-4 h-4 fill-green-600">
+                                  <path d="M84,0a84,84,0,1,0,84,84A84,84,0,0,0,84,0Zm38.4,121.5a6.5,6.5,0,0,1-9,2.1c-24.6-15-55.6-18.4-92-10.2a6.5,6.5,0,1,1-2.8-12.7c39.1-8.7,73.1-4.8,100.7,11.6A6.5,6.5,0,0,1,122.4,121.5Zm12.8-28.7a8.1,8.1,0,0,1-11.2,2.6c-28.2-17.3-71.2-22.3-104.5-12.3a8.1,8.1,0,1,1-4.7-15.6c36.7-11,84.6-5.5,116,13.3A8.1,8.1,0,0,1,135.2,92.8Zm1.8-30.3c-33.8-20-89.8-21.8-121.8-12.1a9.7,9.7,0,0,1-5.5-18.6c36.3-10.8,98.3-8.6,135.7,13.5a9.7,9.7,0,1,1-8.4,17.2Z"/>
+                                </svg>
+                                <span>Page Artist</span>
+                              </a>
+                            )}
+                          </div>
                         </div>
                       )})}
                     </div>

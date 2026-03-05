@@ -118,15 +118,17 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
           hasUpdates = true;
       }
 
-      // 2. Sync Artists (Primary Artists -> MainArtist)
-      const expectedArtists = data.primaryArtists
-          .filter(name => name.trim() !== "")
-          .map(name => ({ name, role: "MainArtist" }));
+      // 2. Sync Artists (Primary Artists -> MainArtist) with mixed types support
+      const normalizedPrimaryNames = (data.primaryArtists || [])
+        .map((p: any) => (typeof p === 'string' ? p : p?.name || ''))
+        .map((s: string) => String(s).trim())
+        .filter((s: string) => s.length > 0);
+      const expectedArtists = normalizedPrimaryNames.map((name: string) => ({ name, role: "MainArtist" }));
       
       const artistsToUse = expectedArtists.length > 0 ? expectedArtists : [{ name: "", role: "MainArtist" }];
 
       // Compare current vs expected
-      const currentNames = track.artists.map(a => a.name).join('|');
+      const currentNames = (track.artists || []).map(a => a.name).join('|');
       const expectedNames = artistsToUse.map(a => a.name).join('|');
 
       if (currentNames !== expectedNames) {
@@ -951,16 +953,32 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             </div>
                                             {/* Spotify Link for MainArtist */}
                                             {artist.role === 'MainArtist' && (
-                                                <div className="relative">
-                                                    <input 
-                                                        value={artist.spotifyLink || ''}
-                                                        onChange={(e) => handleArtistChange(track.id, idx, 'spotifyLink', e.target.value)}
-                                                        className="w-full pl-9 pr-4 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 focus:outline-none bg-white placeholder:text-gray-400"
-                                                        placeholder="Spotify Artist Link (Optional)"
-                                                    />
-                                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-green-500">
-                                                        <Music size={14} />
+                                                <div className="flex items-center gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input 
+                                                            value={artist.spotifyLink || ''}
+                                                            onChange={(e) => handleArtistChange(track.id, idx, 'spotifyLink', e.target.value)}
+                                                            className="w-full pl-9 px-3 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 focus:outline-none bg-white placeholder:text-gray-400"
+                                                            placeholder="Spotify Artist Link (Optional)"
+                                                        />
+                                                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-green-500">
+                                                            <Music size={14} />
+                                                        </div>
                                                     </div>
+                                                    {artist.spotifyLink && (artist.spotifyLink.includes('spotify.com') || artist.spotifyLink.startsWith('spotify:')) && (
+                                                      <a
+                                                        href={(artist.spotifyLink.startsWith('spotify:artist:') ? `https://open.spotify.com/artist/${artist.spotifyLink.split(':').pop()}` : artist.spotifyLink)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 text-[11px]"
+                                                        aria-label="Open Spotify Artist Page"
+                                                      >
+                                                        <svg viewBox="0 0 168 168" className="w-4 h-4 fill-green-600">
+                                                          <path d="M84,0a84,84,0,1,0,84,84A84,84,0,0,0,84,0Zm38.4,121.5a6.5,6.5,0,0,1-9,2.1c-24.6-15-55.6-18.4-92-10.2a6.5,6.5,0,1,1-2.8-12.7c39.1-8.7,73.1-4.8,100.7,11.6A6.5,6.5,0,0,1,122.4,121.5Zm12.8-28.7a8.1,8.1,0,0,1-11.2,2.6c-28.2-17.3-71.2-22.3-104.5-12.3a8.1,8.1,0,1,1-4.7-15.6c36.7-11,84.6-5.5,116,13.3A8.1,8.1,0,0,1,135.2,92.8Zm1.8-30.3c-33.8-20-89.8-21.8-121.8-12.1a9.7,9.7,0,0,1-5.5-18.6c36.3-10.8,98.3-8.6,135.7,13.5a9.7,9.7,0,1,1-8.4,17.2Z"/>
+                                                        </svg>
+                                                        <span>Page Artist</span>
+                                                      </a>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

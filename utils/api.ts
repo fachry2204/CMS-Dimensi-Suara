@@ -808,5 +808,26 @@ export const api = {
             });
             return parseResponse(res);
         }
+    },
+    spotify: {
+        getArtistByLink: async (link: string) => {
+            const params = new URLSearchParams();
+            params.append('url', link);
+            const res = await fetch(`${API_BASE_URL}/spotify/artist?${params.toString()}`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
+        searchArtist: async (q: string, limit = 5) => {
+            const params = new URLSearchParams();
+            params.append('q', q);
+            params.append('limit', String(limit));
+            const res = await fetch(`${API_BASE_URL}/spotify/search?${params.toString()}`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        }
     }
 };

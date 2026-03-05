@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
     }`;
 
   return (
-    <aside className="w-64 bg-black backdrop-blur-xl border-r border-white/10 min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 hidden md:flex sticky top-0">
+    <aside className="w-64 bg-black backdrop-blur-xl border-r border-white/10 h-screen md:min-h-screen flex flex-col shadow-lg shadow-blue-900/5 transition-all duration-300 sticky top-0 overflow-y-auto pb-6 md:pb-0 sidebar-scroll">
       {/* Brand Logo */}
       <div className="min-h-[80px] h-auto py-4 flex flex-col items-center justify-center px-6 border-b border-white/10 flex-shrink-0">
         {logo ? (
@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 py-6 px-4 space-y-6 overflow-y-auto sidebar-scroll">
         
         {/* Dashboard Menu */}
         <div>
@@ -326,38 +326,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                 )}
             </li>
 
-            {/* Kontrak Dropdown (Admin/Operator) */}
-            <li>
-              <div
-                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] ${
-                  location.pathname.startsWith('/me/contracts')
-                    ? 'bg-white text-black shadow-sm ring-1 ring-white/20'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                } cursor-pointer`}
-                onClick={() => toggleSection('kontrak')}
-              >
-                <div className="flex items-center gap-3">
-                  <FileText size={20} className={location.pathname.startsWith('/me/contracts') ? 'text-black' : 'text-white/70 group-hover:text-white'} />
-                  Kontrak
+            {/* Kontrak Dropdown (Admin Only) */}
+            {userRole === 'Admin' && (
+              <li>
+                <div
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] ${
+                    location.pathname.startsWith('/me/contracts')
+                      ? 'bg-white text-black shadow-sm ring-1 ring-white/20'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                  } cursor-pointer`}
+                  onClick={() => toggleSection('kontrak')}
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText size={20} className={location.pathname.startsWith('/me/contracts') ? 'text-black' : 'text-white/70 group-hover:text-white'} />
+                    Kontrak
+                  </div>
+                  {expandedSections.kontrak ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </div>
-                {expandedSections.kontrak ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </div>
 
-              {expandedSections.kontrak && (
-                <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
-                  <li>
-                    <NavLink to="/me/contracts/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
-                      Kontrak Aggregator
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/me/contracts/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
-                      Kontrak Publishing
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
-            </li>
+                {expandedSections.kontrak && (
+                  <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                    <li>
+                      <NavLink to="/me/contracts/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
+                        Kontrak Aggregator
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/me/contracts/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
+                        Kontrak Publishing
+                      </NavLink>
+                    </li>
+                  </ul>
+                )}
+              </li>
+            )}
 
           </ul>
           )}
