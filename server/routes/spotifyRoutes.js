@@ -63,7 +63,8 @@ router.get('/search', async (req, res) => {
     if (!q) return res.status(400).json({ error: 'Missing q' });
     const token = await getClientToken();
     if (!token) {
-      return res.status(503).json({ error: 'Spotify credentials not configured' });
+      console.warn('[Spotify] search unavailable: missing or invalid credentials');
+      return res.status(200).json({ items: [], unavailable: true, reason: 'no_credentials' });
     }
     const params = new URLSearchParams();
     params.append('q', q);
@@ -73,7 +74,8 @@ router.get('/search', async (req, res) => {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!resp.ok) {
-      return res.status(502).json({ error: 'Spotify search failed' });
+      console.warn('[Spotify] search failed with status', resp.status);
+      return res.status(200).json({ items: [], unavailable: true, reason: 'upstream_failed', status: resp.status });
     }
     const json = await resp.json();
     const list = (json?.artists?.items || []).map((a) => ({
@@ -86,7 +88,8 @@ router.get('/search', async (req, res) => {
     }));
     res.json({ items: list });
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Failed to search artist' });
+    console.warn('[Spotify] search error:', err?.message || err);
+    res.status(200).json({ items: [], unavailable: true, reason: 'exception' });
   }
 });
 
