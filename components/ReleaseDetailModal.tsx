@@ -313,7 +313,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
              setAlertState({
                  isOpen: true,
                  title: 'CRITICAL ERROR',
-                 message: 'Album UPC is REQUIRED for Live status.',
+                 message: 'Album UPC is REQUIRED for Released status.',
                  type: 'error'
              });
              return;
@@ -328,7 +328,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
               setAlertState({
                   isOpen: true,
                   title: 'CRITICAL ERROR',
-                  message: 'ISRC Codes are REQUIRED for ALL tracks when status is Live.',
+                  message: 'ISRC Codes are REQUIRED for ALL tracks when status is Released.',
                   type: 'error'
               });
               return;
@@ -564,7 +564,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                             'bg-yellow-100 text-yellow-700 border-yellow-200'
                         }`}>
                             {status === 'Rejected' && <AlertTriangle size={14} />}
-                            <span className="uppercase tracking-wider">{status}</span>
+                            <span className="uppercase tracking-wider">{status === 'Live' ? 'Released' : status}</span>
                         </span>
                         {userRole === 'Admin' && release.aggregator && (
                             <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1.5">
@@ -903,7 +903,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                         <option value="Pending">Pending Review</option>
                                         <option value="Request Edit">Request Edit</option>
                                         <option value="Processing">Processing (Aggregator)</option>
-                                        <option value="Live">Released / Live</option>
+                                        <option value="Live">Released</option>
                                         <option value="Rejected">Rejected</option>
                                     </select>
                                 </div>
@@ -992,7 +992,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm shadow-sm
                                                     ${!upcInput ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-white' : 'border-green-200 focus:ring-green-500'}`}
                                             />
-                                            {!upcInput && <p className="text-[10px] text-red-500 mt-1 font-bold">UPC is required to set status to Live.</p>}
+                                            {!upcInput && <p className="text-[10px] text-red-500 mt-1 font-bold">UPC is required to set status to Released.</p>}
                                         </div>
 
                                         <div>

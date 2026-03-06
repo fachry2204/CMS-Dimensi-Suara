@@ -22,19 +22,32 @@ router.get('/artist', async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Missing url or id' });
     }
-    const resp = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(targetUrl)}`);
-    if (!resp.ok) {
-      return res.status(502).json({ error: 'Spotify unavailable' });
-    }
-    const json = await resp.json();
     const aid = extractArtistId(targetUrl);
-    const name = json.title || json.author_name || '';
-    res.json({
-      id: aid,
-      name,
-      url: targetUrl,
-      thumbnail: json.thumbnail_url || null
-    });
+    let base = { id: aid, name: '', url: targetUrl, thumbnail: null, image: null, followers: 0, popularity: 0 };
+    try {
+      const resp = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(targetUrl)}`);
+      if (resp.ok) {
+        const json = await resp.json();
+        base.name = json.title || json.author_name || base.name;
+        base.thumbnail = json.thumbnail_url || null;
+      }
+    } catch {}
+    try {
+      const token = await getClientToken();
+      if (token && aid) {
+        const infoResp = await fetch(`https://api.spotify.com/v1/artists/${aid}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (infoResp.ok) {
+          const info = await infoResp.json();
+          base.name = info.name || base.name;
+          base.image = Array.isArray(info.images) && info.images[0] ? info.images[0].url : base.image;
+          base.followers = info.followers?.total || base.followers;
+          base.popularity = info.popularity || base.popularity;
+        }
+      }
+    } catch {}
+    res.json(base);
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to fetch artist' });
   }

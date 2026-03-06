@@ -100,7 +100,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                 cardClass="bg-blue-50 border-blue-100"
             />
             <StatCard 
-                title="Live Releases" 
+                title="Released" 
                 count={stats.live} 
                 icon={<CheckCircle size={20} />} 
                 colorClass="text-green-600" 

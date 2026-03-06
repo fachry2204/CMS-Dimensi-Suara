@@ -47,6 +47,8 @@ import PublishingWriterDetail from './screens/publishing/PublishingWriterDetail'
 import { getProfileImageUrl } from './utils/imageUtils';
 import { getTextColorClass } from './utils/colorUtils';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { Artists } from './screens/Artists';
+import { ArtistDetail } from './screens/ArtistDetail';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -323,7 +325,8 @@ const App: React.FC = () => {
                              const oldStatus = prevReleaseStatusRef.current[id];
                              
                              if (oldStatus && oldStatus !== newStatus) {
-                                 const msg = `Status Rilisan "${r.title}" berubah menjadi ${newStatus}`;
+                                 const display = newStatus === 'Live' ? 'Released' : newStatus;
+                                 const msg = `Status Rilisan "${r.title}" berubah menjadi ${display}`;
                                  prevReleaseStatusRef.current[id] = newStatus;
                                  
                                  localNotifs.unshift({
@@ -1108,6 +1111,8 @@ const App: React.FC = () => {
                 onNavigateToAll={() => navigate('/releases')}
             />
         } />
+        <Route path="/aggregator/artists" element={<Artists releases={userRole === 'User' ? myReleases : allReleases} />} />
+        <Route path="/aggregator/artists/:name" element={<ArtistDetail releases={userRole === 'User' ? myReleases : allReleases} token={token} />} />
             <Route path="/new-release" element={
                 <NewReleaseFlow 
                     editingRelease={editingRelease}
@@ -1119,8 +1124,13 @@ const App: React.FC = () => {
                 <ReleaseWizard 
                     type="SINGLE"
                     onBack={() => {
+                        const targetId = editingRelease?.id;
                         setEditingRelease(null);
-                        navigate('/new-release');
+                        if (targetId) {
+                          navigate(`/releases/${targetId}/view`);
+                        } else {
+                          navigate('/new-release');
+                        }
                     }}
                     onSave={handleSaveRelease}
                     initialData={editingRelease || undefined}
@@ -1130,8 +1140,13 @@ const App: React.FC = () => {
                 <ReleaseWizard 
                     type="ALBUM"
                     onBack={() => {
+                        const targetId = editingRelease?.id;
                         setEditingRelease(null);
-                        navigate('/new-release');
+                        if (targetId) {
+                          navigate(`/releases/${targetId}/view`);
+                        } else {
+                          navigate('/new-release');
+                        }
                     }}
                     onSave={handleSaveRelease}
                     initialData={editingRelease || undefined}

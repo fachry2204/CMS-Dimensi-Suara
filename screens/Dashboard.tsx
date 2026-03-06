@@ -122,7 +122,7 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
                     cardClass="bg-blue-50/50 border-blue-100"
                 />
                 <StatCard 
-                    title="Live Releases" 
+                    title="Released" 
                     count={releaseStats.live} 
                     icon={<CheckCircle size={20} />} 
                     colorClass="text-green-600" 

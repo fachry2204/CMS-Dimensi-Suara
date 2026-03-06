@@ -10,14 +10,14 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   const [logo, setLogo] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    dashboard: true,
-    aggregator: true,
-    publishing: true,
-    report: true,
-    reportUser: true,
-    system: true,
-    dataSaya: true,
-    bantuan: true,
+    dashboard: false,
+    aggregator: false,
+    publishing: false,
+    report: false,
+    reportUser: false,
+    system: false,
+    dataSaya: false,
+    bantuan: false,
     statistics: false,
     payments: false,
     reportList: false,
@@ -133,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
           {expandedSections.aggregator && (
             <ul className="space-y-2">
             <li>
-              <NavLink to="/aggregator" className={({ isActive }) => getLinkClass(isActive)}>
+              <NavLink to="/aggregator" end className={({ isActive }) => getLinkClass(isActive)}>
                 {({ isActive }) => (
                   <>
                     <BarChart3 size={20} className={getIconClass(isActive)} />
@@ -148,6 +148,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                   <>
                     <ListMusic size={20} className={getIconClass(isActive)} />
                     {userRole === 'User' ? 'My Releases' : 'All Release'}
+                  </>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/aggregator/artists" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <Users size={20} className={getIconClass(isActive)} />
+                    Artist
                   </>
                 )}
               </NavLink>

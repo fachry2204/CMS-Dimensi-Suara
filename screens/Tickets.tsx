@@ -245,12 +245,14 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                                         <option value="">-- Pilih Rilisan --</option>
                                         {releases
                                             .filter(r => category === 'Takedown Rilisan' ? r.status === 'Live' : true)
-                                            .map(r => (
-                                                <option key={r.id} value={r.id}>
-                                                    {r.title} ({r.upc || 'No UPC'}) - {r.status}
-                                                </option>
-                                            ))
-                                        }
+                                            .map(r => {
+                                                const label = r.status === 'Live' ? 'Released' : (r.status || 'Pending');
+                                                return (
+                                                  <option key={r.id} value={r.id}>
+                                                    {r.title} ({r.upc || 'No UPC'}) - {label}
+                                                  </option>
+                                                );
+                                            })}
                                     </select>
                                 )}
                                 {selectedReleaseId && (
