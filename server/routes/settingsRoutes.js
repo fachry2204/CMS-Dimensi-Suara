@@ -152,6 +152,7 @@ router.get('/branding', async (req, res) => {
         if (rows.length === 0) {
             return res.json({
                 logo: null,
+                favicon_url: null,
                 login_background: null,
                 login_title: 'Agregator & Publishing Musik',
                 login_footer: 'Protected CMS Area. Authorized personnel only.',
@@ -167,7 +168,7 @@ router.get('/branding', async (req, res) => {
     }
 });
 
-router.post('/branding', authenticateToken, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'login_background', maxCount: 1 }]), async (req, res) => {
+router.put('/branding', authenticateToken, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'favicon', maxCount: 1 }, { name: 'login_background', maxCount: 1 }]), async (req, res) => {
     try {
         const files = req.files || {};
         const body = req.body;
@@ -182,6 +183,11 @@ router.post('/branding', authenticateToken, upload.fields([{ name: 'logo', maxCo
         if (files['logo']) {
             updateFields.push('logo = ?');
             updateValues.push(baseUrl + files['logo'][0].filename);
+        }
+
+        if (files['favicon']) {
+            updateFields.push('favicon_url = ?');
+            updateValues.push(baseUrl + files['favicon'][0].filename);
         }
 
         if (files['login_background']) {

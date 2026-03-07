@@ -14,6 +14,7 @@ interface Props {
   onBack: () => void;
   onSave: (data: ReleaseData) => void; // New prop to bubble up data
   initialData?: ReleaseData | null; // For viewing/editing
+  userRole?: string;
 }
 
 const INITIAL_DATA: ReleaseData = {
@@ -33,7 +34,7 @@ const INITIAL_DATA: ReleaseData = {
   plannedReleaseDate: ""
 };
 
-export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialData }) => {
+export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialData, userRole }) => {
   const [currentStep, setCurrentStep] = useState<number>(Step.INFO);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showTrackWarning, setShowTrackWarning] = useState(false);
@@ -61,6 +62,14 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
   };
 
   const handleNext = () => {
+    // ADMIN OVERRIDE: Skip validation if Admin
+    if (userRole === 'Admin') {
+        if (currentStep < Step.REVIEW) {
+            setCurrentStep(prev => prev + 1);
+        }
+        return;
+    }
+
     if (currentStep === Step.INFO) {
         if (isProcessingCover) {
              setShowCoverProcessingWarning(true);
@@ -133,7 +142,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
         case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} releaseType={type} isProcessingCover={isProcessingCover} setIsProcessingCover={setIsProcessingCover} />;
         case Step.TRACKS: return <Step2TrackInfo data={data} updateData={updateData} releaseType={type} />;
         case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} releaseType={type} />;
-        case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} onBack={handlePrev} />;
+        case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} onBack={handlePrev} userRole={userRole} />;
         default: return null;
     }
   };

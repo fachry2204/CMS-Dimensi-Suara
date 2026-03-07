@@ -354,7 +354,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
                 </div>
             )}
             <div className="px-4 py-1 rounded-xl">
-                <h2 className="text-sm font-bold tracking-wide text-center" style={{ color: branding.login_title_color }}>{branding.login_title}</h2>
+                <h2 className="text-xl font-bold tracking-wide text-center" style={{ color: branding.login_title_color }}>{branding.login_title}</h2>
             </div>
         </div>
         {renderLogin()}

@@ -9,6 +9,7 @@ interface Props {
 
 interface BrandingSettings {
     logo: string | null;
+    favicon_url: string | null;
     login_background: string | null;
     login_title: string;
     login_footer: string;
@@ -68,6 +69,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   // --- BRANDING LOGIC ---
   const [branding, setBranding] = useState<BrandingSettings>({ 
       logo: null, 
+      favicon_url: null,
       login_background: null,
       login_title: '',
       login_footer: '',
@@ -83,6 +85,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   });
   const [isLoadingBranding, setIsLoadingBranding] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [bgFile, setBgFile] = useState<File | null>(null);
 
   // --- SYSTEM CHECK LOGIC ---
@@ -154,6 +157,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
 
       // Append files LAST
       if (logoFile) formData.append('logo', logoFile);
+      if (faviconFile) formData.append('favicon', faviconFile);
       if (bgFile) formData.append('login_background', bgFile);
       
       try {
@@ -161,8 +165,11 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
           if (data && data.branding) {
               setBranding(data.branding);
               setLogoFile(null);
+              setFaviconFile(null);
               setBgFile(null);
               alert('Branding updated successfully!');
+              // Reload page to reflect changes
+              window.location.reload();
           } else {
               alert('Failed to update branding: No data returned');
           }
@@ -622,6 +629,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                                 </div>
                             </div>
                         </div>
+
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Warna Teks Judul</label>
                             <div className="flex gap-2">
@@ -638,6 +646,46 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                                     placeholder="#1e293b"
                                     className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Favicon Upload */}
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-3">Favicon</label>
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
+                                {faviconFile ? (
+                                    <div className="relative">
+                                        <img src={URL.createObjectURL(faviconFile)} alt="Preview" className="h-16 w-16 object-contain mb-2" />
+                                        <button onClick={() => setFaviconFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
+                                        <p className="text-xs text-slate-500 text-center">{faviconFile.name}</p>
+                                    </div>
+                                ) : branding.favicon_url ? (
+                                    <div className="text-center">
+                                        <img src={branding.favicon_url} alt="Current Favicon" className="h-16 w-16 object-contain mb-3 mx-auto" />
+                                        <p className="text-xs text-slate-400">Favicon Saat Ini</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-slate-400">
+                                        <Globe size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-xs">Belum ada favicon</p>
+                                    </div>
+                                )}
+                                
+                                <input 
+                                    type="file" 
+                                    accept="image/x-icon,image/png,image/svg+xml"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setFaviconFile(e.target.files[0]);
+                                        }
+                                    }}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                                <div className="mt-4 pointer-events-none">
+                                    <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
+                                        {faviconFile ? 'Ganti File' : 'Upload Favicon'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div>

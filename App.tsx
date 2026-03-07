@@ -1135,6 +1135,7 @@ const App: React.FC = () => {
                     }}
                     onSave={handleSaveRelease}
                     initialData={editingRelease || undefined}
+                    userRole={userRole}
                 />
             } />
             <Route path="/new-release/album" element={
@@ -1151,6 +1152,7 @@ const App: React.FC = () => {
                     }}
                     onSave={handleSaveRelease}
                     initialData={editingRelease || undefined}
+                    userRole={userRole}
                 />
             } />
             <Route path="/releases" element={

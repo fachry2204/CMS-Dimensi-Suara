@@ -48,15 +48,19 @@ const initDb = async () => {
 
         // Read schema.sql
         const schemaPath = path.join(__dirname, 'schema.sql');
-        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+        if (fs.existsSync(schemaPath)) {
+            const schemaSql = fs.readFileSync(schemaPath, 'utf8');
 
-        // Execute schema
-        console.log('🚀 Running schema.sql...');
-        const statements = schemaSql.split(';').filter(stmt => stmt.trim());
-        for (const statement of statements) {
-            if (statement.trim()) {
-                await connection.query(statement);
+            // Execute schema
+            console.log('🚀 Running schema.sql...');
+            const statements = schemaSql.split(';').filter(stmt => stmt.trim());
+            for (const statement of statements) {
+                if (statement.trim()) {
+                    await connection.query(statement);
+                }
             }
+        } else {
+            console.log('⚠️ schema.sql not found, skipping initial schema creation.');
         }
 
         // --- MIGRATIONS (Fix missing columns in existing tables) ---
@@ -569,7 +573,8 @@ const initDb = async () => {
             { name: 'login_form_bg_opacity', type: "INT DEFAULT 90" }, // 0-100
             { name: 'login_bg_opacity', type: "INT DEFAULT 100" }, // 0-100 (Background image opacity)
             { name: 'login_glass_effect', type: "ENUM('true', 'false') DEFAULT 'false'" },
-            { name: 'login_form_text_color', type: "VARCHAR(20) DEFAULT '#334155'" } // slate-700
+            { name: 'login_form_text_color', type: "VARCHAR(20) DEFAULT '#334155'" }, // slate-700
+            { name: 'favicon_url', type: "VARCHAR(255) DEFAULT NULL" }
         ];
 
         for (const col of loginSettingsCols) {
