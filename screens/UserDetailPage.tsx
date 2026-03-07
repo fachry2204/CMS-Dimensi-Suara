@@ -30,6 +30,7 @@ export const UserDetailPage: React.FC = () => {
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<User>>({});
+  const [newFiles, setNewFiles] = useState<{ [key: string]: File }>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -37,17 +38,27 @@ export const UserDetailPage: React.FC = () => {
       if (!id || !token) return;
       setIsLoading(true);
       try {
-        const [detail, profile] = await Promise.all([
-          api.getUser(token, id),
-          api.getProfile(token)
-        ]);
-        setUser(detail);
-        setCurrentUser(profile);
-        setStatusDraft(detail.status);
-        setRejectReason(detail.rejection_reason || detail.block_reason || '');
-        setAggregatorPercentage(detail.aggregator_percentage);
-        setPublishingPercentage(detail.publishing_percentage);
-      } catch {
+        // Load user detail independently
+        try {
+            const detail = await api.getUser(token, id);
+            setUser(detail);
+            setStatusDraft(detail.status);
+            setRejectReason(detail.rejection_reason || detail.block_reason || '');
+            setAggregatorPercentage(detail.aggregator_percentage);
+            setPublishingPercentage(detail.publishing_percentage);
+        } catch (error) {
+            console.error("Failed to load user detail", error);
+        }
+
+        // Load current profile independently
+        try {
+            const profile = await api.getProfile(token);
+            setCurrentUser(profile);
+        } catch (error) {
+            console.error("Failed to load profile", error);
+        }
+      } catch (err) {
+        console.error("General loading error", err);
       } finally {
         setIsLoading(false);
       }
@@ -57,24 +68,18 @@ export const UserDetailPage: React.FC = () => {
 
   const handleEditClick = () => {
     if (!user) return;
+    
+    if (user.role === 'User') {
+      navigate(`/users/${user.id}/edit`);
+      return;
+    }
+
+    setNewFiles({});
     setEditFormData({
       full_name: user.full_name || user.name,
       email: user.email,
       role: user.role,
-      account_type: user.account_type,
-      company_name: user.company_name,
-      nik: user.nik,
-      phone: user.phone,
-      address: user.address,
-      country: user.country,
-      province: user.province,
-      city: user.city,
-      district: user.district,
-      subdistrict: user.subdistrict,
-      postal_code: user.postal_code,
-      pic_name: user.pic_name,
-      pic_position: user.pic_position,
-      pic_phone: user.pic_phone,
+      // Password is left empty for optional update
     });
     setIsEditModalOpen(true);
   };
@@ -83,13 +88,40 @@ export const UserDetailPage: React.FC = () => {
     if (!user || !editFormData) return;
     try {
       setIsSaving(true);
-      await api.updateUser(token, user.id, editFormData);
+      
+      const updatedData = { ...editFormData };
+
+      // Upload new files if any
+      const fileFields = [
+        { key: 'ktp_doc_path', type: 'KTP' },
+        { key: 'npwp_doc_path', type: 'NPWP' },
+        { key: 'signature_doc_path', type: 'SIGNATURE' },
+        { key: 'nib_doc_path', type: 'NIB' },
+        { key: 'kemenkumham_doc_path', type: 'KEMENKUMHAM' }
+      ];
+
+      for (const field of fileFields) {
+        if (newFiles[field.key]) {
+          try {
+            const res = await api.uploadUserDoc(token, field.type, newFiles[field.key]);
+            if (res && res.path) {
+              updatedData[field.key as keyof User] = res.path as any;
+            }
+          } catch (uploadErr) {
+            console.error(`Failed to upload ${field.type}:`, uploadErr);
+            throw new Error(`Gagal mengunggah file ${field.type}`);
+          }
+        }
+      }
+
+      await api.updateUser(token, user.id, updatedData);
       
       // Update local state
-      const updatedUser = { ...user, ...editFormData };
+      const updatedUser = { ...user, ...updatedData };
       setUser(updatedUser as User);
       
       setIsEditModalOpen(false);
+      setNewFiles({});
       setAlertState({
         isOpen: true,
         title: 'Berhasil',
@@ -560,173 +592,35 @@ export const UserDetailPage: React.FC = () => {
                 <XCircle size={24} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-6">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Nama Lengkap</label>
+                  <label className="text-xs font-medium text-slate-500 uppercase">Nama</label>
                   <input
                     type="text"
                     value={editFormData.full_name || ''}
                     onChange={(e) => setEditFormData({ ...editFormData, full_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Email</label>
+                  <label className="text-xs font-medium text-slate-500 uppercase">Email</label>
                   <input
                     type="email"
                     value={editFormData.email || ''}
                     onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Role</label>
-                  <select
-                    value={editFormData.role || 'User'}
-                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  >
-                    <option value="User">User</option>
-                    <option value="Operator">Operator</option>
-                    <option value="Admin">Admin</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Tipe Akun</label>
-                  <select
-                    value={editFormData.account_type || 'PERSONAL'}
-                    onChange={(e) => setEditFormData({ ...editFormData, account_type: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  >
-                    <option value="PERSONAL">Personal</option>
-                    <option value="COMPANY">Company</option>
-                  </select>
-                </div>
-                {editFormData.account_type === 'COMPANY' && (
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-sm font-medium text-slate-700">Nama Perusahaan</label>
-                    <input
-                      type="text"
-                      value={editFormData.company_name || ''}
-                      onChange={(e) => setEditFormData({ ...editFormData, company_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">NIK</label>
+                  <label className="text-xs font-medium text-slate-500 uppercase">Password (Optional)</label>
                   <input
-                    type="text"
-                    value={editFormData.nik || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, nik: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    type="password"
+                    placeholder="Kosongkan jika tidak ingin mengubah"
+                    onChange={(e) => setEditFormData({ ...editFormData, password: (e.target as HTMLInputElement).value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">No. Telepon</label>
-                  <input
-                    type="text"
-                    value={editFormData.phone || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-sm font-medium text-slate-700">Alamat</label>
-                  <textarea
-                    value={editFormData.address || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Negara</label>
-                  <input
-                    type="text"
-                    value={editFormData.country || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, country: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Provinsi</label>
-                  <input
-                    type="text"
-                    value={editFormData.province || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, province: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Kota/Kabupaten</label>
-                  <input
-                    type="text"
-                    value={editFormData.city || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Kecamatan</label>
-                  <input
-                    type="text"
-                    value={editFormData.district || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, district: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Kelurahan</label>
-                  <input
-                    type="text"
-                    value={editFormData.subdistrict || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, subdistrict: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700">Kode Pos</label>
-                  <input
-                    type="text"
-                    value={editFormData.postal_code || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, postal_code: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
-                </div>
-                
-                {editFormData.account_type === 'COMPANY' && (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-slate-700">Nama PIC</label>
-                      <input
-                        type="text"
-                        value={editFormData.pic_name || ''}
-                        onChange={(e) => setEditFormData({ ...editFormData, pic_name: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-slate-700">Posisi PIC</label>
-                      <input
-                        type="text"
-                        value={editFormData.pic_position || ''}
-                        onChange={(e) => setEditFormData({ ...editFormData, pic_position: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-slate-700">No. HP PIC</label>
-                      <input
-                        type="text"
-                        value={editFormData.pic_phone || ''}
-                        onChange={(e) => setEditFormData({ ...editFormData, pic_phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                      />
-                    </div>
-                  </>
-                )}
               </div>
             </div>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 bg-white z-10">

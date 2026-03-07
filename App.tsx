@@ -49,6 +49,7 @@ import { getTextColorClass } from './utils/colorUtils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Artists } from './screens/Artists';
 import { ArtistDetail } from './screens/ArtistDetail';
+import { UserEditPage } from './screens/UserEditPage';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -1220,6 +1221,7 @@ const App: React.FC = () => {
             } />
             <Route path="/roles/user" element={<RoleUserPage />} />
             <Route path="/users/:id" element={<UserDetailPage />} />
+            <Route path="/users/:id/edit" element={<UserEditPage />} />
             <Route path="/reports" element={
                 <ReportScreen 
                     mode="view" 

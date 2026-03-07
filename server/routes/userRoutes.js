@@ -284,7 +284,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
-        const { name, email, role, password } = req.body;
+        const { 
+            name, email, role, password, 
+            full_name, account_type, company_name, nik, phone, address,
+            country, province, city, district, subdistrict, postal_code,
+            pic_name, pic_position, pic_phone,
+            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path
+        } = req.body;
 
         const updates = [];
         const params = [];
@@ -308,6 +314,24 @@ router.put('/:id', authenticateToken, async (req, res) => {
             params.push(hash);
         }
 
+        // Additional profile fields
+        const profileFields = {
+            full_name, account_type, company_name, nik, phone, address,
+            country, province, city, district, subdistrict, postal_code,
+            pic_name, pic_position, pic_phone,
+            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path
+        };
+
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+
+        Object.entries(profileFields).forEach(([key, value]) => {
+            if (value !== undefined && colNames.includes(key)) {
+                updates.push(`${key} = ?`);
+                params.push(value);
+            }
+        });
+
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No updates provided' });
         }
@@ -317,7 +341,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
         // Fetch updated user
-        const [rows] = await db.query('SELECT id, username as name, email, role, status FROM users WHERE id = ?', [userId]);
+        const selectParts = [
+            'id', 'username as name', 'email', 'role', 'status',
+            colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
+            colNames.includes('account_type') ? 'account_type' : 'NULL as account_type',
+            colNames.includes('ktp_doc_path') ? 'ktp_doc_path' : 'NULL as ktp_doc_path',
+            colNames.includes('npwp_doc_path') ? 'npwp_doc_path' : 'NULL as npwp_doc_path',
+            colNames.includes('signature_doc_path') ? 'signature_doc_path' : 'NULL as signature_doc_path',
+            colNames.includes('nib_doc_path') ? 'nib_doc_path' : 'NULL as nib_doc_path',
+            colNames.includes('kemenkumham_doc_path') ? 'kemenkumham_doc_path' : 'NULL as kemenkumham_doc_path'
+        ];
+        const [rows] = await db.query(`SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`, [userId]);
         
         res.json({ message: 'User updated successfully', user: rows[0] });
     } catch (err) {

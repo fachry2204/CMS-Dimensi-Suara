@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ReleaseData, Track } from '../types';
 import { api } from '../utils/api';
 import { assetUrl } from '../utils/url';
+import { ChevronLeft } from 'lucide-react';
 const SpotifyIcon = (props: any) => (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" {...props}>
     <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm5.284 17.383a.748.748 0 0 1-1.028.27c-2.813-1.72-6.356-2.107-10.533-1.146a.75.75 0 1 1-.33-1.464c4.55-1.026 8.474-.584 11.524 1.28.356.217.47.682.367 1.06zM17.5 14.1a.6.6 0 0 1-.824.216c-2.415-1.454-6.092-1.88-8.946-1.02a.6.6 0 1 1-.349-1.151c3.227-.978 7.283-.506 10.017 1.147.28.168.372.53.102.808zM15.9 10.9a.5.5 0 0 1-.69.181c-2.14-1.26-5.387-1.375-7.768-.734a.5.5 0 0 1-.259-.966c2.679-.72 6.233-.573 8.676.88.24.141.32.452.041.639z"/>
@@ -16,6 +17,7 @@ interface Props {
 
 export const ArtistDetail: React.FC<Props> = ({ releases, token }) => {
   const params = useParams();
+  const navigate = useNavigate();
   const artistName = decodeURIComponent(params.name || '');
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -54,10 +56,16 @@ export const ArtistDetail: React.FC<Props> = ({ releases, token }) => {
         if (!prof || (!prof.thumbnail && !prof.image)) {
           const res = await api.spotify.searchArtist(artistName, 1);
           const first = Array.isArray(res?.items) ? res.items[0] : null;
-          // If both exist, prefer object with image
-          if (first && (!prof || !prof.thumbnail)) prof = first;
-          // Ensure url present
-          if (prof && !prof.url && first?.url) prof.url = first.url;
+          // Only use if name matches (case insensitive)
+          if (first && first.name?.toLowerCase() === artistName.toLowerCase()) {
+            // If both exist, prefer object with image
+            if (first && (!prof || !prof.thumbnail)) prof = first;
+            // Ensure url present
+            if (prof && !prof.url && first?.url) prof.url = first.url;
+          } else if (!artistInfo.spotifyLink) {
+            // Only nullify if we didn't have a direct link success
+            prof = null;
+          }
         }
         setProfile(prof || null);
       } catch {
@@ -107,7 +115,14 @@ export const ArtistDetail: React.FC<Props> = ({ releases, token }) => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-      <div className="mb-6">
+      <div className="mb-6 flex items-center gap-4">
+        <button
+          onClick={() => navigate('/aggregator/artists')}
+          className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+          title="Kembali ke Daftar Artist"
+        >
+          <ChevronLeft size={24} />
+        </button>
         <h1 className="text-xl font-bold text-slate-800">Artist Detail</h1>
       </div>
       <div className="bg-green-50 border border-green-100 rounded-xl p-6 mb-8 flex items-center gap-4 shadow-md">
