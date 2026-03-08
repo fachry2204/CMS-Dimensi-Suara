@@ -170,8 +170,8 @@ router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
             colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
         ];
 
-        // Filter only users (not admins) for contracts usually
-        const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE role = 'User' ORDER BY id DESC`;
+        // Include all non-admin/operator accounts to avoid case/collation issues in hosting
+        const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE UPPER(role) NOT IN ('ADMIN','OPERATOR') ORDER BY id DESC`;
         const [rows] = await db.query(sql);
         res.json(rows);
     } catch (err) {
