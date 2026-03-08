@@ -19,6 +19,7 @@ import ticketRoutes from './routes/ticketRoutes.js';
 import { securityLogger } from './middleware/securityLogger.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import spotifyRoutes from './routes/spotifyRoutes.js';
+import { authenticateToken } from './middleware/authMiddleware.js';
 
 import { initDb } from './init-db.js';
 
@@ -110,6 +111,33 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/spotify', spotifyRoutes);
+
+// Fallback alias for Aggregator Contracts (hosting compatibility)
+app.get('/api/users/contracts/aggregator', authenticateToken, async (req, res) => {
+    try {
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        const selectParts = [
+            'id',
+            'username',
+            'email',
+            colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
+            'role',
+            colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
+            colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
+        ];
+        const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE UPPER(role) NOT IN ('ADMIN','OPERATOR') ORDER BY id DESC`;
+        const [rows] = await db.query(sql);
+        res.json(rows);
+    } catch (err) {
+        console.error('Aggregator contracts alias error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Proxy Wilayah.id (to avoid browser CORS)
 app.get('/api/wilayah/provinces', async (req, res) => {
