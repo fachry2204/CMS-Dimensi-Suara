@@ -152,7 +152,8 @@ router.put('/profile', authenticateToken, upload.single('profilePicture'), async
 // GET USERS FOR AGGREGATOR CONTRACTS (Admin only)
 router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'operator') {
             return res.status(403).json({ error: 'Access denied' });
         }
 
@@ -163,7 +164,7 @@ router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
             'id',
             'username',
             'email',
-            'full_name',
+            colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
             'role',
             colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
             colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
@@ -174,6 +175,7 @@ router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
         const [rows] = await db.query(sql);
         res.json(rows);
     } catch (err) {
+        console.error('Error fetching aggregator contracts:', err);
         res.status(500).json({ error: err.message });
     }
 });
