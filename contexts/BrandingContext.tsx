@@ -40,6 +40,21 @@ export const BrandingProvider: React.FC<{ children: ReactNode }> = ({ children }
         fetchBranding();
     }, []);
 
+    // Effect to update favicon dynamically
+    useEffect(() => {
+        if (branding.favicon_url) {
+            const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+            if (link) {
+                link.href = branding.favicon_url;
+            } else {
+                const newLink = document.createElement('link');
+                newLink.rel = 'icon';
+                newLink.href = branding.favicon_url;
+                document.head.appendChild(newLink);
+            }
+        }
+    }, [branding.favicon_url]);
+
     const getButtonColor = () => {
         return branding.login_button_color || '#4f46e5'; // Default indigo-600
     };

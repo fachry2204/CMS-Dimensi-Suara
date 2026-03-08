@@ -50,6 +50,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Artists } from './screens/Artists';
 import { ArtistDetail } from './screens/ArtistDetail';
 import { UserEditPage } from './screens/UserEditPage';
+import { Contracts } from './screens/Contracts';
+import { ContractDetail } from './screens/ContractDetail';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -385,7 +387,13 @@ const App: React.FC = () => {
                      localStorage.setItem('cms_local_notifs', JSON.stringify(localNotifs));
                  }
 
-                 const combined = [...filteredApiNotifs, ...localNotifs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                const userApiNotifs = (userRole === 'Admin' || userRole === 'Operator')
+                    ? filteredApiNotifs
+                    : filteredApiNotifs.filter((n: any) => {
+                        const curId = String((currentUserData as any)?.id || '');
+                        return String(n.user_id || '') === curId;
+                      });
+                const combined = [...userApiNotifs, ...localNotifs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                  setNotifications(combined);
                  setUnreadCount(combined.filter((n: any) => !n.is_read).length);
 
@@ -1114,6 +1122,12 @@ const App: React.FC = () => {
         } />
         <Route path="/aggregator/artists" element={<Artists releases={userRole === 'User' ? myReleases : allReleases} />} />
         <Route path="/aggregator/artists/:name" element={<ArtistDetail releases={userRole === 'User' ? myReleases : allReleases} token={token} />} />
+
+            {/* Contracts Routes */}
+            <Route path="/contracts/aggregator" element={<Contracts token={token} defaultTab="aggregator" />} />
+            <Route path="/contracts/aggregator/:id" element={<ContractDetail token={token} />} />
+            <Route path="/contracts/publishing" element={<Contracts token={token} defaultTab="publishing" />} />
+            
             <Route path="/new-release" element={
                 <NewReleaseFlow 
                     editingRelease={editingRelease}
@@ -1135,6 +1149,7 @@ const App: React.FC = () => {
                     }}
                     onSave={handleSaveRelease}
                     initialData={editingRelease || undefined}
+                    userRole={userRole}
                 />
             } />
             <Route path="/new-release/album" element={
@@ -1151,6 +1166,7 @@ const App: React.FC = () => {
                     }}
                     onSave={handleSaveRelease}
                     initialData={editingRelease || undefined}
+                    userRole={userRole}
                 />
             } />
             <Route path="/releases" element={

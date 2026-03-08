@@ -13,6 +13,7 @@ export const UserDetailPage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [statusDraft, setStatusDraft] = useState<User['status'] | null>(null);
+  const [contractStatusDraft, setContractStatusDraft] = useState<string>('Not Generated'); // Add contract status state
   const [rejectReason, setRejectReason] = useState('');
   const [aggregatorPercentage, setAggregatorPercentage] = useState<number | undefined>(undefined);
   const [publishingPercentage, setPublishingPercentage] = useState<number | undefined>(undefined);
@@ -43,6 +44,7 @@ export const UserDetailPage: React.FC = () => {
             const detail = await api.getUser(token, id);
             setUser(detail);
             setStatusDraft(detail.status);
+            setContractStatusDraft(detail.contract_status || 'Not Generated');
             setRejectReason(detail.rejection_reason || detail.block_reason || '');
             setAggregatorPercentage(detail.aggregator_percentage);
             setPublishingPercentage(detail.publishing_percentage);
@@ -170,11 +172,13 @@ export const UserDetailPage: React.FC = () => {
         s,
         (s === 'Rejected' || s === 'Blocked') ? rejectReason.trim() : undefined,
         aggregatorPercentage,
-        publishingPercentage
+        publishingPercentage,
+        contractStatusDraft // Pass contract status
       );
       const merged: User = {
         ...user,
         ...res.user,
+        contract_status: res.user.contract_status ?? user.contract_status, // Update local contract status
         registeredDate: (res.user as any).registeredDate ?? user.registeredDate,
         joinedDate: (res.user as any).joinedDate ?? user.joinedDate,
         rejectedDate: (res.user as any).rejectedDate ?? user.rejectedDate,
@@ -508,6 +512,32 @@ export const UserDetailPage: React.FC = () => {
               </div>
             </div>
           )}
+          
+          {/* Contract Status Section - MOVED to ContractDetail.tsx */}
+          {/* <div className="space-y-2 pt-2 border-t border-slate-100 mt-4">
+            <p className="text-sm font-medium text-slate-800">Status Kontrak Aggregator</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button
+                onClick={() => setContractStatusDraft('Not Generated')}
+                className={`px-3 py-2 rounded-xl text-xs font-medium border ${contractStatusDraft === 'Not Generated' ? 'bg-slate-100 border-slate-300 text-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+              >
+                Not Generated
+              </button>
+              <button
+                onClick={() => setContractStatusDraft('On Review')}
+                className={`px-3 py-2 rounded-xl text-xs font-medium border ${contractStatusDraft === 'On Review' ? 'bg-yellow-100 border-yellow-200 text-yellow-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+              >
+                On Review
+              </button>
+              <button
+                onClick={() => setContractStatusDraft('Done')}
+                className={`px-3 py-2 rounded-xl text-xs font-medium border ${contractStatusDraft === 'Done' ? 'bg-green-100 border-green-200 text-green-800' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+              >
+                Done
+              </button>
+            </div>
+          </div> */}
+
           {(statusDraft === 'Rejected' || statusDraft === 'Blocked') && (
             <div className="space-y-2">
               <p className="text-sm text-slate-800 font-medium">Alasan {statusDraft === 'Rejected' ? 'penolakan' : 'pemblokiran'} (wajib diisi)</p>

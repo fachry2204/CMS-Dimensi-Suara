@@ -9,6 +9,7 @@ interface Props {
 
 interface BrandingSettings {
     logo: string | null;
+    favicon_url: string | null;
     login_background: string | null;
     login_title: string;
     login_footer: string;
@@ -56,7 +57,7 @@ interface SystemLog {
 }
 
 export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'login_page' | 'system' | 'security'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'login_page' | 'system' | 'security' | 'gateway'>('general');
   const [token] = useState(localStorage.getItem('cms_token') || '');
 
   // --- AGGREGATOR LOGIC ---
@@ -68,6 +69,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   // --- BRANDING LOGIC ---
   const [branding, setBranding] = useState<BrandingSettings>({ 
       logo: null, 
+      favicon_url: null,
       login_background: null,
       login_title: '',
       login_footer: '',
@@ -83,6 +85,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   });
   const [isLoadingBranding, setIsLoadingBranding] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [bgFile, setBgFile] = useState<File | null>(null);
 
   // --- SYSTEM CHECK LOGIC ---
@@ -101,6 +104,30 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
+  // --- GATEWAY SETTINGS (SMTP & MPWA) ---
+  const [smtp, setSmtp] = useState<{ host: string; port: number; secure: boolean; user: string; pass: string; from_email: string; from_name: string }>({
+      host: '',
+      port: 587,
+      secure: false,
+      user: '',
+      pass: '',
+      from_email: '',
+      from_name: ''
+  });
+  const [mpwa, setMpwa] = useState<{ base_url: string; token: string; device_id: string }>({
+      base_url: '',
+      token: '',
+      device_id: ''
+  });
+  const [loadingGateway, setLoadingGateway] = useState(false);
+  const [savingGateway, setSavingGateway] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [testEmailMsg, setTestEmailMsg] = useState('');
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testWaPhone, setTestWaPhone] = useState('');
+  const [testWaMsg, setTestWaMsg] = useState('');
+  const [testingWa, setTestingWa] = useState(false);
+
   useEffect(() => {
       if (activeTab === 'general' || activeTab === 'login_page') {
           fetchBranding();
@@ -109,6 +136,8 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
           fetchSystemLogs();
       } else if (activeTab === 'security') {
           fetchSecurityLogs();
+      } else if (activeTab === 'gateway') {
+          fetchGatewaySettings();
       }
   }, [activeTab]);
 
@@ -154,6 +183,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
 
       // Append files LAST
       if (logoFile) formData.append('logo', logoFile);
+      if (faviconFile) formData.append('favicon', faviconFile);
       if (bgFile) formData.append('login_background', bgFile);
       
       try {
@@ -161,8 +191,11 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
           if (data && data.branding) {
               setBranding(data.branding);
               setLogoFile(null);
+              setFaviconFile(null);
               setBgFile(null);
               alert('Branding updated successfully!');
+              // Reload page to reflect changes
+              window.location.reload();
           } else {
               alert('Failed to update branding: No data returned');
           }
@@ -285,6 +318,43 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
           }
       } catch (err) {
           console.error("Failed to fetch system logs:", err);
+      }
+  };
+
+  const fetchGatewaySettings = async () => {
+      setLoadingGateway(true);
+      try {
+          const data = await api.getGatewaySettings(token);
+          if (data?.smtp) setSmtp({
+              host: data.smtp.host || '',
+              port: Number(data.smtp.port ?? 587),
+              secure: Boolean(data.smtp.secure),
+              user: data.smtp.user || '',
+              pass: data.smtp.pass || '',
+              from_email: data.smtp.from_email || '',
+              from_name: data.smtp.from_name || ''
+          });
+          if (data?.mpwa) setMpwa({
+              base_url: data.mpwa.base_url || '',
+              token: data.mpwa.token || '',
+              device_id: data.mpwa.device_id || ''
+          });
+      } catch (err) {
+          console.error("Failed to fetch gateway settings:", err);
+      } finally {
+          setLoadingGateway(false);
+      }
+  };
+
+  const handleSaveGateway = async () => {
+      setSavingGateway(true);
+      try {
+          await api.updateGatewaySettings(token, { smtp, mpwa });
+          alert('Gateway settings saved');
+      } catch (err: any) {
+          alert('Failed to save gateway settings: ' + (err?.message || 'Unknown error'));
+      } finally {
+          setSavingGateway(false);
       }
   };
 
@@ -438,6 +508,15 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
            >
                Security Logs
                {activeTab === 'security' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
+           </button>
+           <button 
+               onClick={() => setActiveTab('gateway')}
+               className={`pb-3 px-4 text-sm font-medium transition-colors relative whitespace-nowrap ${
+                   activeTab === 'gateway' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'
+               }`}
+           >
+               Gateway
+               {activeTab === 'gateway' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
            </button>
        </div>
 
@@ -622,6 +701,7 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                                 </div>
                             </div>
                         </div>
+
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Warna Teks Judul</label>
                             <div className="flex gap-2">
@@ -638,6 +718,46 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                                     placeholder="#1e293b"
                                     className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-sm"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Favicon Upload */}
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-3">Favicon</label>
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
+                                {faviconFile ? (
+                                    <div className="relative">
+                                        <img src={URL.createObjectURL(faviconFile)} alt="Preview" className="h-16 w-16 object-contain mb-2" />
+                                        <button onClick={() => setFaviconFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
+                                        <p className="text-xs text-slate-500 text-center">{faviconFile.name}</p>
+                                    </div>
+                                ) : branding.favicon_url ? (
+                                    <div className="text-center">
+                                        <img src={branding.favicon_url} alt="Current Favicon" className="h-16 w-16 object-contain mb-3 mx-auto" />
+                                        <p className="text-xs text-slate-400">Favicon Saat Ini</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-slate-400">
+                                        <Globe size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-xs">Belum ada favicon</p>
+                                    </div>
+                                )}
+                                
+                                <input 
+                                    type="file" 
+                                    accept="image/x-icon,image/png,image/svg+xml"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setFaviconFile(e.target.files[0]);
+                                        }
+                                    }}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                                <div className="mt-4 pointer-events-none">
+                                    <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
+                                        {faviconFile ? 'Ganti File' : 'Upload Favicon'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -1101,6 +1221,240 @@ export const Settings: React.FC<Props> = ({ aggregators, onSaveAggregators }) =>
                            </div>
                        </div>
                    )}
+               </div>
+           </div>
+       )}
+
+       {/* GATEWAY TAB */}
+       {activeTab === 'gateway' && (
+           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               {/* SMTP Settings */}
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Server size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-800">SMTP Email</h2>
+                            <p className="text-sm text-slate-500">Konfigurasi pengiriman email ke user.</p>
+                        </div>
+                    </div>
+                    {loadingGateway ? (
+                        <div className="flex items-center justify-center gap-2 text-slate-500 py-6">
+                            <Loader2 size={18} className="animate-spin" /> Memuat pengaturan...
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Host</label>
+                                <input 
+                                    value={smtp.host}
+                                    onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
+                                    placeholder="smtp.gmail.com"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Port</label>
+                                <input 
+                                    type="number"
+                                    value={smtp.port}
+                                    onChange={(e) => setSmtp({ ...smtp, port: parseInt(e.target.value || '587') })}
+                                    placeholder="587"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Secure (TLS/SSL)</label>
+                                <select
+                                    value={smtp.secure ? 'true' : 'false'}
+                                    onChange={(e) => setSmtp({ ...smtp, secure: e.target.value === 'true' })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                >
+                                    <option value="false">Tidak</option>
+                                    <option value="true">Ya</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">User</label>
+                                <input 
+                                    value={smtp.user}
+                                    onChange={(e) => setSmtp({ ...smtp, user: e.target.value })}
+                                    placeholder="email akun SMTP"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                                <input 
+                                    type="password"
+                                    value={smtp.pass}
+                                    onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })}
+                                    placeholder="password atau app password"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">From Email</label>
+                                <input 
+                                    value={smtp.from_email}
+                                    onChange={(e) => setSmtp({ ...smtp, from_email: e.target.value })}
+                                    placeholder="noreply@domain.com"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">From Name</label>
+                                <input 
+                                    value={smtp.from_name}
+                                    onChange={(e) => setSmtp({ ...smtp, from_name: e.target.value })}
+                                    placeholder="Nama Pengirim"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div className="md:col-span-2 mt-6 border-t border-gray-100 pt-4">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Test Kirim Email</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <input
+                                        value={testEmailTo}
+                                        onChange={(e) => setTestEmailTo(e.target.value)}
+                                        placeholder="Tujuan Email (contoh: user@domain.com)"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                    />
+                                    <input
+                                        value={testEmailMsg}
+                                        onChange={(e) => setTestEmailMsg(e.target.value)}
+                                        placeholder="Pesan singkat (opsional)"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                    />
+                                    <button
+                                        onClick={async () => {
+                                            if (!testEmailTo) { alert('Masukkan email tujuan'); return; }
+                                            setTestingEmail(true);
+                                            try {
+                                                await api.testGatewayEmail(token, { to: testEmailTo, body: testEmailMsg });
+                                                alert('Test email berhasil dikirim.');
+                                            } catch (err: any) {
+                                                alert('Gagal kirim test email: ' + (err?.message || 'Unknown error'));
+                                            } finally {
+                                                setTestingEmail(false);
+                                            }
+                                        }}
+                                        disabled={testingEmail}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-bold disabled:opacity-50"
+                                    >
+                                        {testingEmail ? 'Mengirim...' : 'Kirim Test Email'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">Menggunakan konfigurasi SMTP di atas untuk mengirim email uji.</p>
+                            </div>
+                        </div>
+                    )}
+               </div>
+
+               {/* MPWA Settings */}
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+                            <Terminal size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-800">WA Gateway (MPWA)</h2>
+                            <p className="text-sm text-slate-500">Konfigurasi integrasi WhatsApp Gateway menggunakan API MPWA.</p>
+                        </div>
+                    </div>
+                    {loadingGateway ? (
+                        <div className="flex items-center justify-center gap-2 text-slate-500 py-6">
+                            <Loader2 size={18} className="animate-spin" /> Memuat pengaturan...
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Base URL MPWA</label>
+                                <input 
+                                    value={mpwa.base_url}
+                                    onChange={(e) => setMpwa({ ...mpwa, base_url: e.target.value })}
+                                    placeholder="https://api.mpwa.id"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Token API</label>
+                                <input 
+                                    type="password"
+                                    value={mpwa.token}
+                                    onChange={(e) => setMpwa({ ...mpwa, token: e.target.value })}
+                                    placeholder="Token akses MPWA"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Device ID</label>
+                                <input 
+                                    value={mpwa.device_id}
+                                    onChange={(e) => setMpwa({ ...mpwa, device_id: e.target.value })}
+                                    placeholder="ID perangkat MPWA"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                            <div className="md:col-span-2 mt-6 border-t border-gray-100 pt-4">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Test Kirim WhatsApp</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <input
+                                        value={testWaPhone}
+                                        onChange={(e) => setTestWaPhone(e.target.value)}
+                                        placeholder="Nomor WhatsApp (contoh: 628xxxxxxxxxx)"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                    />
+                                    <input
+                                        value={testWaMsg}
+                                        onChange={(e) => setTestWaMsg(e.target.value)}
+                                        placeholder="Pesan singkat (opsional)"
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-blue-500 outline-none"
+                                    />
+                                    <button
+                                        onClick={async () => {
+                                            if (!testWaPhone) { alert('Masukkan nomor WhatsApp tujuan'); return; }
+                                            setTestingWa(true);
+                                            try {
+                                                await api.testGatewayWa(token, { phone: testWaPhone, message: testWaMsg });
+                                                alert('Test WA berhasil dikirim.');
+                                            } catch (err: any) {
+                                                alert('Gagal kirim test WA: ' + (err?.message || 'Unknown error'));
+                                            } finally {
+                                                setTestingWa(false);
+                                            }
+                                        }}
+                                        disabled={testingWa}
+                                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-bold disabled:opacity-50"
+                                    >
+                                        {testingWa ? 'Mengirim...' : 'Kirim Test WA'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">Menggunakan konfigurasi MPWA di atas untuk mengirim pesan uji.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end border-t border-gray-100 pt-6 mt-6">
+                        <button 
+                            onClick={handleSaveGateway}
+                            disabled={savingGateway}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {savingGateway ? (
+                                <>
+                                    <Loader2 size={18} className="animate-spin" />
+                                    Menyimpan...
+                                </>
+                            ) : (
+                                <>
+                                    <Upload size={18} />
+                                    Simpan Pengaturan Gateway
+                                </>
+                            )}
+                        </button>
+                    </div>
                </div>
            </div>
        )}

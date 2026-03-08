@@ -584,6 +584,38 @@ export const api = {
         return parseResponse(res);
     },
 
+    // Contracts
+    getAggregatorContracts: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/users/contracts/aggregator`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    deleteAggregatorContract: async (token: string, id: number) => {
+        const res = await fetch(`${API_BASE_URL}/users/${id}/contract`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    getPublishingContracts: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/publishing/contracts/publishing`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    deletePublishingContract: async (token: string, id: number) => {
+        const res = await fetch(`${API_BASE_URL}/publishing/contracts/publishing/${id}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
     // User Profile
     getProfile: async (token) => {
         const res = await fetch(`${API_BASE_URL}/users/profile`, {
@@ -674,6 +706,51 @@ export const api = {
         return res.json();
     },
 
+    // Gateway Settings (SMTP & MPWA)
+    getGatewaySettings: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/settings/gateway`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    updateGatewaySettings: async (token: string, payload: { smtp?: any; mpwa?: any }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/gateway`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    testGatewayEmail: async (token: string, payload: { to: string; subject?: string; body?: string }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/gateway/test-email`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    testGatewayWa: async (token: string, payload: { phone: string; message?: string; endpoint?: string }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/gateway/test-wa`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
     // User Management
     updateUser: async (token, id, data) => {
         const res = await fetch(`${API_BASE_URL}/users/${id}`, {
@@ -738,7 +815,7 @@ export const api = {
         return res.json();
     },
     
-    updateUserStatus: async (token, userId, status, reason?: string, aggregatorPercentage?: number, publishingPercentage?: number) => {
+    updateUserStatus: async (token, userId, status, reason?: string, aggregatorPercentage?: number, publishingPercentage?: number, contractStatus?: string) => {
         const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
             method: 'PUT',
             headers: { 
@@ -749,7 +826,8 @@ export const api = {
                 status, 
                 reason, 
                 aggregator_percentage: aggregatorPercentage, 
-                publishing_percentage: publishingPercentage 
+                publishing_percentage: publishingPercentage,
+                contract_status: contractStatus 
             }),
             credentials: 'include'
         });

@@ -10,9 +10,10 @@ interface Props {
   data: ReleaseData;
   onSave: (data: ReleaseData) => void;
   onBack: () => void;
+  userRole?: string;
 }
 
-export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
+export const Step4Review: React.FC<Props> = ({ data, onSave, onBack, userRole }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -43,59 +44,62 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack }) => {
     // --- VALIDATION START ---
     const errors: string[] = [];
 
-    // 1. Validate Release Level
-    if (!data.coverArt) {
-        errors.push("Cover Art is required.");
-    }
-    if (!data.title) errors.push("Release Title is required.");
-    if (!data.primaryArtists || data.primaryArtists.length === 0 || !data.primaryArtists[0]) {
-        errors.push("Primary Artist is required.");
-    } else {
-        const firstArtist = data.primaryArtists[0];
-        const name = typeof firstArtist === 'string' ? firstArtist : firstArtist.name;
-        if (!name || name.trim() === '') {
-             errors.push("Primary Artist Name is required.");
+    // Skip validation if Admin
+    if (userRole !== 'Admin') {
+        // 1. Validate Release Level
+        if (!data.coverArt) {
+            errors.push("Cover Art is required.");
         }
-    }
-    // Genre is only required for ALBUM/EP, not Single
-    if (data.type !== 'SINGLE') {
-        if (!data.genre) errors.push("Release Genre is required.");
-    }
-    if (!data.language) errors.push("Language / Territory is required.");
-    if (!data.version) errors.push("Release Version is required.");
-    if (!data.label) errors.push("Record Label is required.");
-    if (!data.plannedReleaseDate) errors.push("Release Date is required.");
-
-    // 2. Validate Track Level
-    if (!data.tracks || data.tracks.length === 0) {
-        errors.push("At least one track is required.");
-    } else {
-        data.tracks.forEach((track, idx) => {
-            const trackNum = idx + 1;
-            if (!track.title) errors.push(`Track ${trackNum}: Title is required.`);
-            const hasAudio = (typeof (track as any).audioFile === 'string' && (track as any).audioFile.trim().length > 0)
-              || (typeof (track as any).tempAudioPath === 'string' && (track as any).tempAudioPath.trim().length > 0)
-              || ((track as any).audioFile instanceof File);
-            if (!hasAudio) errors.push(`Track ${trackNum}: Audio file is required (server TMP or URL).`);
-            const hasClip = (typeof (track as any).audioClip === 'string' && (track as any).audioClip.trim().length > 0)
-              || (typeof (track as any).tempClipPath === 'string' && (track as any).tempClipPath.trim().length > 0)
-              || ((track as any).audioClip instanceof File);
-            if (!hasClip) errors.push(`Track ${trackNum}: Audio clip is required (server TMP or URL).`);
-            if (!track.genre) errors.push(`Track ${trackNum}: Genre is required.`);
-            if (!track.composer) errors.push(`Track ${trackNum}: Composer is required.`);
-            
-            // Conditional Validation based on Instrumental
-            if (track.isInstrumental !== 'Yes') {
-                if (!track.lyricist) errors.push(`Track ${trackNum}: Lyricist is required (since it's not Instrumental).`);
-                if (!track.explicitLyrics) errors.push(`Track ${trackNum}: Explicit Lyrics status is required.`);
+        if (!data.title) errors.push("Release Title is required.");
+        if (!data.primaryArtists || data.primaryArtists.length === 0 || !data.primaryArtists[0]) {
+            errors.push("Primary Artist is required.");
+        } else {
+            const firstArtist = data.primaryArtists[0];
+            const name = typeof firstArtist === 'string' ? firstArtist : firstArtist.name;
+            if (!name || name.trim() === '') {
+                 errors.push("Primary Artist Name is required.");
             }
-        });
-    }
+        }
+        // Genre is only required for ALBUM/EP, not Single
+        if (data.type !== 'SINGLE') {
+            if (!data.genre) errors.push("Release Genre is required.");
+        }
+        if (!data.language) errors.push("Language / Territory is required.");
+        if (!data.version) errors.push("Release Version is required.");
+        if (!data.label) errors.push("Record Label is required.");
+        if (!data.plannedReleaseDate) errors.push("Release Date is required.");
 
-    if (errors.length > 0) {
-        setValidationErrors(errors);
-        setShowValidationModal(true);
-        return;
+        // 2. Validate Track Level
+        if (!data.tracks || data.tracks.length === 0) {
+            errors.push("At least one track is required.");
+        } else {
+            data.tracks.forEach((track, idx) => {
+                const trackNum = idx + 1;
+                if (!track.title) errors.push(`Track ${trackNum}: Title is required.`);
+                const hasAudio = (typeof (track as any).audioFile === 'string' && (track as any).audioFile.trim().length > 0)
+                  || (typeof (track as any).tempAudioPath === 'string' && (track as any).tempAudioPath.trim().length > 0)
+                  || ((track as any).audioFile instanceof File);
+                if (!hasAudio) errors.push(`Track ${trackNum}: Audio file is required (server TMP or URL).`);
+                const hasClip = (typeof (track as any).audioClip === 'string' && (track as any).audioClip.trim().length > 0)
+                  || (typeof (track as any).tempClipPath === 'string' && (track as any).tempClipPath.trim().length > 0)
+                  || ((track as any).audioClip instanceof File);
+                if (!hasClip) errors.push(`Track ${trackNum}: Audio clip is required (server TMP or URL).`);
+                if (!track.genre) errors.push(`Track ${trackNum}: Genre is required.`);
+                if (!track.composer) errors.push(`Track ${trackNum}: Composer is required.`);
+                
+                // Conditional Validation based on Instrumental
+                if (track.isInstrumental !== 'Yes') {
+                    if (!track.lyricist) errors.push(`Track ${trackNum}: Lyricist is required (since it's not Instrumental).`);
+                    if (!track.explicitLyrics) errors.push(`Track ${trackNum}: Explicit Lyrics status is required.`);
+                }
+            });
+        }
+
+        if (errors.length > 0) {
+            setValidationErrors(errors);
+            setShowValidationModal(true);
+            return;
+        }
     }
     // --- VALIDATION END ---
 

@@ -44,6 +44,57 @@ const upload = multer({ storage: storage });
 
 // --- 1. Writers (Data Pencipta) Routes ---
 
+// Get all writers for Publishing Contracts (Admin only)
+router.get('/contracts/publishing', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+        
+        const [cols] = await db.query('SHOW COLUMNS FROM writers'); // Assuming 'writers' is the correct table for songwriters/creators
+        const colNames = cols.map(c => c.Field);
+        
+        const selectParts = [
+            'id',
+            'name',
+            'user_id',
+            colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
+            'created_at'
+        ];
+        
+        const sql = `
+            SELECT ${selectParts.join(', ')}, u.username as user_name, u.email as user_email
+            FROM writers w
+            LEFT JOIN users u ON w.user_id = u.id
+            ORDER BY w.created_at DESC
+        `;
+        
+        const [rows] = await db.query(sql);
+        res.json(rows);
+    } catch (error) {
+        console.error('Error fetching publishing contracts:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// DELETE PUBLISHING CONTRACT (Admin only) - Reset status to 'Not Generated'
+router.delete('/contracts/publishing/:id', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+        const writerId = req.params.id;
+        
+        // Reset contract_status to 'Not Generated' instead of deleting writer
+        await db.query(`UPDATE writers SET contract_status = 'Not Generated' WHERE id = ?`, [writerId]);
+        
+        res.json({ message: 'Publishing contract status reset successfully' });
+    } catch (err) {
+        console.error('Error deleting publishing contract:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Get all writers
 router.get('/creators', authenticateToken, async (req, res) => {
     try {
@@ -221,7 +272,7 @@ router.get('/songs', authenticateToken, async (req, res) => {
         res.json(songs);
     } catch (error) {
         console.error('Error fetching songs:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.json([]);
     }
 });
 
