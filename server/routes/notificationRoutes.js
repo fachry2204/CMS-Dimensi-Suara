@@ -20,7 +20,8 @@ router.get('/', authenticateToken, async (req, res) => {
         const [rows] = await db.query(query, params);
         res.json(rows);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Error fetching notifications:', err);
+        res.json([]);
     }
 });
 

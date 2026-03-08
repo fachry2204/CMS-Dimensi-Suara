@@ -27,8 +27,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   });
 
   const toggleSection = (section: string) => {
-    const TOP_SECTIONS = ['dashboard','aggregator','publishing','report','reportUser','system','dataSaya','bantuan'];
-    const REPORT_SUBS = ['statistics','reportList','importReports','payments','revenue','kontrak'];
+    const TOP_SECTIONS = ['dashboard','aggregator','publishing','report','reportUser','system','dataSaya','bantuan', 'kontrak'];
+    const REPORT_SUBS = ['statistics','reportList','importReports','payments','revenue'];
     setExpandedSections(prev => {
       const next = { ...prev };
       // Accordion for top-level sections
@@ -353,46 +353,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                     </ul>
                 )}
             </li>
-
-            {/* Kontrak Dropdown (Admin Only) */}
-            {userRole === 'Admin' && (
-              <li>
-                <div
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] ${
-                    location.pathname.startsWith('/me/contracts')
-                      ? 'bg-white text-black shadow-sm ring-1 ring-white/20'
-                      : 'text-white/80 hover:bg-white/10 hover:text-white'
-                  } cursor-pointer`}
-                  onClick={() => toggleSection('kontrak')}
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText size={20} className={location.pathname.startsWith('/me/contracts') ? 'text-black' : 'text-white/70 group-hover:text-white'} />
-                    Kontrak
-                  </div>
-                  {expandedSections.kontrak ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </div>
-
-                {expandedSections.kontrak && (
-                  <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
-                    <li>
-                      <NavLink to="/me/contracts/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
-                        Kontrak Aggregator
-                      </NavLink>
-                    </li>
-                    <li>
-                      <NavLink to="/me/contracts/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
-                        Kontrak Publishing
-                      </NavLink>
-                    </li>
-                  </ul>
-                )}
-              </li>
-            )}
-
           </ul>
           )}
         </div>
         )}
+
+        {/* Kontrak Menu (Admin Only) - Moved outside of Report section */}
+        {userRole === 'Admin' && (
+        <div>
+          <h3 
+            className="px-4 text-[14px] font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center justify-between cursor-pointer hover:text-white transition-colors"
+            onClick={() => toggleSection('kontrak')}
+          >
+            Kontrak
+            {expandedSections.kontrak ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </h3>
+          {expandedSections.kontrak && (
+            <ul className="space-y-2">
+            <li>
+              <NavLink to="/contracts/aggregator" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <FileText size={20} className={getIconClass(isActive)} />
+                    Aggregator
+                  </>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/contracts/publishing" className={({ isActive }) => getLinkClass(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <FileText size={20} className={getIconClass(isActive)} />
+                    Publishing
+                  </>
+                )}
+              </NavLink>
+            </li>
+          </ul>
+          )}
+        </div>
+        )}
+
         {userRole === 'User' && (
         <div>
           <h3 

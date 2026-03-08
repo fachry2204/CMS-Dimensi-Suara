@@ -10,9 +10,6 @@ export const ReleaseTypeSelection: React.FC<Props> = ({ onSelect }) => {
   return (
     <div className="h-full min-h-[80vh] flex flex-col items-center justify-start pt-16 p-6 animate-fade-in-up">
       <div className="text-center mb-10">
-         <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-medium tracking-wide uppercase mb-4 shadow-sm">
-            Start Your Journey
-         </span>
          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-3 tracking-tight">
             What are you releasing?
          </h1>

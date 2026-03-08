@@ -92,6 +92,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
         res.json(rows[0]);
     } catch (err) {
+        console.error('Error fetching profile:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -144,6 +145,52 @@ router.put('/profile', authenticateToken, upload.single('profilePicture'), async
         if (err.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ error: 'Username or email already exists' });
         }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET USERS FOR AGGREGATOR CONTRACTS (Admin only)
+router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const [cols] = await db.query('SHOW COLUMNS FROM users');
+        const colNames = cols.map(c => c.Field);
+        
+        const selectParts = [
+            'id',
+            'username',
+            'email',
+            'full_name',
+            'role',
+            colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
+            colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
+        ];
+
+        // Filter only users (not admins) for contracts usually
+        const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE role = 'User' ORDER BY id DESC`;
+        const [rows] = await db.query(sql);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE USER CONTRACT (Admin only) - Reset status to 'Not Generated'
+router.delete('/:id/contract', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const userId = req.params.id;
+        
+        // Reset contract_status to 'Not Generated' instead of deleting user
+        await db.query(`UPDATE users SET contract_status = 'Not Generated' WHERE id = ?`, [userId]);
+        
+        res.json({ message: 'User contract status reset successfully' });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
@@ -369,7 +416,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
-        const { status, reason, aggregator_percentage, publishing_percentage } = req.body || {};
+        const { status, reason, aggregator_percentage, publishing_percentage, contract_status } = req.body || {};
         const allowed = ['Pending', 'Review', 'Approved', 'Rejected', 'Active', 'Inactive', 'Blocked'];
         if (!allowed.includes(String(status))) {
             return res.status(400).json({ error: 'Invalid status value' });
@@ -404,9 +451,15 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         const hasBlockReason = colNames.includes('block_reason');
         const hasAggregatorPercentage = colNames.includes('aggregator_percentage');
         const hasPublishingPercentage = colNames.includes('publishing_percentage');
+        const hasContractStatus = colNames.includes('contract_status');
 
         let updates = ['status = ?'];
         let params = [status];
+
+        if (hasContractStatus && contract_status) {
+            updates.push('contract_status = ?');
+            params.push(contract_status);
+        }
 
         if (status === 'Approved') {
             // Set joined_date now, clear rejection/block fields
@@ -464,6 +517,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         if (hasPublishingPercentage) selectFields.push('publishing_percentage');
         if (hasBlockReason) selectFields.push('block_reason');
         if (hasBlockedAt) selectFields.push('DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt');
+        if (hasContractStatus) selectFields.push('contract_status');
 
         const [rows] = await db.query(`SELECT ${selectFields.join(', ')} FROM users WHERE id = ?`, [userId]);
         if (rows.length === 0) {
@@ -487,6 +541,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         const parts = [
             'id',
             'username as name',
+            'username',
             'email',
             'role',
             colNames.includes('status') ? 'status' : `'Active' as status`,
@@ -521,6 +576,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
             colNames.includes('profile_picture') ? 'profile_picture' : 'NULL as profile_picture',
             colNames.includes('aggregator_percentage') ? 'aggregator_percentage' : 'NULL as aggregator_percentage',
             colNames.includes('publishing_percentage') ? 'publishing_percentage' : 'NULL as publishing_percentage',
+            colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
             colNames.includes('block_reason') ? 'block_reason' : 'NULL as block_reason',
             colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt'
         ];
