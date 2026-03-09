@@ -123,7 +123,8 @@ const initDb = async () => {
             { name: 'signature_doc_path', type: "VARCHAR(255)" },
             { name: 'bank_name', type: "VARCHAR(100)" },
             { name: 'bank_account_number', type: "VARCHAR(50)" },
-            { name: 'bank_account_name', type: "VARCHAR(100)" }
+            { name: 'bank_account_name', type: "VARCHAR(100)" },
+            { name: 'contract_doc_path', type: "VARCHAR(255)" }
         ];
 
         for (const col of userProfileColumns) {

@@ -834,7 +834,7 @@ export const api = {
         return res.json();
     },
     
-    updateUserStatus: async (token, userId, status, reason?: string, aggregatorPercentage?: number, publishingPercentage?: number, contractStatus?: string) => {
+    updateUserStatus: async (token, userId, status, reason?: string, aggregatorPercentage?: number, publishingPercentage?: number, contractStatus?: string, contractDocPath?: string) => {
         const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
             method: 'PUT',
             headers: { 
@@ -846,7 +846,8 @@ export const api = {
                 reason, 
                 aggregator_percentage: aggregatorPercentage, 
                 publishing_percentage: publishingPercentage,
-                contract_status: contractStatus 
+                contract_status: contractStatus,
+                contract_doc_path: contractDocPath
             }),
             credentials: 'include'
         });

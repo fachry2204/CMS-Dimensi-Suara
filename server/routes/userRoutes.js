@@ -87,7 +87,8 @@ router.get('/profile', authenticateToken, async (req, res) => {
             colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt',
             colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
             colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
-            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name'
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name',
+            colNames.includes('contract_doc_path') ? 'contract_doc_path' : 'NULL as contract_doc_path'
         ];
 
         const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`;
@@ -462,7 +463,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
-        const { status, reason, aggregator_percentage, publishing_percentage, contract_status } = req.body || {};
+        const { status, reason, aggregator_percentage, publishing_percentage, contract_status, contract_doc_path } = req.body || {};
         const allowed = ['Pending', 'Review', 'Approved', 'Rejected', 'Active', 'Inactive', 'Blocked'];
         if (!allowed.includes(String(status))) {
             return res.status(400).json({ error: 'Invalid status value' });
@@ -498,6 +499,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         const hasAggregatorPercentage = colNames.includes('aggregator_percentage');
         const hasPublishingPercentage = colNames.includes('publishing_percentage');
         const hasContractStatus = colNames.includes('contract_status');
+        const hasContractDoc = colNames.includes('contract_doc_path');
 
         let updates = ['status = ?'];
         let params = [status];
@@ -505,6 +507,19 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         if (hasContractStatus && contract_status) {
             updates.push('contract_status = ?');
             params.push(contract_status);
+        }
+        if (hasContractDoc && contract_doc_path) {
+            updates.push('contract_doc_path = ?');
+            params.push(contract_doc_path);
+        }
+
+        if (hasContractStatus && contract_status === 'Done') {
+            if (!hasContractDoc) {
+                return res.status(400).json({ error: 'Contract document column not available' });
+            }
+            if (!contract_doc_path || !String(contract_doc_path).toLowerCase().endsWith('.pdf')) {
+                return res.status(400).json({ error: 'Kontrak wajib upload file PDF saat status Done' });
+            }
         }
 
         if (status === 'Approved') {
@@ -564,6 +579,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         if (hasBlockReason) selectFields.push('block_reason');
         if (hasBlockedAt) selectFields.push('DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt');
         if (hasContractStatus) selectFields.push('contract_status');
+        if (hasContractDoc) selectFields.push('contract_doc_path');
 
         const [rows] = await db.query(`SELECT ${selectFields.join(', ')} FROM users WHERE id = ?`, [userId]);
         if (rows.length === 0) {
@@ -627,7 +643,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
             colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt',
             colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
             colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
-            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name'
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name',
+            colNames.includes('contract_doc_path') ? 'contract_doc_path' : 'NULL as contract_doc_path'
         ];
         const sql = `SELECT ${parts.join(', ')} FROM users WHERE id = ?`;
         const [rows] = await db.query(sql, [userId]);

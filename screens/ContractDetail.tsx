@@ -18,6 +18,8 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
   // Contract State
   const [contractStatus, setContractStatus] = useState<string>('Not Generated');
   const [notes, setNotes] = useState('');
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [contractDocPath, setContractDocPath] = useState<string>('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -40,6 +42,22 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
     if (!user || !id) return;
     setSaving(true);
     try {
+      if (contractStatus === 'Done') {
+        if (!contractDocPath && !contractFile) {
+          alert('Kontrak status Done wajib upload file PDF.');
+          setSaving(false);
+          return;
+        }
+        if (contractFile) {
+          if (contractFile.type !== 'application/pdf' && !contractFile.name.toLowerCase().endsWith('.pdf')) {
+            alert('File kontrak harus PDF.');
+            setSaving(false);
+            return;
+          }
+          const res = await api.uploadUserDoc(token, 'CONTRACT', contractFile);
+          setContractDocPath(res.path);
+        }
+      }
       // Re-using updateUserStatus API but only sending contract_status
       // We need to pass current status to avoid changing it accidentally if the API requires it
       await api.updateUserStatus(
@@ -49,7 +67,8 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
         undefined, // Reason
         user.aggregator_percentage, 
         user.publishing_percentage,
-        contractStatus // Update contract status
+        contractStatus, // Update contract status
+        contractStatus === 'Done' ? (contractDocPath || undefined) : undefined
       );
       alert('Status kontrak berhasil diperbarui!');
     } catch (err) {
@@ -174,6 +193,22 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
                   </button>
                 </div>
               </div>
+
+              {contractStatus === 'Done' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Upload Kontrak (PDF)</label>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setContractFile(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  {contractDocPath && (
+                    <p className="text-xs text-green-600 mt-1">Kontrak terunggah: {contractDocPath.split('/').pop()}</p>
+                  )}
+                  <p className="text-xs text-slate-500 mt-1">Wajib diisi saat status kontrak “Done”.</p>
+                </div>
+              )}
 
               {/* Additional Info / Notes (Placeholder) */}
               <div>
