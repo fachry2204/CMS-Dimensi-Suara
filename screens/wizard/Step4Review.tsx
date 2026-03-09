@@ -287,21 +287,23 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack, userRole })
             }
           }
         }
-        // Verify: ensure audio/clip exist via tmp path or server URL
-        const uploadErrors: string[] = [];
-        prepped.tracks.forEach((t: any, idx: number) => {
-          const audioOk = (typeof t.audioFile === 'string' && t.audioFile.trim().length > 0) ||
-                          (typeof t.tempAudioPath === 'string' && t.tempAudioPath.trim().length > 0);
-          if (!audioOk) uploadErrors.push(`Track ${idx + 1}: Audio file belum ada di server (TMP).`);
-          const clipOk = (typeof t.audioClip === 'string' && t.audioClip.trim().length > 0) ||
-                         (typeof t.tempClipPath === 'string' && t.tempClipPath.trim().length > 0);
-          if (!clipOk) uploadErrors.push(`Track ${idx + 1}: Audio clip belum ada di server (TMP).`);
-        });
-        if (uploadErrors.length > 0) {
-          setValidationErrors(uploadErrors);
-          setShowValidationModal(true);
-          setIsSubmitting(false);
-          return;
+        // Verify: ensure audio/clip exist via tmp path or server URL (skip for Admin)
+        if (userRole !== 'Admin') {
+          const uploadErrors: string[] = [];
+          prepped.tracks.forEach((t: any, idx: number) => {
+            const audioOk = (typeof t.audioFile === 'string' && t.audioFile.trim().length > 0) ||
+                            (typeof t.tempAudioPath === 'string' && t.tempAudioPath.trim().length > 0);
+            if (!audioOk) uploadErrors.push(`Track ${idx + 1}: Audio file belum ada di server (TMP).`);
+            const clipOk = (typeof t.audioClip === 'string' && t.audioClip.trim().length > 0) ||
+                           (typeof t.tempClipPath === 'string' && t.tempClipPath.trim().length > 0);
+            if (!clipOk) uploadErrors.push(`Track ${idx + 1}: Audio clip belum ada di server (TMP).`);
+          });
+          if (uploadErrors.length > 0) {
+            setValidationErrors(uploadErrors);
+            setShowValidationModal(true);
+            setIsSubmitting(false);
+            return;
+          }
         }
         // Sanitize: ensure no File objects remain in payload
         if (prepped.coverArt instanceof File) {
