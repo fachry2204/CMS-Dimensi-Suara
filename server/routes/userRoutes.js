@@ -83,7 +83,10 @@ router.get('/profile', authenticateToken, async (req, res) => {
             colNames.includes('aggregator_percentage') ? 'aggregator_percentage' : 'NULL as aggregator_percentage',
             colNames.includes('publishing_percentage') ? 'publishing_percentage' : 'NULL as publishing_percentage',
             colNames.includes('block_reason') ? 'block_reason' : 'NULL as block_reason',
-            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt'
+            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt',
+            colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
+            colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name'
         ];
 
         const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`;
@@ -368,7 +371,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
             full_name, account_type, company_name, nik, phone, address,
             country, province, city, district, subdistrict, postal_code,
             pic_name, pic_position, pic_phone,
-            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path
+            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path,
+            bank_name, bank_account_number, bank_account_name
         };
 
         const [cols] = await db.query('SHOW COLUMNS FROM users');
@@ -398,7 +402,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
             colNames.includes('npwp_doc_path') ? 'npwp_doc_path' : 'NULL as npwp_doc_path',
             colNames.includes('signature_doc_path') ? 'signature_doc_path' : 'NULL as signature_doc_path',
             colNames.includes('nib_doc_path') ? 'nib_doc_path' : 'NULL as nib_doc_path',
-            colNames.includes('kemenkumham_doc_path') ? 'kemenkumham_doc_path' : 'NULL as kemenkumham_doc_path'
+            colNames.includes('kemenkumham_doc_path') ? 'kemenkumham_doc_path' : 'NULL as kemenkumham_doc_path',
+            colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
+            colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name'
         ];
         const [rows] = await db.query(`SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`, [userId]);
         
@@ -580,7 +587,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
             colNames.includes('publishing_percentage') ? 'publishing_percentage' : 'NULL as publishing_percentage',
             colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
             colNames.includes('block_reason') ? 'block_reason' : 'NULL as block_reason',
-            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt'
+            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt',
+            colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
+            colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name'
         ];
         const sql = `SELECT ${parts.join(', ')} FROM users WHERE id = ?`;
         const [rows] = await db.query(sql, [userId]);

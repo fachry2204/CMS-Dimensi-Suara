@@ -260,6 +260,9 @@ export const UserDetailPage: React.FC = () => {
                   <tr><td className="text-slate-600">District</td><td className="font-normal text-slate-700">{user.district || '-'}</td></tr>
                   <tr><td className="text-slate-600">Subdistrict</td><td className="font-normal text-slate-700">{user.subdistrict || '-'}</td></tr>
                   <tr><td className="text-slate-600">Postal Code</td><td className="font-normal text-slate-700">{user.postal_code || '-'}</td></tr>
+                  <tr><td className="text-slate-600">Bank</td><td className="font-normal text-slate-700">{(user as any).bank_name || '-'}</td></tr>
+                  <tr><td className="text-slate-600">No. Rekening</td><td className="font-normal text-slate-700">{(user as any).bank_account_number || '-'}</td></tr>
+                  <tr><td className="text-slate-600">Nama Rekening</td><td className="font-normal text-slate-700">{(user as any).bank_account_name || '-'}</td></tr>
                   {(user.account_type === 'COMPANY') && (
                     <>
                       <tr><td className="text-slate-600">PIC Name</td><td className="font-normal text-slate-700">{user.pic_name || '-'}</td></tr>

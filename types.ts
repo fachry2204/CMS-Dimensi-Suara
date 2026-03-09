@@ -165,6 +165,9 @@ export interface User {
   ktp_doc_path?: string;
   npwp_doc_path?: string;
   signature_doc_path?: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_account_name?: string;
 }
 
 export interface Notification {

@@ -114,6 +114,9 @@ router.post('/register', async (req, res) => {
             ['ktp_doc_path', ktpDocPath || null],
             ['npwp_doc_path', npwpDocPath || null],
             ['signature_doc_path', signatureDocPath || null],
+            ['bank_name', req.body?.bank_name || null],
+            ['bank_account_number', req.body?.bank_account_number || null],
+            ['bank_account_name', req.body?.bank_account_name || null],
         ];
 
         for (const [col, val] of extendedMap) {

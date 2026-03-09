@@ -55,6 +55,9 @@ export const UserEditPage: React.FC = () => {
           signature_doc_path: detail.signature_doc_path,
           nib_doc_path: detail.nib_doc_path,
           kemenkumham_doc_path: detail.kemenkumham_doc_path,
+          bank_name: (detail as any).bank_name,
+          bank_account_number: (detail as any).bank_account_number,
+          bank_account_name: (detail as any).bank_account_name,
         });
       } catch (err) {
         console.error("Failed to load user:", err);
@@ -306,6 +309,40 @@ export const UserEditPage: React.FC = () => {
                         type="text"
                         value={formData.postal_code || ''}
                         onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                </div>
+            </div>
+        </section>
+
+        {/* Bank Account Section */}
+        <section>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Rekening Bank</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                    <label className="text-sm font-medium text-slate-700">Nama Bank</label>
+                    <input
+                        type="text"
+                        value={formData.bank_name || ''}
+                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-sm font-medium text-slate-700">No. Rekening</label>
+                    <input
+                        type="text"
+                        value={formData.bank_account_number || ''}
+                        onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                    <label className="text-sm font-medium text-slate-700">Nama Pemilik Rekening</label>
+                    <input
+                        type="text"
+                        value={formData.bank_account_name || ''}
+                        onChange={(e) => setFormData({ ...formData, bank_account_name: e.target.value })}
                         className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                 </div>

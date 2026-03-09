@@ -96,6 +96,9 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [picName, setPicName] = useState('');
   const [picPosition, setPicPosition] = useState('');
   const [picPhoneLocal, setPicPhoneLocal] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
 
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [npwpFile, setNpwpFile] = useState<File | null>(null);
@@ -696,7 +699,10 @@ export const RegisterScreen: React.FC<Props> = () => {
         npwpDocPath: docPaths.npwpDocPath,
         nibDocPath: docPaths.nibDocPath,
         kemenkumhamDocPath: docPaths.kemenkumhamDocPath,
-        signatureDocPath: docPaths.signatureDocPath
+        signatureDocPath: docPaths.signatureDocPath,
+        bank_name: bankName || null,
+        bank_account_number: bankAccountNumber || null,
+        bank_account_name: bankAccountName || null
       };
       await api.register(payload);
               navigate('/user-status', { state: { username: regEmail, status: 'Pending' } });
@@ -730,7 +736,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         )}
       </div>
       <div className="space-y-3">
-        <label className="flex-1 px-3 py-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-[10px] text-slate-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50">
+        <label className="flex-1 px-3 py-2 bg-green-50 border border-dashed border-green-300 rounded-xl text-[10px] text-green-700 cursor-pointer hover:border-green-400 hover:bg-green-100">
           <input
             type="file"
             accept={field === 'kemenkumham' ? 'application/pdf' : 'image/*,application/pdf'}
@@ -743,7 +749,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           {file ? file.name : 'Pilih file'}
         </label>
         {docPreviews[field] && (
-          <div className="w-24 h-24 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+          <div className="w-24 h-24 rounded-lg overflow-hidden border border-green-200 bg-green-50">
             <img
               src={docPreviews[field]}
               alt={label}
@@ -1139,23 +1145,57 @@ export const RegisterScreen: React.FC<Props> = () => {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {accountType === 'COMPANY' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
             {renderDocUploadItem('Upload NIB', 'nib', nibFile, true)}
           </div>
         )}
         {accountType === 'COMPANY' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
             {renderDocUploadItem('Upload Dokumen Kemenkumham', 'kemenkumham', kemenkumhamFile, true)}
           </div>
         )}
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload KTP Direktur' : 'Upload KTP', 'ktp', ktpFile, true)}
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload NPWP Perusahaan' : 'Upload NPWP', 'npwp', npwpFile, true)}
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload Tanda Tangan Direktur' : 'Upload Tanda Tangan', 'signature', signatureFile, true)}
+        </div>
+      </div>
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Nama Bank</label>
+            <input
+              type="text"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 text-[10px]"
+              placeholder="Contoh: BCA, Mandiri"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>No. Rekening</label>
+            <input
+              type="text"
+              value={bankAccountNumber}
+              onChange={(e) => setBankAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 text-[10px]"
+              placeholder="Masukkan nomor rekening"
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Nama Pemilik Rekening</label>
+            <input
+              type="text"
+              value={bankAccountName}
+              onChange={(e) => setBankAccountName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 text-[10px]"
+              placeholder="Sesuai buku tabungan"
+            />
+          </div>
         </div>
       </div>
       {docError && <p className="text-[10px] text-red-500 font-medium bg-red-50 p-2 rounded-lg border border-red-100">{docError}</p>}
