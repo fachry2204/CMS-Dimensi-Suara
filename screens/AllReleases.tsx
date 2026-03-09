@@ -464,12 +464,12 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                     <td className="px-4 py-2 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button 
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     onViewDetails(release);
                                                 }}
                                                 className="flex items-center gap-1 px-3 py-1 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[12px] font-semibold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
-                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 <Eye size={11} /> View
                                             </button>
