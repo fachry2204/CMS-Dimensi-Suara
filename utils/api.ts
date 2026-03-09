@@ -149,12 +149,23 @@ export const api = {
         return res.json();
     },
     impersonateUser: async (token, userId) => {
-        const res = await fetch(`${API_BASE_URL}/auth/impersonate/${userId}`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            credentials: 'include'
-        });
-        return parseResponse(res);
+        // Try primary route
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/impersonate/${userId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        } catch (e: any) {
+            // Fallback alias under /users for hosting compatibility
+            const res2 = await fetch(`${API_BASE_URL}/users/${userId}/impersonate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include'
+            });
+            return parseResponse(res2);
+        }
     },
 
     register: async (payload) => {

@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -243,6 +244,42 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
+// IMPERSONATE USER (Admin only) - alias route under /users for hosting compatibility
+router.post('/:id/impersonate', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const targetUserId = req.params.id;
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [targetUserId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const target = rows[0];
+        const payload = { id: target.id, role: target.role, impersonated_by: req.user.id };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: 60 * 60 * 1000
+        });
+        res.json({
+            token,
+            user: {
+                id: target.id,
+                username: target.username,
+                role: target.role,
+                status: target.status,
+                profile_picture: target.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // CREATE USER (Admin/Operator)
 router.post('/', authenticateToken, async (req, res) => {
     try {
