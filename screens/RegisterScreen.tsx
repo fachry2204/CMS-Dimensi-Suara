@@ -725,7 +725,7 @@ export const RegisterScreen: React.FC<Props> = () => {
   const renderDocUploadItem = (label: string, field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature', file: File | null, required: boolean) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>
+        <label className="text-[10px] font-semibold" style={{ color: '#000' }}>
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         {file && (
@@ -1167,7 +1167,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Nama Bank</label>
+            <label className="text-[10px] font-semibold" style={{ color: '#000' }}>Nama Bank</label>
             <input
               type="text"
               value={bankName}
@@ -1177,7 +1177,7 @@ export const RegisterScreen: React.FC<Props> = () => {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>No. Rekening</label>
+            <label className="text-[10px] font-semibold" style={{ color: '#000' }}>No. Rekening</label>
             <input
               type="text"
               value={bankAccountNumber}
@@ -1187,7 +1187,7 @@ export const RegisterScreen: React.FC<Props> = () => {
             />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>Nama Pemilik Rekening</label>
+            <label className="text-[10px] font-semibold" style={{ color: '#000' }}>Nama Pemilik Rekening</label>
             <input
               type="text"
               value={bankAccountName}
