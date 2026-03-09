@@ -10,16 +10,18 @@ interface Props {
   data: ReleaseData;
   updateData: (updates: Partial<ReleaseData> | ((prev: ReleaseData) => Partial<ReleaseData>)) => void;
   releaseType?: ReleaseType;
+  userRole?: string;
 }
 
-export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseType }) => {
+export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseType, userRole }) => {
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const originalDateInputRef = React.useRef<HTMLInputElement>(null);
   
   const minDate = new Date();
   minDate.setDate(minDate.getDate() + 14);
   const minDateStr = minDate.toISOString().split('T')[0];
-  const isDateInvalid = data.plannedReleaseDate && data.plannedReleaseDate < minDateStr;
+  const isAdmin = userRole === 'Admin';
+  const isDateInvalid = !isAdmin && data.plannedReleaseDate && data.plannedReleaseDate < minDateStr;
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -165,7 +167,7 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseT
                 <input 
                     ref={dateInputRef}
                     type="date" 
-                    min={minDateStr}
+                    min={isAdmin ? undefined : minDateStr}
                     value={data.plannedReleaseDate}
                     onChange={(e) => updateData({ plannedReleaseDate: e.target.value })}
                     className={`w-full px-4 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 transition-all pl-4 pr-10 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 ${
@@ -188,9 +190,11 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseT
                     Date must be at least 14 days from today.
                 </p>
             )}
-            <p className="text-xs text-blue-500 mt-2 font-medium">
-                Recommended: Set date at least 14 days from today
-            </p>
+            {!isAdmin && (
+              <p className="text-xs text-blue-500 mt-2 font-medium">
+                  Recommended: Set date at least 14 days from today
+              </p>
+            )}
         </div>
       </div>
     </div>

@@ -86,6 +86,27 @@ export const UserDetailPage: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
+  const handleImpersonate = async () => {
+    if (!user || !token) return;
+    try {
+      const res = await api.impersonateUser(token, user.id);
+      const { token: newToken, user: u } = res;
+      localStorage.setItem('cms_auth', 'true');
+      localStorage.setItem('cms_user', u.username);
+      localStorage.setItem('cms_token', newToken);
+      localStorage.setItem('cms_role', u.role || 'User');
+      if (u.status) localStorage.setItem('cms_status', u.status);
+      navigate('/my-releases');
+    } catch (err: any) {
+      setAlertState({
+        isOpen: true,
+        title: 'Impersonate Gagal',
+        message: err.message || 'Tidak dapat impersonate user',
+        type: 'error'
+      });
+    }
+  };
+
   const handleEditSave = async () => {
     if (!user || !editFormData) return;
     try {
@@ -235,6 +256,17 @@ export const UserDetailPage: React.FC = () => {
             <XCircle size={24} />
           </button>
         </div>
+        {currentUser?.role === 'Admin' && user?.role === 'User' && (
+          <div className="mb-4">
+            <button
+              onClick={handleImpersonate}
+              className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700 transition-colors"
+              title="Masuk sebagai user ini"
+            >
+              Impersonate User
+            </button>
+          </div>
+        )}
         <div className="space-y-4">
           <div>
             <div className="text-sm font-medium text-slate-800">{user.full_name || user.name}</div>

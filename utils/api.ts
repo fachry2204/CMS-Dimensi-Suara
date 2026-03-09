@@ -148,6 +148,14 @@ export const api = {
         if (!res.ok) throw new Error('Logout failed');
         return res.json();
     },
+    impersonateUser: async (token, userId) => {
+        const res = await fetch(`${API_BASE_URL}/auth/impersonate/${userId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     register: async (payload) => {
         const res = await fetch(`${API_BASE_URL}/auth/register`, {
