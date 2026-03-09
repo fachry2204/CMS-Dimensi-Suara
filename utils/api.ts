@@ -149,22 +149,22 @@ export const api = {
         return res.json();
     },
     impersonateUser: async (token, userId) => {
-        // Try primary route
+        // Prefer alias under /users (more likely whitelisted by proxy)
         try {
-            const res = await fetch(`${API_BASE_URL}/auth/impersonate/${userId}`, {
+            const resUsers = await fetch(`${API_BASE_URL}/users/${userId}/impersonate`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 credentials: 'include'
             });
-            return parseResponse(res);
+            return parseResponse(resUsers);
         } catch (e: any) {
-            // Fallback alias under /users for hosting compatibility
-            const res2 = await fetch(`${API_BASE_URL}/users/${userId}/impersonate`, {
+            // Fallback to /auth
+            const resAuth = await fetch(`${API_BASE_URL}/auth/impersonate/${userId}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 credentials: 'include'
             });
-            return parseResponse(res2);
+            return parseResponse(resAuth);
         }
     },
 
