@@ -340,11 +340,9 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                             <ThSortable label="Release" sortKey="title" />
                             <th className="px-4 py-2 text-[12px] text-slate-500 tracking-wider">User</th>
                             <ThSortable label="Type" sortKey="type" />
-                            <ThSortable label="Release Date" sortKey="date" />
-                            <th className="px-4 py-2 text-[12px] text-slate-500 tracking-wider">Submit Date</th>
+                            <ThSortable label="Tanggal" sortKey="date" />
                             {userRole === 'Admin' && <ThSortable label="Aggregator" sortKey="aggregator" />}
                             <ThSortable label="Status" sortKey="status" />
-                            <th className="px-4 py-2 text-[12px] text-slate-500 tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-300 text-[12px]">
@@ -427,16 +425,16 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             {type}
                                         </span>
                                     </td>
-                                <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
-                                        <div className="flex items-center gap-1.5">
-                                            <Calendar size={11} className="text-slate-400" />
-                                            {formatDMY(displayDateRaw)}
-                                        </div>
-                                    </td>
                                     <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
-                                        <div className="flex items-center gap-1.5">
-                                            <Calendar size={11} className="text-slate-400" />
-                                            {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
+                                        <div className="flex flex-col gap-0.5">
+                                            <div className="flex items-center gap-1.5 font-bold">
+                                                <Calendar size={11} className="text-slate-400" />
+                                                {formatDMY(displayDateRaw)}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                                                <Calendar size={10} className="text-slate-300" />
+                                                {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
+                                            </div>
                                         </div>
                                     </td>
                                     {userRole === 'Admin' && (
@@ -461,20 +459,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onViewDetails(release);
-                                                }}
-                                                className="flex items-center gap-1 px-3 py-1 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[12px] font-semibold shadow-sm whitespace-nowrap"
-                                                title="View & Manage"
-                                            >
-                                                <Eye size={11} /> View
-                                            </button>
-                                        </div>
-                                    </td>
+                                    
                                 </tr>
                             );
                         })}
