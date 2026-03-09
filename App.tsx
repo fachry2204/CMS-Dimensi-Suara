@@ -299,9 +299,7 @@ const App: React.FC = () => {
                  );
 
                  let localNotifs: Notification[] = [];
-                 try {
-                     localNotifs = JSON.parse(localStorage.getItem('cms_local_notifs') || '[]');
-                 } catch {}
+                 const isStaff = userRole === 'Admin' || userRole === 'Operator';
 
                  // 1. Fetch Tickets & Count Replies
                  try {
@@ -315,40 +313,7 @@ const App: React.FC = () => {
                  }
 
                  // 2. Check Status Changes (Releases)
-                 let hasNewLocal = false;
-                 try {
-                     const all = await api.getReleases(token);
-                     const releases = Array.isArray(all)
-                        ? (userRole === 'Admin' || userRole === 'Operator' ? all : all.filter((r: any) => belongsToCurrentUser(r)))
-                        : [];
-                     if (releases.length > 0) {
-                         releases.forEach((r: any) => {
-                             const id = String(r.id);
-                             const newStatus = r.status;
-                             const oldStatus = prevReleaseStatusRef.current[id];
-                             
-                             if (oldStatus && oldStatus !== newStatus) {
-                                 const display = newStatus === 'Live' ? 'Released' : newStatus;
-                                 const msg = `Status Rilisan "${r.title}" berubah menjadi ${display}`;
-                                 prevReleaseStatusRef.current[id] = newStatus;
-                                 
-                                 localNotifs.unshift({
-                                     id: -Date.now() - Math.floor(Math.random() * 10000),
-                                     user_id: 0,
-                                     type: 'RELEASE_STATUS',
-                                     message: msg,
-                                     is_read: false,
-                                     created_at: new Date().toISOString()
-                                 });
-                                 hasNewLocal = true;
-                             } else if (!oldStatus) {
-                                 prevReleaseStatusRef.current[id] = newStatus;
-                             }
-                         });
-                     }
-                 } catch (e) {
-                     console.warn('Failed to check release status', e);
-                 }
+                 // Do not generate local notifications; backend stores notifications in DB
 
                  // 3. Check Status Changes (Songs)
                  if (userRole === 'Admin' || userRole === 'Operator') {
@@ -383,9 +348,7 @@ const App: React.FC = () => {
                    }
                  }
 
-                 if (hasNewLocal) {
-                     localStorage.setItem('cms_local_notifs', JSON.stringify(localNotifs));
-                 }
+                 // No localStorage writes for notifications
 
                 const userApiNotifs = (userRole === 'Admin' || userRole === 'Operator')
                     ? filteredApiNotifs
@@ -393,7 +356,8 @@ const App: React.FC = () => {
                         const curId = String((currentUserData as any)?.id || '');
                         return String(n.user_id || '') === curId;
                       });
-                const combined = [...userApiNotifs, ...localNotifs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                const combined = [...userApiNotifs];
+                combined.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                  setNotifications(combined);
                  setUnreadCount(combined.filter((n: any) => !n.is_read).length);
 

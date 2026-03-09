@@ -1167,6 +1167,22 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
             );
         }
 
+        // Create notification when status changes
+        try {
+            if (typeof status === 'string' && status && status !== release.status) {
+                const [users] = await db.query('SELECT id FROM users WHERE id = ?', [release.user_id]);
+                if (users.length > 0) {
+                    const msg = `Status Rilisan "${release.title}" berubah menjadi ${status}`;
+                    await db.query(
+                        'INSERT INTO notifications (user_id, type, message, is_read, created_at) VALUES (?, ?, ?, ?, NOW())',
+                        [release.user_id, 'RELEASE_STATUS', msg, false]
+                    );
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to insert release notification:', e.message);
+        }
+
         if (Array.isArray(tracks) && tracks.length > 0) {
             for (const t of tracks) {
                 if (!t || !t.id) continue;

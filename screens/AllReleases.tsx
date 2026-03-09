@@ -335,19 +335,19 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
         <div className="bg-white rounded-2xl shadow-md border border-gray-300 overflow-hidden flex flex-col min-h-[500px]">
             <div className="overflow-x-auto flex-1">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b-2 border-gray-300">
+                    <thead className="bg-slate-50 border-b-2 border-gray-300 text-[12px]">
                         <tr>
                             <ThSortable label="Release" sortKey="title" />
-                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider">User</th>
+                            <th className="px-4 py-2 text-[12px] text-slate-500 tracking-wider">User</th>
                             <ThSortable label="Type" sortKey="type" />
                             <ThSortable label="Release Date" sortKey="date" />
-                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider">Submit Date</th>
+                            <th className="px-4 py-2 text-[12px] text-slate-500 tracking-wider">Submit Date</th>
                             {userRole === 'Admin' && <ThSortable label="Aggregator" sortKey="aggregator" />}
                             <ThSortable label="Status" sortKey="status" />
-                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider text-right">Action</th>
+                            <th className="px-4 py-2 text-[12px] text-slate-500 tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-300">
+                    <tbody className="divide-y divide-gray-300 text-[12px]">
                         {displayedReleases.map((release) => {
                             // Determine type
                             const type = (release.tracks || []).length > 1 ? "Album/EP" : "Single";
@@ -377,10 +377,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                 : undefined;
 
                             return (
-                                <tr key={release.id || Math.random()} className="even:bg-slate-50 hover:bg-blue-50 transition-colors group text-[13px]">
+                                <tr 
+                                    key={release.id || Math.random()} 
+                                    className="even:bg-slate-50 hover:bg-blue-50 transition-colors group cursor-pointer"
+                                    onClick={() => onViewDetails(release)}
+                                >
                                     <td className="px-4 py-2">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
                                                     <img 
                                                         src={(typeof release.coverArt === 'string')
@@ -396,54 +400,54 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                         }}
                                                     />
                                                 ) : (
-                                                    <Disc size={20} />
+                                                    <Disc size={16} />
                                                 )}
                                             </div>
                                             <div className="min-w-[150px]">
-                                                <div className="font-bold text-slate-800 truncate max-w-[200px] text-[13px]" title={release.title}>{release.title || "Untitled Release"}</div>
-                                                <div className="text-[13px] text-slate-500 truncate max-w-[200px] font-bold" title={(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ')}>
+                                                <div className="font-semibold text-slate-800 truncate max-w-[200px]" title={release.title}>{release.title || "Untitled Release"}</div>
+                                                <div className="text-[12px] text-slate-500 truncate max-w-[200px] font-medium" title={(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ')}>
                                                     {(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ') || "Unknown Artist"}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
-                                            <Users size={12} className="text-slate-400" />
+                                            <Users size={11} className="text-slate-400" />
                                             {ownerName || "-"}
                                         </div>
                                     </td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[13px] font-bold whitespace-nowrap shadow-sm border ${
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap shadow-sm border ${
                                             type === "Single" 
                                                 ? "bg-blue-100 text-blue-700 border-blue-200" 
                                                 : "bg-green-100 text-green-700 border-green-200"
                                         }`}>
-                                            <Music size={10} />
+                                            <Music size={9} />
                                             {type}
                                         </span>
                                     </td>
-                                <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
+                                <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
-                                            <Calendar size={12} className="text-slate-400" />
+                                            <Calendar size={11} className="text-slate-400" />
                                             {formatDMY(displayDateRaw)}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
-                                            <Calendar size={12} className="text-slate-400" />
+                                            <Calendar size={11} className="text-slate-400" />
                                             {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
                                         </div>
                                     </td>
                                     {userRole === 'Admin' && (
-                                    <td className="px-4 py-2 text-[13px]">
+                                    <td className="px-4 py-2">
                                         {release.aggregator ? (
-                                            <div className="flex items-center gap-1 text-[13px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
-                                                <Globe size={10} />
+                                            <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
+                                                <Globe size={9} />
                                                 {release.aggregator}
                                             </div>
                                         ) : (
-                                            <span className="text-[13px] text-slate-300 italic">Not set</span>
+                                            <span className="text-[12px] text-slate-300 italic">Not set</span>
                                         )}
                                     </td>
                                     )}
@@ -451,7 +455,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                         <div className="flex flex-col items-start gap-1">
                                             <span 
                                                 title={rejectionTooltip}
-                                                className={`inline-block px-2 py-0.5 rounded-full text-[13px] font-bold whitespace-nowrap border ${statusClass}`}
+                                                className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap border ${statusClass}`}
                                             >
                                                 {status === 'Live' ? 'Released' : status}
                                             </span>
@@ -463,10 +467,11 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                 onClick={() => {
                                                     onViewDetails(release);
                                                 }}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[14px] font-bold shadow-sm whitespace-nowrap"
+                                                className="flex items-center gap-1 px-3 py-1 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[12px] font-semibold shadow-sm whitespace-nowrap"
                                                 title="View & Manage"
+                                                onClick={(e) => e.stopPropagation()}
                                             >
-                                                <Eye size={12} /> View
+                                                <Eye size={11} /> View
                                             </button>
                                         </div>
                                     </td>

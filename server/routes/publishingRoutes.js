@@ -361,6 +361,22 @@ router.put('/songs/:id/status', authenticateToken, async (req, res) => {
         console.log('Update params:', updates, params);
 
         await db.query(`UPDATE songs SET ${updates.join(', ')} WHERE id = ?`, params);
+        // Create notification for song owner
+        try {
+            const [rows] = await db.query('SELECT title, user_id FROM songs WHERE id = ?', [id]);
+            if (rows.length > 0) {
+                const s = rows[0];
+                if (typeof status === 'string' && status) {
+                    const msg = `Status Lagu "${s.title}" berubah menjadi ${status}`;
+                    await db.query(
+                        'INSERT INTO notifications (user_id, type, message, is_read, created_at) VALUES (?, ?, ?, ?, NOW())',
+                        [s.user_id, 'SONG_STATUS', msg, false]
+                    );
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to insert song notification:', e.message);
+        }
         res.json({ message: 'Song status updated' });
     } catch (error) {
         console.error('Error updating song status:', error);
