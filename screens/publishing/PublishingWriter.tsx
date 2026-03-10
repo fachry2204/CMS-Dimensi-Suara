@@ -175,16 +175,14 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-800">Data Pencipta (Songwriters)</h1>
-                {userRole !== 'User' && (
-                    <button 
-                        onClick={() => { resetForm(); setShowModal(true); }}
-                        className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors hover:opacity-90"
-                        style={{ backgroundColor: getButtonColor() }}
-                    >
-                        <Plus size={20} />
-                        Tambah Pencipta
-                    </button>
-                )}
+                <button 
+                    onClick={() => { resetForm(); setShowModal(true); }}
+                    className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors hover:opacity-90"
+                    style={{ backgroundColor: getButtonColor() }}
+                >
+                    <Plus size={20} />
+                    Tambahkan Pencipta
+                </button>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -291,6 +289,16 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
                     </table>
                 </div>
             </div>
+
+            {!showModal && (
+                <button
+                    onClick={() => { resetForm(); setShowModal(true); }}
+                    className="fixed bottom-6 right-6 z-50 rounded-full p-3 shadow-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors md:hidden"
+                    title="Tambahkan Pencipta"
+                >
+                    <Plus size={22} />
+                </button>
+            )}
 
             {/* Modal Form */}
             {showModal && (

@@ -1063,8 +1063,7 @@ const App: React.FC = () => {
                                 }
                             } catch (e) {
                                 console.warn('Failed to revert impersonation:', (e as any)?.message || e);
-                                // Fallback to logout if revert fails
-                                handleLogoutClick();
+                                alert('Gagal kembali ke Admin. Coba lagi atau refresh halaman.');
                             }
                         };
                         return (

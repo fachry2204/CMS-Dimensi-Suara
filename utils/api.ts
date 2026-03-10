@@ -52,21 +52,27 @@ export const api = {
         return parseResponse(res);
     },
     impersonateRevert: async (token) => {
-        // Prefer alias under /users
+        // Try multiple routes/methods for maximum hosting compatibility (no logout fallback here)
+        const tryFetch = async (method: 'POST' | 'GET', path: string) => {
+            const res = await fetch(`${API_BASE_URL}${path}`, {
+                method,
+                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        };
         try {
-            const resUsers = await fetch(`${API_BASE_URL}/users/impersonate/revert`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                credentials: 'include'
-            });
-            return parseResponse(resUsers);
-        } catch (e: any) {
-            const resAuth = await fetch(`${API_BASE_URL}/auth/impersonate/revert`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                credentials: 'include'
-            });
-            return parseResponse(resAuth);
+            return await tryFetch('POST', '/users/impersonate/revert');
+        } catch {
+            try {
+                return await tryFetch('GET', '/users/impersonate/revert');
+            } catch {
+                try {
+                    return await tryFetch('POST', '/auth/impersonate/revert');
+                } catch {
+                    return await tryFetch('GET', '/auth/impersonate/revert');
+                }
+            }
         }
     },
     post: async (endpoint: string, data: any, config?: any) => {
