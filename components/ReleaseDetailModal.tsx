@@ -393,6 +393,16 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
       });
   };
 
+  const toSpotifyUrl = (s: string) => {
+    const v = String(s || '').trim();
+    if (!v) return '';
+    if (v.startsWith('spotify:artist:')) {
+      const id = v.split(':').pop() || '';
+      return id ? `https://open.spotify.com/artist/${id}` : '';
+    }
+    return v;
+  };
+
   const AudioPlayer = ({ track, type = 'full' }: { track: Track, type?: 'full' | 'clip' }) => {
     const key = `${track.id}_${type}`;
     const url = objectUrls[key];
@@ -619,12 +629,30 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         </div>
                         <div>
                             <div className="text-[11px] uppercase text-slate-500 mb-1">Primary Artists</div>
-                            <ul className="text-sm text-slate-800 space-y-0.5">
-                                            {(release.primaryArtists || []).map((artist, idx) => (
-                                                <li key={idx} className="flex items-center gap-1">
-                                                    <span>{typeof artist === 'string' ? artist : artist.name}</span>
-                                                </li>
-                                            ))}
+                            <ul className="text-sm text-slate-800 space-y-1.5">
+                                            {(release.primaryArtists || []).map((artist, idx) => {
+                                                const artistName = typeof artist === 'string' ? artist : artist.name;
+                                                const spotifyLink = typeof artist === 'object' ? artist?.spotifyLink : '';
+                                                
+                                                return (
+                                                    <li key={idx} className="flex flex-col gap-1">
+                                                        <span className="font-medium">{artistName}</span>
+                                                        {spotifyLink && (spotifyLink.includes('spotify.com') || spotifyLink.startsWith('spotify:')) && (
+                                                            <a
+                                                                href={toSpotifyUrl(spotifyLink)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 text-[9px] w-fit"
+                                                            >
+                                                                <svg viewBox="0 0 168 168" className="w-3 h-3 fill-green-600">
+                                                                    <path d="M84,0a84,84,0,1,0,84,84A84,84,0,0,0,84,0Zm38.4,121.5a6.5,6.5,0,0,1-9,2.1c-24.6-15-55.6-18.4-92-10.2a6.5,6.5,0,1,1-2.8-12.7c39.1-8.7,73.1-4.8,100.7,11.6A6.5,6.5,0,0,1,122.4,121.5Zm12.8-28.7a8.1,8.1,0,0,1-11.2,2.6c-28.2-17.3-71.2-22.3-104.5-12.3a8.1,8.1,0,1,1-4.7-15.6c36.7-11,84.6-5.5,116,13.3A8.1,8.1,0,0,1,135.2,92.8Zm1.8-30.3c-33.8-20-89.8-21.8-121.8-12.1a9.7,9.7,0,0,1-5.5-18.6c36.3-10.8,98.3-8.6,135.7,13.5a9.7,9.7,0,1,1-8.4,17.2Z"/>
+                                                                </svg>
+                                                                <span className="font-bold">Spotify Artist Page</span>
+                                                            </a>
+                                                        )}
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                         </div>
                     </div>
