@@ -22,11 +22,13 @@ interface Props {
   releases: ReleaseData[];
   onViewRelease: (release: ReleaseData) => void;
   onNavigateToAll: () => void;
+  userRole?: string;
 }
 
-export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigateToAll }) => {
+export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigateToAll, userRole }) => {
   const navigate = useNavigate();
   const { getButtonColor } = useBranding();
+  const showAggregator = userRole !== 'User';
   
   // Calculate Stats
   const stats = {
@@ -182,7 +184,9 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Cover</th>
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Title</th>
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Artist</th>
-                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Aggregator</th>
+                            {showAggregator && (
+                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Aggregator</th>
+                            )}
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Status</th>
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Date</th>
                         </tr>
@@ -235,16 +239,18 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                                             return typeof first === 'string' ? first : first.name;
                                         })()}
                                     </td>
-                                    <td className="px-6 py-2.5 text-xs">
-                                        {release.aggregator ? (
-                                            <div className="flex items-center gap-2 text-slate-700 font-medium">
-                                                <Globe size={12} className="text-purple-500" />
-                                                {release.aggregator}
-                                            </div>
-                                        ) : (
-                                            <span className="text-slate-400 italic text-[10px]">-</span>
-                                        )}
-                                    </td>
+                                    {showAggregator && (
+                                        <td className="px-6 py-2.5 text-xs">
+                                            {release.aggregator ? (
+                                                <div className="flex items-center gap-2 text-slate-700 font-medium">
+                                                    <Globe size={12} className="text-purple-500" />
+                                                    {release.aggregator}
+                                                </div>
+                                            ) : (
+                                                <span className="text-slate-400 italic text-[10px]">-</span>
+                                            )}
+                                        </td>
+                                    )}
                                     <td className="px-6 py-2.5">
                                         <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusClass}`}>
                                             {release.status}
@@ -258,7 +264,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                         })}
                         {recentActivity.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="p-6 text-center text-slate-400 text-xs">
+                                <td colSpan={showAggregator ? 6 : 5} className="p-6 text-center text-slate-400 text-xs">
                                     No pending or processing releases found.
                                 </td>
                             </tr>

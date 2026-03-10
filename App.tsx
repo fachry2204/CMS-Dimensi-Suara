@@ -1119,6 +1119,7 @@ const App: React.FC = () => {
                 releases={allReleases}
                 onViewRelease={handleViewDetails}
                 onNavigateToAll={() => navigate('/releases')}
+                userRole={userRole}
             />
         } />
         <Route path="/aggregator/artists" element={<Artists releases={userRole === 'User' ? myReleases : allReleases} />} />
