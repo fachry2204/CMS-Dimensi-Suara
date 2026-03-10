@@ -409,6 +409,19 @@ export const api = {
         return parseResponse(res);
     },
 
+    updateArtistSpotify: async (token: string, artistName: string, spotifyLink: string) => {
+        const res = await fetch(`${API_BASE_URL}/releases/artist/update-spotify`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ artistName, spotifyLink }),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
     createRelease: async (token, data) => {
         const formData = new FormData();
 

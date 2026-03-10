@@ -11,6 +11,8 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const SESSION_EXPIRES_IN = '24h';
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const router = express.Router();
 
@@ -266,13 +268,13 @@ router.post('/:id/impersonate', authenticateToken, async (req, res) => {
         const target = rows[0];
         const payload = { id: target.id, role: target.role, impersonated_by: req.user.id };
         const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
         const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'lax',
             secure,
-            maxAge: 60 * 60 * 1000
+            maxAge: SESSION_MAX_AGE_MS
         });
         res.json({
             token,
@@ -303,13 +305,13 @@ router.get('/:id/impersonate', authenticateToken, async (req, res) => {
         const target = rows[0];
         const payload = { id: target.id, role: target.role, impersonated_by: req.user.id };
         const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
         const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'lax',
             secure,
-            maxAge: 60 * 60 * 1000
+            maxAge: SESSION_MAX_AGE_MS
         });
         res.json({
             token,
@@ -340,13 +342,13 @@ router.post('/impersonate/revert', authenticateToken, async (req, res) => {
         const admin = rows[0];
         const payload = { id: admin.id, role: admin.role };
         const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
         const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'lax',
             secure,
-            maxAge: 60 * 60 * 1000
+            maxAge: SESSION_MAX_AGE_MS
         });
         res.json({
             token,
@@ -376,13 +378,13 @@ router.get('/impersonate/revert', authenticateToken, async (req, res) => {
         const admin = rows[0];
         const payload = { id: admin.id, role: admin.role };
         const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
         const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'lax',
             secure,
-            maxAge: 60 * 60 * 1000
+            maxAge: SESSION_MAX_AGE_MS
         });
         res.json({
             token,

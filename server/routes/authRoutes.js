@@ -8,6 +8,8 @@ import { syncUserToSheet } from '../utils/googleSheets.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+const SESSION_EXPIRES_IN = '24h';
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const getCountry = (ip) => {
     // Handle localhost/private IPs
@@ -189,16 +191,16 @@ router.post('/login', async (req, res) => {
         // await db.query('INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)',
         //    [user.id, 'Security', notifMsg]);
 
-        // Create Token (1h) and set sliding session cookie
+        // Create Token (24h) and set session cookie
         const payload = { id: user.id, role: user.role };
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
 
         const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'lax',
             secure,
-            maxAge: 60 * 60 * 1000 // 1 hour
+            maxAge: SESSION_MAX_AGE_MS
         });
 
         res.json({ 
@@ -235,13 +237,13 @@ router.post('/impersonate/revert', authenticateToken, async (req, res) => {
         }
         const admin = rows[0];
         const payload = { id: admin.id, role: admin.role };
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
         const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'lax',
             secure,
-            maxAge: 60 * 60 * 1000
+            maxAge: SESSION_MAX_AGE_MS
         });
         res.json({
             token,
@@ -270,14 +272,14 @@ router.post('/impersonate/:id', authenticateToken, async (req, res) => {
         }
         const target = rows[0];
         const payload = { id: target.id, role: target.role, impersonated_by: req.user.id };
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
         
         const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'lax',
             secure,
-            maxAge: 60 * 60 * 1000
+            maxAge: SESSION_MAX_AGE_MS
         });
         res.json({
             token,

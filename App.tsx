@@ -1123,7 +1123,26 @@ const App: React.FC = () => {
             />
         } />
         <Route path="/aggregator/artists" element={<Artists releases={userRole === 'User' ? myReleases : allReleases} />} />
-        <Route path="/aggregator/artists/:name" element={<ArtistDetail releases={userRole === 'User' ? myReleases : allReleases} token={token} />} />
+        <Route path="/aggregator/artists/:name" element={
+            <ArtistDetail 
+                releases={userRole === 'User' ? myReleases : allReleases} 
+                token={token} 
+                onArtistUpdated={() => {
+                    if (token) {
+                        api.getReleases(token).then(freshData => {
+                            if (Array.isArray(freshData)) {
+                                const mapped = freshData.map((r: any) => ({ 
+                                    ...r, 
+                                    id: String(r.id), 
+                                    ownerDisplayName: r.ownerDisplayName || resolveOwnerName(r) 
+                                }));
+                                setAllReleases(mapped);
+                            }
+                        }).catch(err => console.warn("Artist refresh failed", err));
+                    }
+                }}
+            />
+        } />
 
             {/* Contracts Routes */}
             <Route path="/contracts/aggregator" element={<Contracts token={token} defaultTab="aggregator" />} />

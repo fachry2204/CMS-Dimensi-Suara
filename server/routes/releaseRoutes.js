@@ -988,6 +988,86 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// UPDATE ARTIST SPOTIFY LINK (Global)
+router.post('/artist/update-spotify', authenticateToken, async (req, res) => {
+    try {
+        const { artistName, spotifyLink } = req.body;
+        if (!artistName) return res.status(400).json({ error: 'Artist name is required' });
+
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const normTarget = String(artistName).trim().toLowerCase();
+
+        // 1. Update Releases
+        const [releases] = await db.query('SELECT id, primary_artists FROM releases');
+        for (const rel of releases) {
+            let artists = [];
+            try {
+                artists = typeof rel.primary_artists === 'string' ? JSON.parse(rel.primary_artists) : (rel.primary_artists || []);
+            } catch { continue; }
+
+            let changed = false;
+            const updated = artists.map(a => {
+                const name = typeof a === 'string' ? a : a.name;
+                if (name && name.trim().toLowerCase() === normTarget) {
+                    changed = true;
+                    return { name, spotifyLink };
+                }
+                return a;
+            });
+
+            if (changed) {
+                await db.query('UPDATE releases SET primary_artists = ? WHERE id = ?', [JSON.stringify(updated), rel.id]);
+            }
+        }
+
+        // 2. Update Tracks
+        const [tracks] = await db.query('SELECT id, primary_artists, featured_artists FROM tracks');
+        for (const track of tracks) {
+            let pArtists = [];
+            let fArtists = [];
+            try {
+                pArtists = typeof track.primary_artists === 'string' ? JSON.parse(track.primary_artists) : (track.primary_artists || []);
+                fArtists = typeof track.featured_artists === 'string' ? JSON.parse(track.featured_artists) : (track.featured_artists || []);
+            } catch { continue; }
+
+            let changed = false;
+            const updatedP = pArtists.map(a => {
+                const name = typeof a === 'string' ? a : a.name;
+                if (name && name.trim().toLowerCase() === normTarget) {
+                    changed = true;
+                    return { name, spotifyLink };
+                }
+                return a;
+            });
+
+            const updatedF = fArtists.map(a => {
+                const name = typeof a === 'string' ? a : a.name;
+                if (name && name.trim().toLowerCase() === normTarget) {
+                    changed = true;
+                    return { name, spotifyLink };
+                }
+                return a;
+            });
+
+            if (changed) {
+                await db.query('UPDATE tracks SET primary_artists = ?, featured_artists = ? WHERE id = ?', [
+                    JSON.stringify(updatedP),
+                    JSON.stringify(updatedF),
+                    track.id
+                ]);
+            }
+        }
+
+        res.json({ message: 'Artist Spotify link updated successfully' });
+    } catch (err) {
+        console.error('Update Artist Spotify Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cover_art')), async (req, res) => {
     const releaseId = req.params.id;
     try {
