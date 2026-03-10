@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import geoip from 'geoip-lite';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { syncUserToSheet } from '../utils/googleSheets.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';

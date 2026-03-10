@@ -319,7 +319,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             })}
         </div>
 
-        <div className="w-full flex flex-col md:flex-row items-center justify-between gap-3 mb-6">
+        <div className="w-full flex flex-col md:flex-row items-center justify-start gap-3 mb-6">
             <div className="relative w-full md:w-80">
                 <input 
                     type="text"

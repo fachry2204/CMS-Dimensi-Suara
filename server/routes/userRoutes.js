@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { syncUserToSheet } from '../utils/googleSheets.js';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
@@ -141,7 +142,12 @@ router.put('/profile', authenticateToken, upload.single('profilePicture'), async
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
         // Fetch updated user
-        const [rows] = await db.query('SELECT id, username, email, role, profile_picture FROM users WHERE id = ?', [userId]);
+        const [rows] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (rows[0].status === 'Approved') {
+            syncUserToSheet(rows[0]);
+        }
         
         res.json({ message: 'Profile updated successfully', user: rows[0] });
 
@@ -437,8 +443,16 @@ router.post('/', authenticateToken, async (req, res) => {
             await db.query('UPDATE users SET registered_at = COALESCE(registered_at, NOW()) WHERE id = ?', [result.insertId]);
         }
 
-        // Fetch created user with dates
-        const selectParts = [
+        // Fetch created user
+        const [fullUser] = await db.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (fullUser[0].status === 'Approved') {
+            syncUserToSheet(fullUser[0]);
+        }
+
+        // Fetch created user with formatted dates for response
+        const selectPartsResponse = [
             'id',
             'username as name',
             'email',
@@ -448,7 +462,7 @@ router.post('/', authenticateToken, async (req, res) => {
             hasRegisteredAt ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
             colNames.includes('rejected_date') ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate'
         ];
-        const [rows] = await db.query(`SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`, [result.insertId]);
+        const [rows] = await db.query(`SELECT ${selectPartsResponse.join(', ')} FROM users WHERE id = ?`, [result.insertId]);
         res.status(201).json({ message: 'User created successfully', user: rows[0] });
     } catch (err) {
         if (err.code === 'ER_DUP_ENTRY') {
@@ -543,8 +557,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
         
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
-        // Fetch updated user
-        const selectParts = [
+        // Fetch updated user for sync
+        const [updatedUser] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (updatedUser[0].status === 'Approved') {
+            syncUserToSheet(updatedUser[0]);
+        }
+
+        // Fetch updated user for response
+        const selectPartsResponse = [
             'id', 'username as name', 'email', 'role', 'status',
             colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
             colNames.includes('account_type') ? 'account_type' : 'NULL as account_type',
@@ -557,7 +579,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
             colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
             colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name'
         ];
-        const [rows] = await db.query(`SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`, [userId]);
+        const [rows] = await db.query(`SELECT ${selectPartsResponse.join(', ')} FROM users WHERE id = ?`, [userId]);
         
         res.json({ message: 'User updated successfully', user: rows[0] });
     } catch (err) {
@@ -682,18 +704,26 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         params.push(userId);
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
-        // Build select query based on available columns
-        const selectFields = ['id', 'username as name', 'email', 'role', 'status'];
-        if (hasJoinedDate) selectFields.push('DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate');
-        if (hasRejectionReason) selectFields.push('rejection_reason');
-        if (hasAggregatorPercentage) selectFields.push('aggregator_percentage');
-        if (hasPublishingPercentage) selectFields.push('publishing_percentage');
-        if (hasBlockReason) selectFields.push('block_reason');
-        if (hasBlockedAt) selectFields.push('DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt');
-        if (hasContractStatus) selectFields.push('contract_status');
-        if (hasContractDoc) selectFields.push('contract_doc_path');
+        // Fetch updated user for sync
+        const [updatedUser] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (updatedUser[0].status === 'Approved') {
+            syncUserToSheet(updatedUser[0]);
+        }
 
-        const [rows] = await db.query(`SELECT ${selectFields.join(', ')} FROM users WHERE id = ?`, [userId]);
+        // Build select query based on available columns for response
+        const selectFieldsResponse = ['id', 'username as name', 'email', 'role', 'status'];
+        if (hasJoinedDate) selectFieldsResponse.push('DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate');
+        if (hasRejectionReason) selectFieldsResponse.push('rejection_reason');
+        if (hasAggregatorPercentage) selectFieldsResponse.push('aggregator_percentage');
+        if (hasPublishingPercentage) selectFieldsResponse.push('publishing_percentage');
+        if (hasBlockReason) selectFieldsResponse.push('block_reason');
+        if (hasBlockedAt) selectFieldsResponse.push('DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt');
+        if (hasContractStatus) selectFieldsResponse.push('contract_status');
+        if (hasContractDoc) selectFieldsResponse.push('contract_doc_path');
+
+        const [rows] = await db.query(`SELECT ${selectFieldsResponse.join(', ')} FROM users WHERE id = ?`, [userId]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
