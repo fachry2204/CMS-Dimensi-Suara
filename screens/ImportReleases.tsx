@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, UploadCloud, CheckSquare, Square, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { api, API_BASE_URL } from '../utils/api';
+import * as XLSX from 'xlsx';
+import { api } from '../utils/api';
 
 export const ImportReleases: React.FC = () => {
   const navigate = useNavigate();
@@ -12,14 +13,59 @@ export const ImportReleases: React.FC = () => {
   const [result, setResult] = useState<{inserted:number; errors:string[]}|null>(null);
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
+  const toISODate = (v: any): string => {
+    if (!v) return '';
+    if (v instanceof Date) {
+      const yyyy = v.getFullYear();
+      const mm = String(v.getMonth() + 1).padStart(2, '0');
+      const dd = String(v.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+      if (!isNaN(d.getTime())) return toISODate(d);
+    }
+    const s = String(v).trim();
+    return s;
+  };
+
+  const parseExcelFile = async (file: File) => {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheetName = wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const rawRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    return rawRows.map((r) => ({
+      Title: String(r.Title || '').trim(),
+      Version: String(r.Version || 'Original').trim(),
+      ReleaseType: String(r.ReleaseType || 'SINGLE').trim(),
+      Language: String(r.Language || '').trim(),
+      PrimaryArtists: String(r.PrimaryArtists || '').trim(),
+      RecordLabel: String(r.RecordLabel || '').trim(),
+      Genre: String(r.Genre || '').trim(),
+      SubGenre: String(r.SubGenre || '').trim(),
+      PLine: String(r.PLine || '').trim(),
+      CLine: String(r.CLine || '').trim(),
+      PlannedReleaseDate: toISODate(r.PlannedReleaseDate),
+      OriginalReleaseDate: toISODate(r.OriginalReleaseDate),
+      DistributionTargets: String(r.DistributionTargets || '').trim(),
+      DistributionHistory: String(r.DistributionHistory || '').trim(),
+      OwnerEmail: String(r.OwnerEmail || '').trim(),
+      Aggregator: String(r.Aggregator || '').trim(),
+      UPC: String(r.UPC || '').trim(),
+      ISRC: String(r.ISRC || '').trim(),
+      Author: String(r.Author || '').trim(),
+      Komposer: String(r.Komposer || '').trim()
+    }));
+  };
+
   const handleUpload = async (file: File) => {
     setIsLoading(true);
     setRows([]);
     setSelected({});
     setResult(null);
     try {
-      const res = await api.releasesImportPreview(token, file);
-      const list = res.rows || [];
+      const list = await parseExcelFile(file);
       setRows(list);
       // Default select all
       const sel: Record<number, boolean> = {};
@@ -47,8 +93,104 @@ export const ImportReleases: React.FC = () => {
     setIsLoading(true);
     setResult(null);
     try {
-      const res = await api.releasesImportRows(token, chosen);
-      setResult(res);
+      let usersByEmail = new Map<string, any>();
+      try {
+        const users = await api.getUsers(token);
+        if (Array.isArray(users)) {
+          users.forEach((u: any) => {
+            if (u?.email) usersByEmail.set(String(u.email).toLowerCase(), u);
+          });
+        }
+      } catch {}
+
+      const optionMap: Record<string, any> = {
+        'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: '/assets/platforms/social.svg' },
+        'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: '/assets/platforms/youtube-music.svg' },
+        'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: '/assets/platforms/alldsp.svg' }
+      };
+
+      let inserted = 0;
+      const errors: string[] = [];
+      for (const row of chosen) {
+        try {
+          const title = String(row.Title || '').trim();
+          if (!title) {
+            errors.push('Missing Title');
+            continue;
+          }
+          const version = String(row.Version || 'Original').trim() || 'Original';
+          const type = (String(row.ReleaseType || 'SINGLE').toUpperCase() === 'ALBUM') ? 'ALBUM' : 'SINGLE';
+          const primaryArtists = String(row.PrimaryArtists || '')
+            .split(',')
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+          const distributionTargets = String(row.DistributionTargets || '')
+            .split(',')
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+            .map((id: string) => optionMap[id])
+            .filter(Boolean);
+
+          const ownerEmail = String(row.OwnerEmail || '').trim().toLowerCase();
+          const owner = ownerEmail ? usersByEmail.get(ownerEmail) : null;
+          const payload: any = {
+            title,
+            version,
+            type,
+            primaryArtists,
+            label: String(row.RecordLabel || '').trim() || null,
+            genre: String(row.Genre || '').trim() || null,
+            subGenre: String(row.SubGenre || '').trim() || null,
+            pLine: String(row.PLine || '').trim() || null,
+            cLine: String(row.CLine || '').trim() || null,
+            language: String(row.Language || '').trim() || null,
+            plannedReleaseDate: String(row.PlannedReleaseDate || '').trim() || null,
+            originalReleaseDate: String(row.OriginalReleaseDate || '').trim() || null,
+            distributionTargets,
+            aggregator: String(row.Aggregator || '').trim() || null,
+            upc: String(row.UPC || '').trim() || null,
+            tracks: []
+          };
+          if (owner && owner.id) {
+            payload.userId = owner.id;
+          }
+          const isrc = String(row.ISRC || '').trim();
+          const author = String(row.Author || '').trim();
+          const komposer = String(row.Komposer || '').trim();
+          if (type === 'SINGLE' && (isrc || author || komposer)) {
+            payload.tracks = [
+              {
+                id: `import-${title}-${version}`,
+                trackNumber: 1,
+                title,
+                version,
+                primaryArtists,
+                featuredArtists: [],
+                audioFile: null,
+                isrc: isrc || null,
+                explicitLyrics: null,
+                composer: komposer || null,
+                lyricist: author ? [author] : null,
+                producer: null,
+                genre: payload.genre,
+                subGenre: payload.subGenre,
+                previewStart: 0
+              }
+            ];
+          }
+
+          const res = await api.createRelease(token, payload);
+          if (res?.isDuplicate) {
+            errors.push(`Duplikat: ${title} (${version})`);
+          } else {
+            inserted += 1;
+          }
+        } catch (e: any) {
+          errors.push(e?.message || 'Import gagal');
+        }
+      }
+
+      setResult({ inserted, errors });
       // Optional: refresh after import
       setTimeout(() => {
         navigate('/releases');
@@ -80,8 +222,49 @@ export const ImportReleases: React.FC = () => {
           <button
             onClick={() => {
               try {
-                const url = `${API_BASE_URL}/releases/import/template`;
-                window.open(url, '_blank');
+                const headers = [
+                  'Title','Version','ReleaseType','Language','PrimaryArtists',
+                  'RecordLabel','Genre','SubGenre','PLine','CLine',
+                  'PlannedReleaseDate','OriginalReleaseDate',
+                  'DistributionTargets','DistributionHistory',
+                  'OwnerEmail','Aggregator','UPC','ISRC','Author','Komposer'
+                ];
+                const sample = [{
+                  Title: 'Contoh Lagu Demo',
+                  Version: 'Original',
+                  ReleaseType: 'SINGLE',
+                  Language: 'Indonesian',
+                  PrimaryArtists: 'Artist Satu, Artist Dua',
+                  RecordLabel: 'Dimensi Suara Records',
+                  Genre: 'Pop',
+                  SubGenre: 'Indie Pop',
+                  PLine: '2026 Dimensi Suara',
+                  CLine: '2026 Dimensi Suara',
+                  PlannedReleaseDate: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
+                  OriginalReleaseDate: '',
+                  DistributionTargets: 'SOCIAL,YOUTUBE_MUSIC,ALL_DSP',
+                  DistributionHistory: 'Yes',
+                  OwnerEmail: 'owner@example.com',
+                  Aggregator: 'SoundOn',
+                  UPC: '123456789012',
+                  ISRC: 'USABC1234567',
+                  Author: 'Lyric Writer Name',
+                  Komposer: 'Composer Name'
+                }];
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(sample, { header: headers });
+                (ws as any)['!cols'] = headers.map((h: string) => ({ wch: Math.max(h.length, 18) }));
+                XLSX.utils.book_append_sheet(wb, ws, 'Releases');
+                const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+                const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'release_import_template.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
               } catch {}
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 flex items-center gap-2"
