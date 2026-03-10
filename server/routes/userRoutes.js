@@ -489,7 +489,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
             full_name, account_type, company_name, nik, phone, address,
             country, province, city, district, subdistrict, postal_code,
             pic_name, pic_position, pic_phone,
-            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path
+            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path,
+            bank_name, bank_account_number, bank_account_name
         } = req.body;
 
         const updates = [];
