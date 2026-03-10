@@ -656,6 +656,26 @@ export const api = {
         return parseResponse(res);
     },
 
+    releasesImportTemplate: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/releases/import/template`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to get template');
+        return res.blob();
+    },
+    releasesImportExcel: async (token: string, file: File) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`${API_BASE_URL}/releases/import`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: fd,
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
     // User Profile
     getProfile: async (token) => {
         const res = await fetch(`${API_BASE_URL}/users/profile`, {

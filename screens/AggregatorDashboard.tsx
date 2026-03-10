@@ -17,6 +17,7 @@ import {
     Plus
 } from 'lucide-react';
 import { assetUrl } from '../utils/url';
+import { api } from '../utils/api';
 
 interface Props {
   releases: ReleaseData[];
@@ -29,6 +30,10 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
   const navigate = useNavigate();
   const { getButtonColor } = useBranding();
   const showAggregator = userRole !== 'User';
+  const [showImportModal, setShowImportModal] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
+  const [importResult, setImportResult] = React.useState<{inserted:number; errors:string[]}|null>(null);
+  const token = React.useMemo(() => localStorage.getItem('cms_token') || '', []);
   
   // Calculate Stats
   const stats = {
@@ -79,6 +84,15 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                 <Plus size={16} />
                 New Release
             </button>
+            {(userRole === 'Admin' || userRole === 'Operator') && (
+              <button 
+                  onClick={() => setShowImportModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg shadow-sm hover:bg-purple-700 transition-all text-xs font-bold"
+              >
+                  <Plus size={16} />
+                  Import Release
+              </button>
+            )}
        </div>
 
        {/* STATS CARDS */}
@@ -273,6 +287,82 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                 </table>
             </div>
        </div>
+       
+       {showImportModal && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+               <h3 className="text-lg font-bold text-slate-800">Import Release</h3>
+               <button onClick={() => { setShowImportModal(false); setImportResult(null); }} className="text-slate-400 hover:text-slate-600">
+                 <ArrowRight size={20} className="rotate-180" />
+               </button>
+             </div>
+             <div className="p-6 space-y-4">
+               <p className="text-sm text-slate-600">Upload file Excel sesuai template. Template mengikuti metadata di New Release.</p>
+               <div className="flex gap-3">
+                 <button
+                   onClick={async () => {
+                     try {
+                       const blob = await api.releasesImportTemplate(token);
+                       const url = URL.createObjectURL(blob);
+                       const a = document.createElement('a');
+                       a.href = url;
+                       a.download = 'release_import_template.xlsx';
+                       document.body.appendChild(a);
+                       a.click();
+                       a.remove();
+                       URL.revokeObjectURL(url);
+                     } catch {}
+                   }}
+                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                 >
+                   Download Contoh File
+                 </button>
+                 <label className="px-4 py-2 bg-slate-100 rounded-lg text-xs font-medium cursor-pointer hover:bg-slate-200">
+                   <input 
+                     type="file" 
+                     accept=".xlsx,.xls" 
+                     className="hidden" 
+                     onChange={async (e) => {
+                       const file = e.target.files?.[0];
+                       if (!file) return;
+                       setImporting(true);
+                       try {
+                         const res = await api.releasesImportExcel(token, file);
+                         setImportResult(res);
+                       } catch (err) {
+                         setImportResult({ inserted: 0, errors: [(err as any)?.message || 'Import gagal'] });
+                       } finally {
+                         setImporting(false);
+                       }
+                     }}
+                   />
+                   Upload File Excel
+                 </label>
+               </div>
+               {importing && <div className="text-xs text-slate-500">Mengimpor...</div>}
+               {importResult && (
+                 <div className="text-xs text-slate-700">
+                   <div className="mb-2">Berhasil ditambahkan: {importResult.inserted}</div>
+                   {importResult.errors && importResult.errors.length > 0 && (
+                     <div className="max-h-40 overflow-y-auto border rounded p-2 text-red-600">
+                       {importResult.errors.map((e, i) => <div key={i}>{e}</div>)}
+                     </div>
+                   )}
+                 </div>
+               )}
+             </div>
+             <div className="p-6 border-t border-gray-100 flex justify-end">
+               <button 
+                 onClick={() => { setShowImportModal(false); setImportResult(null); }}
+                 className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-200"
+               >
+                 Tutup
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   );
 };

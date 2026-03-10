@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import db from '../config/db.js';
 import { spawn } from 'child_process';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import xlsx from 'xlsx';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1289,6 +1290,122 @@ router.get('/:id', authenticateToken, async (req, res) => {
             tracks: processedTracks
         });
 
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/import/template', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const headers = [
+            'Title','Version','ReleaseType','Language','PrimaryArtists','Label','Genre','SubGenre','PLine','CLine','PlannedReleaseDate','OriginalReleaseDate','DistributionTargets','OwnerUsername','Aggregator'
+        ];
+        const sample = [{
+            Title: 'Contoh Lagu Demo',
+            Version: 'Original',
+            ReleaseType: 'SINGLE',
+            Language: 'Indonesian',
+            PrimaryArtists: 'Artist Satu, Artist Dua',
+            Label: 'Dimensi Suara',
+            Genre: 'Pop',
+            SubGenre: 'Indie Pop',
+            PLine: '2026 Dimensi Suara',
+            CLine: '2026 Dimensi Suara',
+            PlannedReleaseDate: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
+            OriginalReleaseDate: '',
+            DistributionTargets: 'SOCIAL,YOUTUBE_MUSIC,ALL_DSP',
+            OwnerUsername: 'demo_owner',
+            Aggregator: 'SoundOn'
+        }];
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(sample, { header: headers });
+        ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length, 18) }));
+        xlsx.utils.book_append_sheet(wb, ws, 'Releases');
+        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="release_import_template.xlsx"');
+        res.send(buf);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/import', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        const wb = xlsx.readFile(req.file.path);
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rows = xlsx.utils.sheet_to_json(ws, { defval: '' });
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return res.status(400).json({ error: 'Empty file' });
+        }
+        const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
+        const releaseColNames = releaseCols.map(c => c.Field);
+        let inserted = 0;
+        const errors = [];
+        for (const row of rows) {
+            try {
+                const title = String(row.Title || '').trim();
+                if (!title) { errors.push('Missing Title'); continue; }
+                const version = String(row.Version || 'Original').trim();
+                const release_type = (String(row.ReleaseType || 'SINGLE').toUpperCase() === 'ALBUM') ? 'ALBUM' : 'SINGLE';
+                const primary_artists = JSON.stringify(String(row.PrimaryArtists || '').split(',').map(s=>s.trim()).filter(Boolean));
+                const label = row.Label || null;
+                const p_line = row.PLine || null;
+                const c_line = row.CLine || null;
+                const genre = row.Genre || null;
+                const sub_genre = row.SubGenre || null;
+                const language = row.Language || null;
+                const planned_release_date = row.PlannedReleaseDate || null;
+                const original_release_date = row.OriginalReleaseDate || null;
+                const distribution_targets = (() => {
+                    const ids = String(row.DistributionTargets || '').split(',').map(s=>s.trim()).filter(Boolean);
+                    if (ids.length === 0) return null;
+                    const optionMap = {
+                        'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: '/assets/platforms/social.svg' },
+                        'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: '/assets/platforms/youtube-music.svg' },
+                        'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: '/assets/platforms/alldsp.svg' },
+                    };
+                    return JSON.stringify(ids.map(id => optionMap[id]).filter(Boolean));
+                })();
+                const aggregator = row.Aggregator || null;
+                let user_id = req.user.id;
+                if (row.OwnerUsername) {
+                    const [users] = await db.query('SELECT id FROM users WHERE username = ?', [row.OwnerUsername]);
+                    if (users.length > 0) user_id = users[0].id;
+                }
+                const cols = ['user_id','title','version','release_type','primary_artists'];
+                const vals = [user_id, title, version, release_type, primary_artists];
+                if (releaseColNames.includes('cover_art')) { cols.push('cover_art'); vals.push(null); }
+                if (releaseColNames.includes('label')) { cols.push('label'); vals.push(label); }
+                if (releaseColNames.includes('p_line')) { cols.push('p_line'); vals.push(p_line); }
+                if (releaseColNames.includes('c_line')) { cols.push('c_line'); vals.push(c_line); }
+                if (releaseColNames.includes('genre')) { cols.push('genre'); vals.push(genre); }
+                if (releaseColNames.includes('sub_genre')) { cols.push('sub_genre'); vals.push(sub_genre); }
+                if (releaseColNames.includes('language')) { cols.push('language'); vals.push(language); }
+                if (releaseColNames.includes('planned_release_date')) { cols.push('planned_release_date'); vals.push(planned_release_date || null); }
+                if (releaseColNames.includes('original_release_date')) { cols.push('original_release_date'); vals.push(original_release_date || null); }
+                if (releaseColNames.includes('distribution_targets')) { cols.push('distribution_targets'); vals.push(distribution_targets || JSON.stringify([])); }
+                if (releaseColNames.includes('aggregator')) { cols.push('aggregator'); vals.push(aggregator); }
+                cols.push('submission_date'); vals.push(new Date());
+                cols.push('status'); vals.push('Pending');
+                const placeholders = `(${cols.map(()=>'?').join(', ')})`;
+                await db.query(`INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`, vals);
+                inserted += 1;
+            } catch (e) {
+                errors.push(e.message || 'Row insert error');
+            }
+        }
+        res.json({ inserted, errors });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
