@@ -1454,7 +1454,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 });
 
 // Preview import: parse Excel and return rows without inserting
-router.post('/import/preview', authenticateToken, upload.single('file'), async (req, res) => {
+const importPreviewHandler = async (req, res) => {
     try {
         if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
             return res.status(403).json({ error: 'Access denied' });
@@ -1492,10 +1492,12 @@ router.post('/import/preview', authenticateToken, upload.single('file'), async (
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-});
+};
+router.post('/import/preview', authenticateToken, upload.single('file'), importPreviewHandler);
+router.post('/import-preview', authenticateToken, upload.single('file'), importPreviewHandler);
 
 // Import selected rows (JSON payload)
-router.post('/import/rows', authenticateToken, async (req, res) => {
+const importRowsHandler = async (req, res) => {
     try {
         if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
             return res.status(403).json({ error: 'Access denied' });
@@ -1592,5 +1594,7 @@ router.post('/import/rows', authenticateToken, async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-});
+};
+router.post('/import/rows', authenticateToken, importRowsHandler);
+router.post('/import-rows', authenticateToken, importRowsHandler);
 export default router;
