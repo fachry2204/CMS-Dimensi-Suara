@@ -86,7 +86,12 @@ export const Artists: React.FC<Props> = ({ releases }) => {
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-800">Artists</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-800">Artists</h1>
+          <button className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full shadow-sm hover:bg-green-700 transition-colors">
+            Total Artis: {artists.length}
+          </button>
+        </div>
         <p className="text-xs text-slate-500">Daftar artis berdasarkan rilisan yang tersedia</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

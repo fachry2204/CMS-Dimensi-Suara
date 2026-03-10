@@ -592,6 +592,23 @@ const initDb = async () => {
             }
         }
 
+        // 14. Check missing columns in 'writers' (for contract management)
+        const writerContractCols = [
+            { name: 'contract_status', type: "ENUM('Not Generated','On Review','Done') DEFAULT 'Not Generated'" },
+            { name: 'contract_doc_path', type: "VARCHAR(255) DEFAULT NULL" }
+        ];
+
+        for (const col of writerContractCols) {
+            try {
+                await connection.query(`SELECT \`${col.name}\` FROM writers LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to writers table`);
+                    await connection.query(`ALTER TABLE writers ADD COLUMN \`${col.name}\` ${col.type}`);
+                }
+            }
+        }
+
         console.log('✅ Database initialized successfully!');
         try {
             await writeLastDbName(dbName);

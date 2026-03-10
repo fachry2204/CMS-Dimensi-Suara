@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Calendar, FileText, CheckCircle, Clock, AlertCircle, Save } from 'lucide-react';
+import { ArrowLeft, User, Mail, Calendar, FileText, CheckCircle, Clock, AlertCircle, Save, Link, Upload } from 'lucide-react';
 import { api } from '../utils/api';
 import { getProfileImageUrl } from '../utils/imageUtils';
 
@@ -20,6 +20,8 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
   const [notes, setNotes] = useState('');
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [contractDocPath, setContractDocPath] = useState<string>('');
+  const [contractInputMethod, setContractInputMethod] = useState<'upload' | 'link'>('upload');
+  const [contractLink, setContractLink] = useState<string>('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -28,6 +30,15 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
         const data = await api.getUser(token, id);
         setUser(data);
         setContractStatus(data.contract_status || 'Not Generated');
+        if (data.contract_doc_path) {
+          setContractDocPath(data.contract_doc_path);
+          if (data.contract_doc_path.startsWith('http') || data.contract_doc_path.startsWith('www.')) {
+            setContractInputMethod('link');
+            setContractLink(data.contract_doc_path);
+          } else {
+            setContractInputMethod('upload');
+          }
+        }
         // Notes could be added to backend later if needed, currently not persisted in DB for contract notes specifically
       } catch (err) {
         console.error('Failed to fetch user details:', err);
@@ -42,22 +53,35 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
     if (!user || !id) return;
     setSaving(true);
     try {
+      let finalDocPath = contractDocPath;
+
       if (contractStatus === 'Done') {
-        if (!contractDocPath && !contractFile) {
-          alert('Kontrak status Done wajib upload file PDF.');
-          setSaving(false);
-          return;
-        }
-        if (contractFile) {
-          if (contractFile.type !== 'application/pdf' && !contractFile.name.toLowerCase().endsWith('.pdf')) {
-            alert('File kontrak harus PDF.');
+        if (contractInputMethod === 'upload') {
+          if (!contractDocPath && !contractFile) {
+            alert('Kontrak status Done wajib upload file PDF.');
             setSaving(false);
             return;
           }
-          const res = await api.uploadUserDoc(token, 'CONTRACT', contractFile);
-          setContractDocPath(res.path);
+          if (contractFile) {
+            if (contractFile.type !== 'application/pdf' && !contractFile.name.toLowerCase().endsWith('.pdf')) {
+              alert('File kontrak harus PDF.');
+              setSaving(false);
+              return;
+            }
+            const res = await api.uploadUserDoc(token, 'CONTRACT', contractFile);
+            finalDocPath = res.path;
+            setContractDocPath(res.path);
+          }
+        } else {
+          if (!contractLink.trim()) {
+            alert('Link kontrak wajib diisi.');
+            setSaving(false);
+            return;
+          }
+          finalDocPath = contractLink;
         }
       }
+
       // Re-using updateUserStatus API but only sending contract_status
       // We need to pass current status to avoid changing it accidentally if the API requires it
       await api.updateUserStatus(
@@ -68,7 +92,7 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
         user.aggregator_percentage, 
         user.publishing_percentage,
         contractStatus, // Update contract status
-        contractStatus === 'Done' ? (contractDocPath || undefined) : undefined
+        contractStatus === 'Done' ? (finalDocPath || undefined) : undefined
       );
       alert('Status kontrak berhasil diperbarui!');
     } catch (err) {
@@ -195,18 +219,67 @@ export const ContractDetail: React.FC<Props> = ({ token }) => {
               </div>
 
               {contractStatus === 'Done' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Upload Kontrak (PDF)</label>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => setContractFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                  {contractDocPath && (
-                    <p className="text-xs text-green-600 mt-1">Kontrak terunggah: {contractDocPath.split('/').pop()}</p>
+                <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 animate-fade-in">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <label className="block text-sm font-bold text-slate-700">Metode Kontrak</label>
+                    <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                      <button
+                        onClick={() => setContractInputMethod('upload')}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                          contractInputMethod === 'upload'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        <Upload size={12} />
+                        UPLOAD PDF
+                      </button>
+                      <button
+                        onClick={() => setContractInputMethod('link')}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                          contractInputMethod === 'link'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        <Link size={12} />
+                        ADD LINK
+                      </button>
+                    </div>
+                  </div>
+
+                  {contractInputMethod === 'upload' ? (
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">File Kontrak (PDF)</label>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(e) => setContractFile(e.target.files?.[0] || null)}
+                        className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {contractDocPath && !contractDocPath.startsWith('http') && !contractDocPath.startsWith('www.') && (
+                        <p className="text-[11px] text-green-600 mt-2 flex items-center gap-1 font-medium">
+                          <CheckCircle size={12} />
+                          Kontrak terunggah: {contractDocPath.split('/').pop()}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Link Kontrak</label>
+                      <div className="relative">
+                        <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="url"
+                          placeholder="https://..."
+                          value={contractLink}
+                          onChange={(e) => setContractLink(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm"
+                        />
+                      </div>
+                    </div>
                   )}
-                  <p className="text-xs text-slate-500 mt-1">Wajib diisi saat status kontrak “Done”.</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Wajib diisi saat status kontrak “Done”.</p>
                 </div>
               )}
 

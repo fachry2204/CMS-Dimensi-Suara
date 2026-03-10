@@ -188,15 +188,16 @@ router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
 // DELETE USER CONTRACT (Admin only) - Reset status to 'Not Generated'
 router.delete('/:id/contract', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'operator') {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
         
-        // Reset contract_status to 'Not Generated' instead of deleting user
-        await db.query(`UPDATE users SET contract_status = 'Not Generated' WHERE id = ?`, [userId]);
+        // Reset contract_status to 'Not Generated' and clear document path
+        await db.query(`UPDATE users SET contract_status = 'Not Generated', contract_doc_path = NULL WHERE id = ?`, [userId]);
         
-        res.json({ message: 'User contract status reset successfully' });
+        res.json({ message: 'User contract reset successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

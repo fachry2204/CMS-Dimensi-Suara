@@ -15,12 +15,6 @@ export const ImportReleases: React.FC = () => {
 
   const toISODate = (v: any): string => {
     if (!v) return '';
-    if (v instanceof Date) {
-      const yyyy = v.getFullYear();
-      const mm = String(v.getMonth() + 1).padStart(2, '0');
-      const dd = String(v.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    }
     if (typeof v === 'number' && Number.isFinite(v)) {
       const dc: any = (XLSX as any).SSF?.parse_date_code ? (XLSX as any).SSF.parse_date_code(v) : null;
       if (dc && dc.y && dc.m && dc.d) {
@@ -31,20 +25,12 @@ export const ImportReleases: React.FC = () => {
       }
     }
     const s = String(v).trim();
-    const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
     if (mdy) {
-      const a = Number(mdy[1]);
-      const b = Number(mdy[2]);
-      const y = Number(mdy[3]);
-      let month = a;
-      let day = b;
-      if (a > 12 && b <= 12) {
-        day = a;
-        month = b;
-      } else if (b > 12 && a <= 12) {
-        month = a;
-        day = b;
-      }
+      const month = Number(mdy[1]);
+      const day = Number(mdy[2]);
+      const yy = String(mdy[3]);
+      const y = yy.length === 2 ? (Number(yy) >= 70 ? 1900 + Number(yy) : 2000 + Number(yy)) : Number(yy);
       const yyyy = String(y).padStart(4, '0');
       const mm = String(month).padStart(2, '0');
       const dd = String(day).padStart(2, '0');
@@ -78,10 +64,11 @@ export const ImportReleases: React.FC = () => {
 
   const parseExcelFile = async (file: File) => {
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    // Use raw numbers for Excel dates to avoid timezone shifts (hosting/browser locale differences)
+    const wb = XLSX.read(buf, { type: 'array', cellDates: false });
     const sheetName = wb.SheetNames[0];
     const ws = wb.Sheets[sheetName];
-    const rawRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    const rawRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
     return rawRows.map((r) => ({
       Title: String(r.Title || '').trim(),
       Version: String(r.Version || 'Original').trim(),

@@ -18,12 +18,12 @@ interface ContractData {
   created_at?: string; // for writers
 }
 
-export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' }) => {
+export const Contracts: React.FC<Props> = ({ token, defaultTab }) => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Determine active tab from URL or props
-  const activeTab = location.pathname.includes('publishing') ? 'publishing' : 'aggregator';
+  // Prioritize defaultTab prop, fallback to URL detection
+  const activeTab = defaultTab || (location.pathname.includes('publishing') ? 'publishing' : 'aggregator');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<ContractData[]>([]);
@@ -52,11 +52,11 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
         // Normalize data structure
         const normalized = res.map((item: any) => ({
             id: item.id,
-            name: item.username || item.name || 'Unknown',
+            name: item.name || item.username || 'Unknown',
             full_name: item.full_name,
             email: item.email || item.user_email,
             contract_status: item.contract_status || 'Not Generated',
-            date: item.joinedDate || item.created_at
+            date: item.created_at || item.joinedDate
         }));
         
         setData(normalized);
@@ -70,14 +70,9 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
   const fetchUsersForContract = async () => {
       setIsLoadingUsers(true);
       try {
-          // Fetch all users to select from
-          // In a real app, you might want a specific endpoint for "users without contracts" or just fetch all and filter client-side
-          // Re-using getAggregatorContracts for now as it returns user data including contract_status
-          // Ideally, we need an endpoint that returns ALL users, not just those with contracts if the previous endpoint filtered them.
-          // Assuming getAggregatorContracts returns all users and their status.
-          
-          const res = await api.getAggregatorContracts(token);
-          // Filter logic can be applied here or in the modal rendering
+          const res = activeTab === 'aggregator' 
+            ? await api.getAggregatorContracts(token)
+            : await api.getPublishingContracts(token);
           setAvailableUsers(res);
       } catch (err) {
           console.error("Failed to fetch users:", err);
@@ -87,34 +82,24 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
   };
 
   const handleOpenAddModal = () => {
-      if (activeTab === 'aggregator') {
-          fetchUsersForContract();
-          setIsAddUserModalOpen(true);
-          setSelectedUser(null);
-      } else {
-          // Logic for publishing if needed, or just redirect/open different modal
-          // For now, only Aggregator as requested
-          console.log("Add Publishing Contract clicked");
-      }
+      fetchUsersForContract();
+      setIsAddUserModalOpen(true);
+      setSelectedUser(null);
   };
 
   const handleAddContractUser = async () => {
       if (!selectedUser) return;
       
       try {
-          // TODO: Call API to create/initiate contract for selectedUser.id
-          console.log(`Adding contract for user: ${selectedUser.username} (ID: ${selectedUser.id})`);
+          // If publishing, we might need to link a creator, but based on UI 
+          // we are just showing the list. The backend GET already joins creators.
+          console.log(`Adding contract for: ${selectedUser.name || selectedUser.username} (ID: ${selectedUser.id})`);
           
-          /* 
-             Example API: 
-             await api.createContract(token, { userId: selectedUser.id, type: 'aggregator' });
-          */
-
           setIsAddUserModalOpen(false);
           fetchData(); // Refresh list
       } catch (err) {
           console.error("Failed to add contract:", err);
-          alert("Gagal menambahkan kontrak.");
+          alert("Gagal menambahkan data.");
       }
   };
 
@@ -146,9 +131,11 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
         setDeleteModalOpen(false);
         setItemToDelete(null);
         
-        // Optional: Refetch to ensure sync
-        fetchData();
+        // Refetch to ensure sync and show updated data
+        await fetchData();
         
+        // Show success indicator (optional: could use a toast)
+        // alert("Kontrak berhasil dihapus.");
     } catch (err) {
         console.error("Failed to delete:", err);
         alert("Gagal menghapus data.");
@@ -158,10 +145,6 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
   useEffect(() => {
     fetchData();
   }, [activeTab, token]);
-
-  const handleTabChange = (tab: 'aggregator' | 'publishing') => {
-    navigate(`/contracts/${tab}`);
-  };
 
   const getStatusColor = (status: string) => {
       switch (status) {
@@ -191,45 +174,17 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
     <div className="p-8 max-w-7xl mx-auto min-h-screen animate-fade-in">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+          <div className={`p-2 rounded-lg ${activeTab === 'aggregator' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
             <FileText size={24} />
           </div>
-          Manajemen Kontrak
+          Manajemen Kontrak {activeTab === 'aggregator' ? 'Aggregator' : 'Publishing'}
         </h1>
-        <p className="text-slate-500 mt-1 ml-14">Kelola kontrak kerjasama Aggregator dan Publishing.</p>
+        <p className="text-slate-500 mt-1 ml-14">
+          Kelola kontrak kerjasama {activeTab === 'aggregator' ? 'Aggregator' : 'Publishing'} dengan {activeTab === 'aggregator' ? 'User / Label' : 'Pencipta Lagu'}.
+        </p>
       </div>
 
-      {/* Tabs */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-        <div className="flex border-b border-gray-100">
-          <button
-            onClick={() => handleTabChange('aggregator')}
-            className={`flex-1 py-4 text-sm font-semibold transition-all relative ${
-              activeTab === 'aggregator' 
-                ? 'text-blue-600 bg-blue-50/30' 
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            Kontrak Aggregator
-            {activeTab === 'aggregator' && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600"></div>
-            )}
-          </button>
-          <button
-            onClick={() => handleTabChange('publishing')}
-            className={`flex-1 py-4 text-sm font-semibold transition-all relative ${
-              activeTab === 'publishing' 
-                ? 'text-purple-600 bg-purple-50/30' 
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            Kontrak Publishing
-            {activeTab === 'publishing' && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-600"></div>
-            )}
-          </button>
-        </div>
-
         {/* Content Area */}
         <div className="p-6">
           {/* Controls */}
@@ -321,8 +276,7 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
                                             if (activeTab === 'aggregator') {
                                                 navigate(`/contracts/aggregator/${item.id}`);
                                             } else {
-                                                // Assuming there is a creator detail page or handled elsewhere
-                                                console.log('View Publishing Contract', item.id);
+                                                navigate(`/publishing/writers/${item.id}`);
                                             }
                                         }}
                                     >
@@ -406,9 +360,9 @@ export const Contracts: React.FC<Props> = ({ token, defaultTab = 'aggregator' })
                                         >
                                             <div>
                                                 <p className={`font-semibold ${hasContract ? 'text-slate-500' : 'text-slate-800'}`}>
-                                                    {user.username || user.name}
+                                                    {user.name || user.username}
                                                 </p>
-                                                <p className="text-xs text-slate-500">{user.email}</p>
+                                                <p className="text-xs text-slate-500">{user.email || user.user_email}</p>
                                             </div>
                                             {hasContract ? (
                                                 <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-1 rounded-full font-medium">

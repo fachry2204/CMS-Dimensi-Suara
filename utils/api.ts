@@ -296,6 +296,18 @@ export const api = {
             });
             return parseResponse(res);
         },
+        updateCreatorStatus: async (token: string, id: string, payload: { contract_status?: string; contract_doc_path?: string }) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/creators/${id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
         updateSongStatus: async (token, id: string, status: string, songId?: string, reason?: string) => {
             const res = await fetch(`${API_BASE_URL}/publishing/songs/${id}/status`, {
                 method: 'PUT',

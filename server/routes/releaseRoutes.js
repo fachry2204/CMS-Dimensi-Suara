@@ -1046,15 +1046,27 @@ router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cov
 // GET MY RELEASES
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        let query = 'SELECT * FROM releases';
+        const [userCols] = await db.query('SHOW COLUMNS FROM users');
+        const userColNames = (userCols || []).map(c => c.Field);
+        const userSelectParts = [
+            'u.id as owner_user_id',
+            userColNames.includes('account_type') ? 'u.account_type as owner_account_type' : 'NULL as owner_account_type',
+            userColNames.includes('company_name') ? 'u.company_name as owner_company_name' : 'NULL as owner_company_name',
+            userColNames.includes('full_name') ? 'u.full_name as owner_full_name' : 'NULL as owner_full_name',
+            userColNames.includes('name') ? 'u.name as owner_name_field' : 'NULL as owner_name_field',
+            userColNames.includes('username') ? 'u.username as owner_username' : 'NULL as owner_username',
+            userColNames.includes('email') ? 'u.email as owner_email' : 'NULL as owner_email'
+        ];
+
+        let query = `SELECT r.*, ${userSelectParts.join(', ')} FROM releases r LEFT JOIN users u ON u.id = r.user_id`;
         const params = [];
 
-        if (req.user.role !== 'Admin') {
-            query += ' WHERE user_id = ?';
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            query += ' WHERE r.user_id = ?';
             params.push(req.user.id);
         }
 
-        query += ' ORDER BY submission_date DESC';
+        query += ' ORDER BY r.submission_date DESC';
 
         const [releases] = await db.query(query, params);
 
@@ -1090,10 +1102,18 @@ router.get('/', authenticateToken, async (req, res) => {
             const submissionDate = r.submission_date;
             const plannedReleaseDate = r.planned_release_date;
             const originalReleaseDate = r.original_release_date;
+            const ownerDisplayName = (() => {
+                const accountType = String(r.owner_account_type || '').toUpperCase();
+                const company = r.owner_company_name;
+                if (accountType === 'COMPANY' && company) return company;
+                return r.owner_full_name || r.owner_name_field || r.owner_username || r.owner_email || '';
+            })();
 
             return {
                 id: r.id,
                 user_id: r.user_id,
+                ownerDisplayName,
+                ownerEmail: r.owner_email || null,
                 company_name: r.company_name,
                 user_full_name: r.user_full_name,
                 owner_name: r.owner_name,

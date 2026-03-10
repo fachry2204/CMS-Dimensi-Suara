@@ -206,7 +206,7 @@ const App: React.FC = () => {
 
         const p1 = api.getReleases(token)
             .then(data => {
-                const mapped = data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }));
+                const mapped = data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: r.ownerDisplayName || resolveOwnerName(r) }));
                 setAllReleases(mapped);
                 // Initialize status tracking ref
                 mapped.forEach((r: any) => {
@@ -576,7 +576,7 @@ const App: React.FC = () => {
            if (token) {
                api.getReleases(token).then(freshData => {
                    if (Array.isArray(freshData)) {
-                       const mapped = freshData.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }));
+                       const mapped = freshData.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: r.ownerDisplayName || resolveOwnerName(r) }));
                        setAllReleases(mapped);
                    }
                }).catch(err => console.warn("Background refresh failed", err));

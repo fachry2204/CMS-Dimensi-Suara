@@ -55,15 +55,15 @@ router.get('/contracts/publishing', authenticateToken, async (req, res) => {
         const colNames = cols.map(c => c.Field);
         
         const selectParts = [
-            'id',
-            'name',
-            'user_id',
-            colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
-            'created_at'
+            'w.id',
+            'w.name',
+            'w.user_id',
+            colNames.includes('contract_status') ? 'w.contract_status' : `'Not Generated' as contract_status`,
+            'w.created_at'
         ];
         
         const sql = `
-            SELECT ${selectParts.join(', ')}, u.username as user_name, u.email as user_email
+            SELECT ${selectParts.join(', ')}, COALESCE(u.full_name, u.username) as user_name, u.email as user_email
             FROM writers w
             LEFT JOIN users u ON w.user_id = u.id
             ORDER BY w.created_at DESC
@@ -80,15 +80,16 @@ router.get('/contracts/publishing', authenticateToken, async (req, res) => {
 // DELETE PUBLISHING CONTRACT (Admin only) - Reset status to 'Not Generated'
 router.delete('/contracts/publishing/:id', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'operator') {
             return res.status(403).json({ message: 'Forbidden' });
         }
         const writerId = req.params.id;
         
-        // Reset contract_status to 'Not Generated' instead of deleting writer
-        await db.query(`UPDATE writers SET contract_status = 'Not Generated' WHERE id = ?`, [writerId]);
+        // Reset contract_status to 'Not Generated' and clear document path
+        await db.query(`UPDATE writers SET contract_status = 'Not Generated', contract_doc_path = NULL WHERE id = ?`, [writerId]);
         
-        res.json({ message: 'Publishing contract status reset successfully' });
+        res.json({ message: 'Publishing contract reset successfully' });
     } catch (err) {
         console.error('Error deleting publishing contract:', err);
         res.status(500).json({ message: 'Server error' });
@@ -98,15 +99,19 @@ router.delete('/contracts/publishing/:id', authenticateToken, async (req, res) =
 // Get all writers
 router.get('/creators', authenticateToken, async (req, res) => {
     try {
-        let sql = 'SELECT * FROM writers';
+        let sql = `
+            SELECT w.*, COALESCE(u.full_name, u.username) as user_name, u.email as user_email 
+            FROM writers w
+            LEFT JOIN users u ON w.user_id = u.id
+        `;
         const params = [];
 
-        if (req.user.role !== 'Admin') {
-            sql += ' WHERE user_id = ?';
+        if (req.user.role === 'User') {
+            sql += ' WHERE w.user_id = ?';
             params.push(req.user.id);
         }
         
-        sql += ' ORDER BY created_at DESC';
+        sql += ' ORDER BY w.created_at DESC';
 
         const [writers] = await db.query(sql, params);
         res.json(writers);
@@ -120,14 +125,19 @@ router.get('/creators', authenticateToken, async (req, res) => {
 router.get('/creators/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const [writer] = await db.query('SELECT * FROM writers WHERE id = ?', [id]);
+        const [writer] = await db.query(`
+            SELECT w.*, COALESCE(u.full_name, u.username) as user_name, u.email as user_email
+            FROM writers w
+            LEFT JOIN users u ON w.user_id = u.id
+            WHERE w.id = ?
+        `, [id]);
         
         if (writer.length === 0) {
             return res.status(404).json({ message: 'Writer not found' });
         }
 
         // Security check
-        if (req.user.role !== 'Admin' && writer[0].user_id !== req.user.id) {
+        if (req.user.role === 'User' && writer[0].user_id !== req.user.id) {
              return res.status(403).json({ message: 'Forbidden' });
         }
 
@@ -159,7 +169,8 @@ router.post('/creators', authenticateToken, upload.fields([{ name: 'ktp', maxCou
         const ktp_path = req.files['ktp'] ? `/uploads/ktp/${req.files['ktp'][0].filename}` : null;
         const npwp_path = req.files['npwp'] ? `/uploads/npwp/${req.files['npwp'][0].filename}` : null;
 
-        const user_id = req.user.role === 'Admin' ? (req.body.user_id || null) : req.user.id;
+        const isAdminOrOp = req.user.role === 'Admin' || req.user.role === 'Operator';
+        const user_id = isAdminOrOp ? (req.body.user_id || null) : req.user.id;
 
         const [result] = await db.query(
             `INSERT INTO writers (
@@ -196,7 +207,7 @@ router.put('/creators/:id', authenticateToken, upload.fields([{ name: 'ktp', max
         if (req.files['npwp']) updates.npwp_path = `/uploads/npwp/${req.files['npwp'][0].filename}`;
 
         // Security check
-        if (req.user.role !== 'Admin') {
+        if (req.user.role === 'User') {
              const [check] = await db.query('SELECT user_id FROM writers WHERE id = ?', [id]);
              if (check.length === 0 || check[0].user_id !== req.user.id) {
                  return res.status(403).json({ message: 'Forbidden' });
@@ -206,8 +217,18 @@ router.put('/creators/:id', authenticateToken, upload.fields([{ name: 'ktp', max
         // Construct dynamic query
         const fields = [];
         const values = [];
+        const allowedFields = [
+            'name', 'nik', 'birth_place', 'birth_date', 'address', 
+            'nationality', 'ktp_path', 'npwp_path', 'bank_name', 
+            'bank_account_name', 'bank_account_number', 'whatsapp_number'
+        ];
+        
+        if (req.user.role === 'Admin' || req.user.role === 'Operator') {
+            allowedFields.push('user_id');
+        }
+
         for (const [key, value] of Object.entries(updates)) {
-            if (['name', 'nik', 'birth_place', 'birth_date', 'address', 'nationality', 'ktp_path', 'npwp_path', 'bank_name', 'bank_account_name', 'bank_account_number', 'whatsapp_number'].includes(key)) {
+            if (allowedFields.includes(key)) {
                 fields.push(`${key} = ?`);
                 values.push(value);
             }
@@ -230,7 +251,7 @@ router.delete('/creators/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         
-        if (req.user.role !== 'Admin') {
+        if (req.user.role === 'User') {
             const [check] = await db.query('SELECT user_id FROM writers WHERE id = ?', [id]);
             if (check.length === 0 || check[0].user_id !== req.user.id) {
                 return res.status(403).json({ message: 'Forbidden' });
@@ -245,6 +266,51 @@ router.delete('/creators/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Update writer status (Admin/Operator)
+router.get('/creators/:id/status', authenticateToken, async (req, res) => {
+    // This is just to satisfy some frontends, but usually we use PUT
+    res.status(405).json({ message: 'Use PUT to update status' });
+});
+
+router.put('/creators/:id/status', authenticateToken, async (req, res) => {
+    try {
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'operator') {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+        
+        const { id } = req.params;
+        const { contract_status, contract_doc_path } = req.body;
+        
+        const allowed = ['Not Generated', 'On Review', 'Done'];
+        if (contract_status && !allowed.includes(contract_status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        const updates = [];
+        const params = [];
+
+        if (contract_status) {
+            updates.push('contract_status = ?');
+            params.push(contract_status);
+        }
+        if (contract_doc_path !== undefined) {
+            updates.push('contract_doc_path = ?');
+            params.push(contract_doc_path);
+        }
+
+        if (updates.length === 0) return res.json({ message: 'No changes' });
+
+        params.push(id);
+        await db.query(`UPDATE writers SET ${updates.join(', ')} WHERE id = ?`, params);
+        
+        res.json({ message: 'Status updated' });
+    } catch (error) {
+        console.error('Error updating writer status:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 
 // --- 2. Songs (Data Lagu) Routes ---
 
@@ -252,7 +318,7 @@ router.delete('/creators/:id', authenticateToken, async (req, res) => {
 router.get('/songs', authenticateToken, async (req, res) => {
     try {
         let sql = `
-            SELECT s.*, u.email as user_email,
+            SELECT s.*, COALESCE(u.full_name, u.username) as user_name, u.email as user_email,
             (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', w.name, 'role', w.role, 'share_percent', w.share_percent)) 
              FROM song_writers w WHERE w.song_id = s.id) as writers
             FROM songs s
@@ -261,7 +327,7 @@ router.get('/songs', authenticateToken, async (req, res) => {
         `;
         const params = [];
 
-        if (req.user.role !== 'Admin') {
+        if (req.user.role === 'User') {
             sql += ' AND s.user_id = ?';
             params.push(req.user.id);
         }
@@ -293,8 +359,9 @@ router.post('/songs', authenticateToken, upload.single('lyrics'), async (req, re
         } = req.body;
 
         const lyrics_file = req.file ? `/uploads/lyrics/${req.file.filename}` : null;
-        const user_id = req.user.id;
-        const status = req.user.role === 'Admin' ? (req.body.status || 'accepted') : 'pending';
+        const isAdminOrOp = req.user.role === 'Admin' || req.user.role === 'Operator';
+        const user_id = isAdminOrOp ? (req.body.user_id || req.user.id) : req.user.id;
+        const status = isAdminOrOp ? (req.body.status || 'accepted') : 'pending';
 
         const [result] = await connection.query(
             `INSERT INTO songs (
@@ -391,13 +458,11 @@ router.put('/songs/:id', authenticateToken, upload.single('lyrics'), async (req,
         await connection.beginTransaction();
 
         const { id } = req.params;
-        const {
-            song_id, title, other_title, authorized_rights, performer,
-            duration, genre, language, region, iswc, isrc, note
-        } = req.body;
+        const updatesData = req.body;
 
         // Security check
-        if (req.user.role !== 'Admin') {
+        const isAdminOrOp = req.user.role === 'Admin' || req.user.role === 'Operator';
+        if (!isAdminOrOp) {
             const [check] = await connection.query('SELECT user_id FROM songs WHERE id = ?', [id]);
             if (check.length === 0 || check[0].user_id !== req.user.id) {
                 await connection.rollback();
@@ -409,13 +474,17 @@ router.put('/songs/:id', authenticateToken, upload.single('lyrics'), async (req,
         let params = [];
 
         // Add fields to update
-        const fields = {
-            song_id, title, other_title, authorized_rights, performer,
-            duration, genre, language, region, iswc, isrc, note
-        };
+        const allowedFields = [
+            'song_id', 'title', 'other_title', 'authorized_rights', 'performer',
+            'duration', 'genre', 'language', 'region', 'iswc', 'isrc', 'note'
+        ];
 
-        for (const [key, value] of Object.entries(fields)) {
-            if (value !== undefined) {
+        if (isAdminOrOp) {
+            allowedFields.push('user_id');
+        }
+
+        for (const [key, value] of Object.entries(updatesData)) {
+            if (allowedFields.includes(key) && value !== undefined) {
                 updates.push(`${key} = ?`);
                 params.push(value);
             }
@@ -473,7 +542,8 @@ router.delete('/songs/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
 
         // Security check
-        if (req.user.role !== 'Admin') {
+        const isAdminOrOp = req.user.role === 'Admin' || req.user.role === 'Operator';
+        if (!isAdminOrOp) {
             const [check] = await connection.query('SELECT user_id FROM songs WHERE id = ?', [id]);
             if (check.length === 0 || check[0].user_id !== req.user.id) {
                 await connection.rollback();
