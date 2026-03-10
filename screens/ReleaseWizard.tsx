@@ -23,6 +23,7 @@ interface Props {
 const INITIAL_DATA: ReleaseData = {
   coverArt: null,
   upc: "",
+  isrc: "",
   title: "",
   language: "",
   primaryArtists: [""], 

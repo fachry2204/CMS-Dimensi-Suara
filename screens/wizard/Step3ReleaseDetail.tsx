@@ -22,6 +22,7 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseT
   const minDateStr = minDate.toISOString().split('T')[0];
   const isAdmin = userRole === 'Admin';
   const isDateInvalid = !isAdmin && data.plannedReleaseDate && data.plannedReleaseDate < minDateStr;
+  const isrcValue = (data as any).isrc || (Array.isArray((data as any).tracks) ? ((data as any).tracks[0]?.isrc || '') : '');
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -107,8 +108,15 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseT
                             </label>
                             <TextInput 
                                 label=""
-                                value={data.isrc}
-                                onChange={(e) => updateData({ isrc: e.target.value })}
+                                value={isrcValue}
+                                onChange={(e) => {
+                                  const next = e.target.value;
+                                  updateData((prev) => {
+                                    const prevTracks: any[] = Array.isArray((prev as any).tracks) ? (prev as any).tracks : [];
+                                    const nextTracks = prevTracks.length > 0 ? prevTracks.map((t, idx) => idx === 0 ? ({ ...t, isrc: next }) : t) : prevTracks;
+                                    return { isrc: next, tracks: nextTracks } as any;
+                                  });
+                                }}
                                 placeholder="Masukkan kode ISRC sebelumnya"
                                 className="w-full px-4 py-1.5 text-xs border border-gray-300 rounded bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all"
                             />

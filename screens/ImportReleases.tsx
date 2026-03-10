@@ -22,11 +22,58 @@ export const ImportReleases: React.FC = () => {
       return `${yyyy}-${mm}-${dd}`;
     }
     if (typeof v === 'number' && Number.isFinite(v)) {
-      const d = new Date(Math.round((v - 25569) * 86400 * 1000));
-      if (!isNaN(d.getTime())) return toISODate(d);
+      const dc: any = (XLSX as any).SSF?.parse_date_code ? (XLSX as any).SSF.parse_date_code(v) : null;
+      if (dc && dc.y && dc.m && dc.d) {
+        const yyyy = String(dc.y).padStart(4, '0');
+        const mm = String(dc.m).padStart(2, '0');
+        const dd = String(dc.d).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
     }
     const s = String(v).trim();
+    const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdy) {
+      const a = Number(mdy[1]);
+      const b = Number(mdy[2]);
+      const y = Number(mdy[3]);
+      let month = a;
+      let day = b;
+      if (a > 12 && b <= 12) {
+        day = a;
+        month = b;
+      } else if (b > 12 && a <= 12) {
+        month = a;
+        day = b;
+      }
+      const yyyy = String(y).padStart(4, '0');
+      const mm = String(month).padStart(2, '0');
+      const dd = String(day).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    const ymd = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) {
+      const yyyy = String(ymd[1]).padStart(4, '0');
+      const mm = String(ymd[2]).padStart(2, '0');
+      const dd = String(ymd[3]).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
     return s;
+  };
+
+  const normalizeTerritory = (value: any): string => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const lower = raw.toLowerCase();
+    if (lower === 'indonesian' || lower === 'bahasa indonesia' || lower === 'bahasa' || lower === 'indo' || lower === 'id') {
+      return 'Indonesia';
+    }
+    if (lower === 'usa' || lower === 'us' || lower === 'united states of america') {
+      return 'United States';
+    }
+    if (lower === 'uk' || lower === 'england' || lower === 'great britain') {
+      return 'United Kingdom';
+    }
+    return raw;
   };
 
   const parseExcelFile = async (file: File) => {
@@ -39,7 +86,7 @@ export const ImportReleases: React.FC = () => {
       Title: String(r.Title || '').trim(),
       Version: String(r.Version || 'Original').trim(),
       ReleaseType: String(r.ReleaseType || 'SINGLE').trim(),
-      Language: String(r.Language || '').trim(),
+      Language: normalizeTerritory(r.Language),
       PrimaryArtists: String(r.PrimaryArtists || '').trim(),
       RecordLabel: String(r.RecordLabel || '').trim(),
       Genre: String(r.Genre || '').trim(),
@@ -131,6 +178,9 @@ export const ImportReleases: React.FC = () => {
             .map((id: string) => optionMap[id])
             .filter(Boolean);
 
+          const distHistRaw = String(row.DistributionHistory || '').trim().toLowerCase();
+          const hasHistory = ['yes', 'y', 'true', '1'].includes(distHistRaw);
+
           const ownerEmail = String(row.OwnerEmail || '').trim().toLowerCase();
           const owner = ownerEmail ? usersByEmail.get(ownerEmail) : null;
           const payload: any = {
@@ -143,9 +193,10 @@ export const ImportReleases: React.FC = () => {
             subGenre: String(row.SubGenre || '').trim() || null,
             pLine: String(row.PLine || '').trim() || null,
             cLine: String(row.CLine || '').trim() || null,
-            language: String(row.Language || '').trim() || null,
-            plannedReleaseDate: String(row.PlannedReleaseDate || '').trim() || null,
-            originalReleaseDate: String(row.OriginalReleaseDate || '').trim() || null,
+            language: normalizeTerritory(row.Language) || null,
+            plannedReleaseDate: toISODate(row.PlannedReleaseDate) || null,
+            originalReleaseDate: hasHistory ? (toISODate(row.OriginalReleaseDate) || null) : null,
+            isNewRelease: !hasHistory,
             distributionTargets,
             aggregator: String(row.Aggregator || '').trim() || null,
             upc: String(row.UPC || '').trim() || null,
@@ -233,7 +284,7 @@ export const ImportReleases: React.FC = () => {
                   Title: 'Contoh Lagu Demo',
                   Version: 'Original',
                   ReleaseType: 'SINGLE',
-                  Language: 'Indonesian',
+                  Language: 'Indonesia',
                   PrimaryArtists: 'Artist Satu, Artist Dua',
                   RecordLabel: 'Dimensi Suara Records',
                   Genre: 'Pop',

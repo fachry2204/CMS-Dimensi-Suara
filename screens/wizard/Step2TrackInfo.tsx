@@ -119,19 +119,26 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       }
 
       // 2. Sync Artists (Primary Artists -> MainArtist) with mixed types support
-      const normalizedPrimaryNames = (data.primaryArtists || [])
-        .map((p: any) => (typeof p === 'string' ? p : p?.name || ''))
-        .map((s: string) => String(s).trim())
-        .filter((s: string) => s.length > 0);
-      const expectedArtists = normalizedPrimaryNames.map((name: string) => ({ name, role: "MainArtist" }));
+      const normalizedPrimary = (data.primaryArtists || [])
+        .map((p: any) => {
+          if (typeof p === 'string') return { name: p, spotifyLink: '' };
+          return { name: p?.name || '', spotifyLink: p?.spotifyLink || '' };
+        })
+        .map((p: any) => ({ name: String(p.name || '').trim(), spotifyLink: String(p.spotifyLink || '').trim() }))
+        .filter((p: any) => p.name.length > 0);
+      const expectedArtists = normalizedPrimary.map((p: any) => ({
+        name: p.name,
+        role: "MainArtist",
+        ...(p.spotifyLink ? { spotifyLink: p.spotifyLink } : {})
+      }));
       
       const artistsToUse = expectedArtists.length > 0 ? expectedArtists : [{ name: "", role: "MainArtist" }];
 
       // Compare current vs expected
-      const currentNames = (track.artists || []).map(a => a.name).join('|');
-      const expectedNames = artistsToUse.map(a => a.name).join('|');
+      const currentKey = (track.artists || []).map(a => `${a.name}::${(a as any).spotifyLink || ''}`).join('|');
+      const expectedKey = artistsToUse.map(a => `${a.name}::${(a as any).spotifyLink || ''}`).join('|');
 
-      if (currentNames !== expectedNames) {
+      if (currentKey !== expectedKey) {
           updates.artists = artistsToUse;
           hasUpdates = true;
       }
@@ -141,6 +148,43 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       }
     }
   }, [data.title, data.primaryArtists, releaseType]); // Only sync when Step 1 data changes
+
+  // Fill missing spotifyLink in track artists from Step 1 primaryArtists (all release types)
+  useEffect(() => {
+    const pairs = (data.primaryArtists || [])
+      .map((p: any) => {
+        if (typeof p === 'string') return null;
+        const name = String(p?.name || '').trim();
+        const link = String(p?.spotifyLink || '').trim();
+        if (!name || !link) return null;
+        return { name: name.toLowerCase(), link };
+      })
+      .filter(Boolean) as { name: string; link: string }[];
+    if (pairs.length === 0) return;
+    const linkByName = new Map<string, string>();
+    pairs.forEach(p => linkByName.set(p.name, p.link));
+
+    updateData(prev => {
+      let changed = false;
+      const nextTracks = (prev.tracks || []).map(t => {
+        if (!Array.isArray(t.artists) || t.artists.length === 0) return t;
+        let artistsChanged = false;
+        const nextArtists = t.artists.map(a => {
+          const nm = String(a?.name || '').trim();
+          const key = nm.toLowerCase();
+          const link = linkByName.get(key);
+          if (!link) return a;
+          if (a.spotifyLink && String(a.spotifyLink).trim().length > 0) return a;
+          artistsChanged = true;
+          return { ...a, spotifyLink: link };
+        });
+        if (!artistsChanged) return t;
+        changed = true;
+        return { ...t, artists: nextArtists };
+      });
+      return changed ? { tracks: nextTracks } : {};
+    });
+  }, [data.primaryArtists]);
 
   // --- Trimmer Helpers ---
   const handleTrimmerPlayToggle = () => {
