@@ -10,6 +10,7 @@ export const ImportReleases: React.FC = () => {
   const [selected, setSelected] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{inserted:number; errors:string[]}|null>(null);
+  const selectedCount = Object.values(selected).filter(Boolean).length;
 
   const handleUpload = async (file: File) => {
     setIsLoading(true);
@@ -114,6 +115,9 @@ export const ImportReleases: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
           <div className="p-3 border-b border-slate-200 flex items-center justify-between">
             <div className="text-sm font-semibold text-slate-700">Preview Data Import</div>
+            <div className="text-xs text-slate-600">
+              Total: {rows.length} • Dipilih: {selectedCount}
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => toggleAll(true)}

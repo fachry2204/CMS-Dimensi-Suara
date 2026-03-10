@@ -102,6 +102,8 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/releases', releaseRoutes);
+// Hosting alias for nested import endpoints
+app.use('/api/import', releaseRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/publishing', publishingRoutes);
 app.use('/api/settings', settingsRoutes);

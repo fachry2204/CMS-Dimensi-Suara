@@ -681,7 +681,9 @@ export const api = {
         const tryEndpoints = [
             '/releases/import/preview',
             '/releases/import-preview',
-            '/releases/excel/preview'
+            '/releases/excel/preview',
+            '/import/preview',
+            '/import-preview'
         ];
         let res = await fetch(`${API_BASE_URL}${tryEndpoints[0]}`, {
             method: 'POST',
@@ -703,7 +705,9 @@ export const api = {
         const tryEndpoints = [
             '/releases/import/rows',
             '/releases/import-rows',
-            '/releases/excel/rows'
+            '/releases/excel/rows',
+            '/import/rows',
+            '/import-rows'
         ];
         let res = await fetch(`${API_BASE_URL}${tryEndpoints[0]}`, {
             method: 'POST',
