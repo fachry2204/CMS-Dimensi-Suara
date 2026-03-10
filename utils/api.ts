@@ -51,12 +51,11 @@ export const api = {
         });
         return parseResponse(res);
     },
-    impersonateRevert: async (token) => {
+    impersonateRevert: async (_token) => {
         // Try multiple routes/methods for maximum hosting compatibility (no logout fallback here)
         const tryFetch = async (method: 'POST' | 'GET', path: string) => {
             const res = await fetch(`${API_BASE_URL}${path}`, {
                 method,
-                headers: { 'Authorization': `Bearer ${token}` },
                 credentials: 'include'
             });
             return parseResponse(res);
@@ -172,12 +171,11 @@ export const api = {
         if (!res.ok) throw new Error('Logout failed');
         return res.json();
     },
-    impersonateUser: async (token, userId) => {
+    impersonateUser: async (_token, userId) => {
         // Prefer alias under /users (more likely whitelisted by proxy)
         try {
             const resUsers = await fetch(`${API_BASE_URL}/users/${userId}/impersonate`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
                 credentials: 'include'
             });
             return parseResponse(resUsers);
@@ -185,7 +183,6 @@ export const api = {
             // Fallback to /auth
             const resAuth = await fetch(`${API_BASE_URL}/auth/impersonate/${userId}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
                 credentials: 'include'
             });
             return parseResponse(resAuth);
