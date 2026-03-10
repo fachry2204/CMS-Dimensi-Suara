@@ -1042,15 +1042,53 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Logout Button */}
-                <button 
-                    onClick={handleLogoutClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium text-xs transition-colors ml-2"
-                    title="Sign Out"
-                >
-                    <LogOut size={16} />
-                    <span className="hidden sm:inline">Logout</span>
-                </button>
+                {/* Logout / Return to Admin */}
+                {(() => {
+                    const impersonatedBy = localStorage.getItem('cms_impersonated_by');
+                    const isImpersonating = !!impersonatedBy && userRole !== 'Admin';
+                    if (isImpersonating) {
+                        const handleReturnAdmin = async () => {
+                            try {
+                                const resp = await api.impersonateRevert(token);
+                                const { token: newToken, user } = resp || {};
+                                if (newToken && user) {
+                                    localStorage.setItem('cms_auth', 'true');
+                                    localStorage.setItem('cms_user', user.username || '');
+                                    localStorage.setItem('cms_token', newToken);
+                                    localStorage.setItem('cms_role', user.role || 'Admin');
+                                    if (user.status) localStorage.setItem('cms_status', user.status);
+                                    localStorage.removeItem('cms_impersonated_by');
+                                    navigate('/dashboard');
+                                    setTimeout(() => { try { window.location.reload(); } catch {} }, 150);
+                                }
+                            } catch (e) {
+                                console.warn('Failed to revert impersonation:', (e as any)?.message || e);
+                                // Fallback to logout if revert fails
+                                handleLogoutClick();
+                            }
+                        };
+                        return (
+                            <button 
+                                onClick={handleReturnAdmin}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-xl font-medium text-xs transition-colors ml-2"
+                                title="Return to Admin"
+                            >
+                                <LogOut size={16} />
+                                <span className="hidden sm:inline">Login To Admin</span>
+                            </button>
+                        );
+                    }
+                    return (
+                        <button 
+                            onClick={handleLogoutClick}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium text-xs transition-colors ml-2"
+                            title="Sign Out"
+                        >
+                            <LogOut size={16} />
+                            <span className="hidden sm:inline">Logout</span>
+                        </button>
+                    );
+                })()}
             </div>
         </header>
 

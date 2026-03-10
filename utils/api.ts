@@ -51,6 +51,24 @@ export const api = {
         });
         return parseResponse(res);
     },
+    impersonateRevert: async (token) => {
+        // Prefer alias under /users
+        try {
+            const resUsers = await fetch(`${API_BASE_URL}/users/impersonate/revert`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include'
+            });
+            return parseResponse(resUsers);
+        } catch (e: any) {
+            const resAuth = await fetch(`${API_BASE_URL}/auth/impersonate/revert`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include'
+            });
+            return parseResponse(resAuth);
+        }
+    },
     post: async (endpoint: string, data: any, config?: any) => {
         const token = config?.headers?.Authorization?.replace('Bearer ', '');
         const isFormData = data instanceof FormData;

@@ -96,7 +96,13 @@ export const UserDetailPage: React.FC = () => {
       localStorage.setItem('cms_token', newToken);
       localStorage.setItem('cms_role', u.role || 'User');
       if (u.status) localStorage.setItem('cms_status', u.status);
-      navigate('/my-releases');
+      if (currentUser?.id) {
+        localStorage.setItem('cms_impersonated_by', String(currentUser.id));
+      }
+      navigate('/dashboard');
+      setTimeout(() => {
+        try { window.location.reload(); } catch {}
+      }, 150);
     } catch (err: any) {
       setAlertState({
         isOpen: true,

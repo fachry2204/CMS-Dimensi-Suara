@@ -281,6 +281,116 @@ router.post('/:id/impersonate', authenticateToken, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// Compatibility: support GET method for environments that block POST on custom paths
+router.get('/:id/impersonate', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const targetUserId = req.params.id;
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [targetUserId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const target = rows[0];
+        const payload = { id: target.id, role: target.role, impersonated_by: req.user.id };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: 60 * 60 * 1000
+        });
+        res.json({
+            token,
+            user: {
+                id: target.id,
+                username: target.username,
+                role: target.role,
+                status: target.status,
+                profile_picture: target.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Revert impersonation alias
+router.post('/impersonate/revert', authenticateToken, async (req, res) => {
+    try {
+        const adminId = req.user?.impersonated_by;
+        if (!adminId) {
+            return res.status(400).json({ error: 'Not currently impersonating' });
+        }
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [adminId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Admin user not found' });
+        }
+        const admin = rows[0];
+        const payload = { id: admin.id, role: admin.role };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: 60 * 60 * 1000
+        });
+        res.json({
+            token,
+            user: {
+                id: admin.id,
+                username: admin.username,
+                role: admin.role,
+                status: admin.status,
+                profile_picture: admin.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/impersonate/revert', authenticateToken, async (req, res) => {
+    try {
+        const adminId = req.user?.impersonated_by;
+        if (!adminId) {
+            return res.status(400).json({ error: 'Not currently impersonating' });
+        }
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [adminId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Admin user not found' });
+        }
+        const admin = rows[0];
+        const payload = { id: admin.id, role: admin.role };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: 60 * 60 * 1000
+        });
+        res.json({
+            token,
+            user: {
+                id: admin.id,
+                username: admin.username,
+                role: admin.role,
+                status: admin.status,
+                profile_picture: admin.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // CREATE USER (Admin/Operator)
 router.post('/', authenticateToken, async (req, res) => {
     try {

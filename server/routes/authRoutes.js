@@ -221,6 +221,41 @@ router.post('/logout', (req, res) => {
     res.json({ message: 'Logged out' });
 });
 
+// REVERT IMPERSONATION (restore Admin session)
+router.post('/impersonate/revert', authenticateToken, async (req, res) => {
+    try {
+        const adminId = req.user?.impersonated_by;
+        if (!adminId) {
+            return res.status(400).json({ error: 'Not currently impersonating' });
+        }
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [adminId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Admin user not found' });
+        }
+        const admin = rows[0];
+        const payload = { id: admin.id, role: admin.role };
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: 60 * 60 * 1000
+        });
+        res.json({
+            token,
+            user: {
+                id: admin.id,
+                username: admin.username,
+                role: admin.role,
+                status: admin.status,
+                profile_picture: admin.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // IMPERSONATE USER (Admin only)
 router.post('/impersonate/:id', authenticateToken, async (req, res) => {
     try {
