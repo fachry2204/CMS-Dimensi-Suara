@@ -678,14 +678,19 @@ export const api = {
     releasesImportPreview: async (token: string, file: File) => {
         const fd = new FormData();
         fd.append('file', file);
-        let res = await fetch(`${API_BASE_URL}/releases/import/preview`, {
+        const tryEndpoints = [
+            '/releases/import/preview',
+            '/releases/import-preview',
+            '/releases/excel/preview'
+        ];
+        let res = await fetch(`${API_BASE_URL}${tryEndpoints[0]}`, {
             method: 'POST',
             headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             body: fd,
             credentials: 'include'
         });
-        if (!res.ok) {
-            res = await fetch(`${API_BASE_URL}/releases/import-preview`, {
+        for (let i = 1; i < tryEndpoints.length && !res.ok; i++) {
+            res = await fetch(`${API_BASE_URL}${tryEndpoints[i]}`, {
                 method: 'POST',
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {},
                 body: fd,
@@ -695,7 +700,12 @@ export const api = {
         return parseResponse(res);
     },
     releasesImportRows: async (token: string, rows: any[]) => {
-        let res = await fetch(`${API_BASE_URL}/releases/import/rows`, {
+        const tryEndpoints = [
+            '/releases/import/rows',
+            '/releases/import-rows',
+            '/releases/excel/rows'
+        ];
+        let res = await fetch(`${API_BASE_URL}${tryEndpoints[0]}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -704,8 +714,8 @@ export const api = {
             body: JSON.stringify({ rows }),
             credentials: 'include'
         });
-        if (!res.ok) {
-            res = await fetch(`${API_BASE_URL}/releases/import-rows`, {
+        for (let i = 1; i < tryEndpoints.length && !res.ok; i++) {
+            res = await fetch(`${API_BASE_URL}${tryEndpoints[i]}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

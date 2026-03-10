@@ -1495,6 +1495,7 @@ const importPreviewHandler = async (req, res) => {
 };
 router.post('/import/preview', authenticateToken, upload.single('file'), importPreviewHandler);
 router.post('/import-preview', authenticateToken, upload.single('file'), importPreviewHandler);
+router.post('/excel/preview', authenticateToken, upload.single('file'), importPreviewHandler);
 
 // Import selected rows (JSON payload)
 const importRowsHandler = async (req, res) => {
@@ -1597,4 +1598,5 @@ const importRowsHandler = async (req, res) => {
 };
 router.post('/import/rows', authenticateToken, importRowsHandler);
 router.post('/import-rows', authenticateToken, importRowsHandler);
+router.post('/excel/rows', authenticateToken, importRowsHandler);
 export default router;
