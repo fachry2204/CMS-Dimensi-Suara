@@ -16,7 +16,9 @@ export const authenticateToken = (req, res, next) => {
 
         // Sliding session: refresh by re-issuing token with new 1h exp if using cookie
         if (cookieToken) {
-            const newToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+            const payload = { id: user.id, role: user.role };
+            if (user.impersonated_by) payload.impersonated_by = user.impersonated_by;
+            const newToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
             const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
             res.cookie('auth_token', newToken, {
                 httpOnly: true,

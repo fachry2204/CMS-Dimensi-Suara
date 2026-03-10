@@ -77,6 +77,27 @@ export const MyProfile: React.FC<Props> = ({ currentUserData }) => {
             </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-4 mb-8">
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody className="[&>tr>td]:py-2 [&>tr>td]:px-3 [&>tr:nth-child(even)]:bg-slate-50">
+                    <tr>
+                      <td className="text-slate-600">Bank</td>
+                      <td className="font-normal text-slate-700">{(user as any).bank_name || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td className="text-slate-600">No. Rekening</td>
+                      <td className="font-normal text-slate-700">{(user as any).bank_account_number || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td className="text-slate-600">Nama Rekening</td>
+                      <td className="font-normal text-slate-700">{(user as any).bank_account_name || '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div className="space-y-4">
             <h4 className="text-sm font-medium text-slate-800">Documents</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
