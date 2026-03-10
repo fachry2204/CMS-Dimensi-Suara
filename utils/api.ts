@@ -675,6 +675,29 @@ export const api = {
         });
         return parseResponse(res);
     },
+    releasesImportPreview: async (token: string, file: File) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`${API_BASE_URL}/releases/import/preview`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: fd,
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    releasesImportRows: async (token: string, rows: any[]) => {
+        const res = await fetch(`${API_BASE_URL}/releases/import/rows`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ rows }),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     // User Profile
     getProfile: async (token) => {

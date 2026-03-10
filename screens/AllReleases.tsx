@@ -30,6 +30,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   const { getButtonColor } = useBranding();
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddMenu, setShowAddMenu] = useState(false);
   
   // Sorting State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
@@ -320,15 +321,45 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                     />
                     <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
                 </div>
-                <button
-                    onClick={() => navigate('/new-release')}
-                    className="flex items-center gap-2 px-3 py-1.5 text-white rounded hover:opacity-90 transition-colors text-[14px] font-bold shadow-sm"
-                    style={{ backgroundColor: getButtonColor() }}
-                    title="Create New Release"
-                >
-                    <Plus size={14} />
-                    New Release
-                </button>
+                {userRole === 'Admin' || userRole === 'Operator' ? (
+                  <div className="relative">
+                    <button
+                        onClick={() => setShowAddMenu(prev => !prev)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-white rounded hover:opacity-90 transition-colors text-[14px] font-bold shadow-sm"
+                        style={{ backgroundColor: getButtonColor() }}
+                        title="Add Release"
+                    >
+                        <Plus size={14} />
+                        Add Release
+                    </button>
+                    {showAddMenu && (
+                      <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                        <button
+                          onClick={() => { setShowAddMenu(false); navigate('/new-release'); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                        >
+                          New Release
+                        </button>
+                        <button
+                          onClick={() => { setShowAddMenu(false); navigate('/releases/import'); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                        >
+                          Import Release
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                      onClick={() => navigate('/new-release')}
+                      className="flex items-center gap-2 px-3 py-1.5 text-white rounded hover:opacity-90 transition-colors text-[14px] font-bold shadow-sm"
+                      style={{ backgroundColor: getButtonColor() }}
+                      title="New Release"
+                  >
+                      <Plus size={14} />
+                      New Release
+                  </button>
+                )}
             </div>
         </div>
 

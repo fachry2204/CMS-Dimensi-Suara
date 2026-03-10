@@ -1297,11 +1297,16 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 router.get('/import/template', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
             return res.status(403).json({ error: 'Access denied' });
         }
         const headers = [
-            'Title','Version','ReleaseType','Language','PrimaryArtists','Label','Genre','SubGenre','PLine','CLine','PlannedReleaseDate','OriginalReleaseDate','DistributionTargets','OwnerUsername','Aggregator'
+            'Title','Version','ReleaseType','Language','PrimaryArtists',
+            'RecordLabel',
+            'Genre','SubGenre','PLine','CLine',
+            'PlannedReleaseDate','OriginalReleaseDate',
+            'DistributionTargets','DistributionHistory',
+            'OwnerEmail','Aggregator','UPC','ISRC','Author','Komposer'
         ];
         const sample = [{
             Title: 'Contoh Lagu Demo',
@@ -1317,8 +1322,14 @@ router.get('/import/template', authenticateToken, async (req, res) => {
             PlannedReleaseDate: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
             OriginalReleaseDate: '',
             DistributionTargets: 'SOCIAL,YOUTUBE_MUSIC,ALL_DSP',
-            OwnerUsername: 'demo_owner',
-            Aggregator: 'SoundOn'
+            RecordLabel: 'Dimensi Suara Records',
+            DistributionHistory: 'Yes',
+            OwnerEmail: 'owner@example.com',
+            Aggregator: 'SoundOn',
+            UPC: '123456789012',
+            ISRC: 'USABC1234567',
+            Author: 'Lyric Writer Name',
+            Komposer: 'Composer Name'
         }];
         const wb = xlsx.utils.book_new();
         const ws = xlsx.utils.json_to_sheet(sample, { header: headers });
@@ -1335,7 +1346,7 @@ router.get('/import/template', authenticateToken, async (req, res) => {
 
 router.post('/import', authenticateToken, upload.single('file'), async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
             return res.status(403).json({ error: 'Access denied' });
         }
         if (!req.file) {
@@ -1359,7 +1370,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
                 const version = String(row.Version || 'Original').trim();
                 const release_type = (String(row.ReleaseType || 'SINGLE').toUpperCase() === 'ALBUM') ? 'ALBUM' : 'SINGLE';
                 const primary_artists = JSON.stringify(String(row.PrimaryArtists || '').split(',').map(s=>s.trim()).filter(Boolean));
-                const label = row.Label || null;
+                const record_label = row.RecordLabel || null;
                 const p_line = row.PLine || null;
                 const c_line = row.CLine || null;
                 const genre = row.Genre || null;
@@ -1367,6 +1378,10 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
                 const language = row.Language || null;
                 const planned_release_date = row.PlannedReleaseDate || null;
                 const original_release_date = row.OriginalReleaseDate || null;
+                const upc = row.UPC || null;
+                const isrcSingle = row.ISRC || null;
+                const author = row.Author || null;
+                const komposer = row.Komposer || null;
                 const distribution_targets = (() => {
                     const ids = String(row.DistributionTargets || '').split(',').map(s=>s.trim()).filter(Boolean);
                     if (ids.length === 0) return null;
@@ -1377,16 +1392,22 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
                     };
                     return JSON.stringify(ids.map(id => optionMap[id]).filter(Boolean));
                 })();
+                const distribution_history = (() => {
+                    const raw = String(row.DistributionHistory || '').trim().toLowerCase();
+                    if (!raw) return null;
+                    const yes = ['yes','y','true','1'].includes(raw);
+                    return JSON.stringify(yes);
+                })();
                 const aggregator = row.Aggregator || null;
                 let user_id = req.user.id;
-                if (row.OwnerUsername) {
-                    const [users] = await db.query('SELECT id FROM users WHERE username = ?', [row.OwnerUsername]);
+                if (row.OwnerEmail) {
+                    const [users] = await db.query('SELECT id FROM users WHERE email = ?', [row.OwnerEmail]);
                     if (users.length > 0) user_id = users[0].id;
                 }
                 const cols = ['user_id','title','version','release_type','primary_artists'];
                 const vals = [user_id, title, version, release_type, primary_artists];
                 if (releaseColNames.includes('cover_art')) { cols.push('cover_art'); vals.push(null); }
-                if (releaseColNames.includes('label')) { cols.push('label'); vals.push(label); }
+                if (releaseColNames.includes('record_label')) { cols.push('record_label'); vals.push(record_label); }
                 if (releaseColNames.includes('p_line')) { cols.push('p_line'); vals.push(p_line); }
                 if (releaseColNames.includes('c_line')) { cols.push('c_line'); vals.push(c_line); }
                 if (releaseColNames.includes('genre')) { cols.push('genre'); vals.push(genre); }
@@ -1396,10 +1417,31 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
                 if (releaseColNames.includes('original_release_date')) { cols.push('original_release_date'); vals.push(original_release_date || null); }
                 if (releaseColNames.includes('distribution_targets')) { cols.push('distribution_targets'); vals.push(distribution_targets || JSON.stringify([])); }
                 if (releaseColNames.includes('aggregator')) { cols.push('aggregator'); vals.push(aggregator); }
+                if (releaseColNames.includes('upc')) { cols.push('upc'); vals.push(upc); }
+                if (releaseColNames.includes('distribution_history')) { cols.push('distribution_history'); vals.push(distribution_history); }
                 cols.push('submission_date'); vals.push(new Date());
                 cols.push('status'); vals.push('Pending');
                 const placeholders = `(${cols.map(()=>'?').join(', ')})`;
-                await db.query(`INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`, vals);
+                const [insertRes] = await db.query(`INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`, vals);
+                const newReleaseId = insertRes.insertId;
+
+                // If ISRC provided, create a placeholder track
+                if (isrcSingle) {
+                    try {
+                        const [trackCols] = await db.query('SHOW COLUMNS FROM tracks');
+                        const trackColNames = trackCols.map(c => c.Field);
+                        const tCols = ['release_id','track_number','title','version','primary_artists','isrc'];
+                        const tVals = [newReleaseId, 1, title, version, primary_artists, isrcSingle];
+                        if (trackColNames.includes('composer')) { tCols.push('composer'); tVals.push(komposer || null); }
+                        if (trackColNames.includes('lyricist')) { 
+                            tCols.push('lyricist'); 
+                            tVals.push(author ? JSON.stringify([author]) : null); 
+                        }
+                        await db.query(`INSERT INTO tracks (${tCols.join(', ')}) VALUES (${tCols.map(()=>'?').join(', ')})`, tVals);
+                    } catch (e) {
+                        errors.push(`Track create error for "${title}": ${e.message}`);
+                    }
+                }
                 inserted += 1;
             } catch (e) {
                 errors.push(e.message || 'Row insert error');
@@ -1411,4 +1453,144 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
     }
 });
 
+// Preview import: parse Excel and return rows without inserting
+router.post('/import/preview', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        const wb = xlsx.readFile(req.file.path);
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rows = xlsx.utils.sheet_to_json(ws, { defval: '' });
+        const normalized = rows.map((row) => ({
+            Title: String(row.Title || '').trim(),
+            Version: String(row.Version || 'Original').trim(),
+            ReleaseType: String(row.ReleaseType || 'SINGLE').trim(),
+            Language: String(row.Language || '').trim(),
+            PrimaryArtists: String(row.PrimaryArtists || '').trim(),
+            RecordLabel: row.RecordLabel || '',
+            Genre: row.Genre || '',
+            SubGenre: row.SubGenre || '',
+            PLine: row.PLine || '',
+            CLine: row.CLine || '',
+            PlannedReleaseDate: row.PlannedReleaseDate || '',
+            OriginalReleaseDate: row.OriginalReleaseDate || '',
+            DistributionTargets: row.DistributionTargets || '',
+            DistributionHistory: row.DistributionHistory || '',
+            OwnerEmail: row.OwnerEmail || '',
+            Aggregator: row.Aggregator || '',
+            UPC: row.UPC || '',
+            ISRC: row.ISRC || '',
+            Author: row.Author || '',
+            Komposer: row.Komposer || ''
+        }));
+        res.json({ rows: normalized });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Import selected rows (JSON payload)
+router.post('/import/rows', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+        if (rows.length === 0) {
+            return res.status(400).json({ error: 'No rows provided' });
+        }
+        const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
+        const releaseColNames = releaseCols.map(c => c.Field);
+        let inserted = 0;
+        const errors = [];
+        for (const row of rows) {
+            try {
+                const title = String(row.Title || '').trim();
+                if (!title) { errors.push('Missing Title'); continue; }
+                const version = String(row.Version || 'Original').trim();
+                const release_type = (String(row.ReleaseType || 'SINGLE').toUpperCase() === 'ALBUM') ? 'ALBUM' : 'SINGLE';
+                const primary_artists = JSON.stringify(String(row.PrimaryArtists || '').split(',').map(s=>s.trim()).filter(Boolean));
+                const record_label = row.RecordLabel || null;
+                const p_line = row.PLine || null;
+                const c_line = row.CLine || null;
+                const genre = row.Genre || null;
+                const sub_genre = row.SubGenre || null;
+                const language = row.Language || null;
+                const planned_release_date = row.PlannedReleaseDate || null;
+                const original_release_date = row.OriginalReleaseDate || null;
+                const upc = row.UPC || null;
+                const isrcSingle = row.ISRC || null;
+                const author = row.Author || null;
+                const komposer = row.Komposer || null;
+                const distribution_targets = (() => {
+                    const ids = String(row.DistributionTargets || '').split(',').map(s=>s.trim()).filter(Boolean);
+                    if (ids.length === 0) return null;
+                    const optionMap = {
+                        'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: '/assets/platforms/social.svg' },
+                        'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: '/assets/platforms/youtube-music.svg' },
+                        'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: '/assets/platforms/alldsp.svg' },
+                    };
+                    return JSON.stringify(ids.map(id => optionMap[id]).filter(Boolean));
+                })();
+                const distribution_history = (() => {
+                    const raw = String(row.DistributionHistory || '').trim().toLowerCase();
+                    if (!raw) return null;
+                    const yes = ['yes','y','true','1'].includes(raw);
+                    return JSON.stringify(yes);
+                })();
+                const aggregator = row.Aggregator || null;
+                let user_id = req.user.id;
+                if (row.OwnerEmail) {
+                    const [users] = await db.query('SELECT id FROM users WHERE email = ?', [row.OwnerEmail]);
+                    if (users.length > 0) user_id = users[0].id;
+                }
+                const cols = ['user_id','title','version','release_type','primary_artists'];
+                const vals = [user_id, title, version, release_type, primary_artists];
+                if (releaseColNames.includes('cover_art')) { cols.push('cover_art'); vals.push(null); }
+                if (releaseColNames.includes('record_label')) { cols.push('record_label'); vals.push(record_label); }
+                if (releaseColNames.includes('p_line')) { cols.push('p_line'); vals.push(p_line); }
+                if (releaseColNames.includes('c_line')) { cols.push('c_line'); vals.push(c_line); }
+                if (releaseColNames.includes('genre')) { cols.push('genre'); vals.push(genre); }
+                if (releaseColNames.includes('sub_genre')) { cols.push('sub_genre'); vals.push(sub_genre); }
+                if (releaseColNames.includes('language')) { cols.push('language'); vals.push(language); }
+                if (releaseColNames.includes('planned_release_date')) { cols.push('planned_release_date'); vals.push(planned_release_date || null); }
+                if (releaseColNames.includes('original_release_date')) { cols.push('original_release_date'); vals.push(original_release_date || null); }
+                if (releaseColNames.includes('distribution_targets')) { cols.push('distribution_targets'); vals.push(distribution_targets || JSON.stringify([])); }
+                if (releaseColNames.includes('aggregator')) { cols.push('aggregator'); vals.push(aggregator); }
+                if (releaseColNames.includes('upc')) { cols.push('upc'); vals.push(upc); }
+                if (releaseColNames.includes('distribution_history')) { cols.push('distribution_history'); vals.push(distribution_history); }
+                cols.push('submission_date'); vals.push(new Date());
+                cols.push('status'); vals.push('Pending');
+                const placeholders = `(${cols.map(()=>'?').join(', ')})`;
+                const [insertRes] = await db.query(`INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`, vals);
+                const newReleaseId = insertRes.insertId;
+                // ISRC track placeholder
+                if (isrcSingle) {
+                    try {
+                        const [trackCols] = await db.query('SHOW COLUMNS FROM tracks');
+                        const trackColNames = trackCols.map(c => c.Field);
+                        const tCols = ['release_id','track_number','title','version','primary_artists','isrc'];
+                        const tVals = [newReleaseId, 1, title, version, primary_artists, isrcSingle];
+                        if (trackColNames.includes('composer')) { tCols.push('composer'); tVals.push(komposer || null); }
+                        if (trackColNames.includes('lyricist')) { tCols.push('lyricist'); tVals.push(author ? JSON.stringify([author]) : null); }
+                        await db.query(`INSERT INTO tracks (${tCols.join(', ')}) VALUES (${tCols.map(()=>'?').join(', ')})`, tVals);
+                    } catch (e) {
+                        errors.push(`Track create error for "${title}": ${e.message}`);
+                    }
+                }
+                inserted += 1;
+            } catch (e) {
+                errors.push(e.message || 'Row insert error');
+            }
+        }
+        res.json({ inserted, errors });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 export default router;

@@ -17,7 +17,7 @@ import {
     Plus
 } from 'lucide-react';
 import { assetUrl } from '../utils/url';
-import { api } from '../utils/api';
+import { api, API_BASE_URL } from '../utils/api';
 
 interface Props {
   releases: ReleaseData[];
@@ -76,23 +76,6 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                 <h1 className="text-lg text-slate-800 tracking-tight font-bold">Dashboard</h1>
                 <p className="text-slate-500 mt-0.5 text-[12px]">Welcome back, here is your catalog overview.</p>
            </div>
-           <button 
-                onClick={() => navigate('/new-release')}
-                className="flex items-center gap-2 px-4 py-2 text-white rounded-lg shadow-sm hover:opacity-90 transition-all text-xs font-bold"
-                style={{ backgroundColor: getButtonColor() }}
-            >
-                <Plus size={16} />
-                New Release
-            </button>
-            {(userRole === 'Admin' || userRole === 'Operator') && (
-              <button 
-                  onClick={() => setShowImportModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg shadow-sm hover:bg-purple-700 transition-all text-xs font-bold"
-              >
-                  <Plus size={16} />
-                  Import Release
-              </button>
-            )}
        </div>
 
        {/* STATS CARDS */}
@@ -300,20 +283,13 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
              <div className="p-6 space-y-4">
                <p className="text-sm text-slate-600">Upload file Excel sesuai template. Template mengikuti metadata di New Release.</p>
                <div className="flex gap-3">
-                 <button
-                   onClick={async () => {
-                     try {
-                       const blob = await api.releasesImportTemplate(token);
-                       const url = URL.createObjectURL(blob);
-                       const a = document.createElement('a');
-                       a.href = url;
-                       a.download = 'release_import_template.xlsx';
-                       document.body.appendChild(a);
-                       a.click();
-                       a.remove();
-                       URL.revokeObjectURL(url);
-                     } catch {}
-                   }}
+                <button
+                  onClick={() => {
+                    try {
+                      const url = `${API_BASE_URL}/releases/import/template`;
+                      window.open(url, '_blank');
+                    } catch {}
+                  }}
                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
                  >
                    Download Contoh File

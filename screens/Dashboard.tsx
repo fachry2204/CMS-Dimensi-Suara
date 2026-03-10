@@ -115,14 +115,6 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
                     <Music className="text-blue-600" size={18} />
                     <h2 className="text-sm font-bold text-slate-700">Aggregator Status</h2>
                 </div>
-                <button 
-                    onClick={() => navigate('/new-release')}
-                    className="flex items-center gap-2 px-3 py-1.5 text-white rounded-lg shadow-sm hover:opacity-90 transition-all text-xs font-bold"
-                    style={{ backgroundColor: getButtonColor() }}
-                >
-                    <Plus size={14} />
-                    New Release
-                </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 

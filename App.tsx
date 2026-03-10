@@ -52,6 +52,7 @@ import { ArtistDetail } from './screens/ArtistDetail';
 import { UserEditPage } from './screens/UserEditPage';
 import { Contracts } from './screens/Contracts';
 import { ContractDetail } from './screens/ContractDetail';
+import { ImportReleases } from './screens/ImportReleases';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -337,7 +338,6 @@ const App: React.FC = () => {
                                        is_read: false,
                                        created_at: new Date().toISOString()
                                    });
-                                   hasNewLocal = true;
                                } else if (!oldStatus) {
                                    prevSongStatusRef.current[id] = newStatus;
                                }
@@ -1179,6 +1179,7 @@ const App: React.FC = () => {
                     userRole={userRole}
                 />
             } />
+            <Route path="/releases/import" element={<ImportReleases />} />
             <Route path="/my-releases" element={
                  <AllReleases 
                     releases={myReleases} 
