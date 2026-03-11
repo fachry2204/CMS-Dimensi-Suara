@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { syncUserToSheet } from '../utils/googleSheets.js';
+import { uploadLocalFileToDrive } from '../utils/googleDrive.js';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
@@ -41,7 +42,16 @@ router.post('/upload-doc', upload.single('file'), async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const filePath = `/uploads/profiles/${req.file.filename}`;
+        const baseType = req.body && req.body.type ? String(req.body.type).toLowerCase() : '';
+        const category = baseType.includes('contract') ? 'contract' : 'user-doc';
+        const uploaded = await uploadLocalFileToDrive({
+            absPath: req.file.path,
+            fileName: req.file.filename,
+            mimeType: req.file.mimetype,
+            category,
+            deleteLocalOnSuccess: true
+        });
+        const filePath = uploaded?.url || `/uploads/profiles/${req.file.filename}`;
         res.json({ path: filePath });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -653,7 +663,11 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             if (!hasContractDoc) {
                 return res.status(400).json({ error: 'Contract document column not available' });
             }
-            if (!contract_doc_path || !String(contract_doc_path).toLowerCase().endsWith('.pdf')) {
+            const rawDoc = String(contract_doc_path || '').trim();
+            const lowerDoc = rawDoc.toLowerCase();
+            const isPdf = lowerDoc.endsWith('.pdf');
+            const isUrl = /^https?:\/\//i.test(rawDoc);
+            if (!rawDoc || (!isPdf && !isUrl)) {
                 return res.status(400).json({ error: 'Kontrak wajib upload file PDF saat status Done' });
             }
         }

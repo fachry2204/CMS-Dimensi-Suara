@@ -7,6 +7,7 @@ import db from '../config/db.js';
 import { spawn } from 'child_process';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import xlsx from 'xlsx';
+import { ensureReleaseFolder, uploadLocalFileToDrive, deleteDriveFileByUrl } from '../utils/googleDrive.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -444,6 +445,8 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
             }
         }
 
+        const driveReleaseFolderId = await ensureReleaseFolder({ artistFolderName: artistDirName, releaseFolderName: releaseDirName });
+
         // Move uploaded files into targetDir and collect public paths
         const files = Array.isArray(req.files) ? req.files : [];
         const pathMap = {};
@@ -464,7 +467,15 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                 }
             }
             const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
-            pathMap[f.fieldname] = publicPath;
+            const uploaded = await uploadLocalFileToDrive({
+                absPath: destPath,
+                fileName: destName,
+                mimeType: f.mimetype,
+                parentFolderId: driveReleaseFolderId,
+                category: 'release',
+                deleteLocalOnSuccess: true
+            });
+            pathMap[f.fieldname] = uploaded?.url || publicPath;
         }
 
         // Helper: resolve absolute path from public tmp path (validates user scope)
@@ -524,7 +535,16 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                 try {
                     fs.copyFileSync(absTmp, outAbs);
                     try { fs.unlinkSync(absTmp); } catch {}
-                    pathMap['coverArt'] = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                    const mimeType = String(ext || '').toLowerCase() === '.png' ? 'image/png' : 'image/jpeg';
+                    const uploaded = await uploadLocalFileToDrive({
+                        absPath: outAbs,
+                        fileName: outName,
+                        mimeType,
+                        parentFolderId: driveReleaseFolderId,
+                        category: 'release',
+                        deleteLocalOnSuccess: true
+                    });
+                    pathMap['coverArt'] = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                 } catch (e) {
                     console.warn('Cover art move failed:', e);
                 }
@@ -642,7 +662,15 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                             try {
                                 fs.copyFileSync(absTmp, outAbs);
                                 try { fs.unlinkSync(absTmp); } catch {}
-                                audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                                const uploaded = await uploadLocalFileToDrive({
+                                    absPath: outAbs,
+                                    fileName: outName,
+                                    mimeType: 'audio/wav',
+                                    parentFolderId: driveReleaseFolderId,
+                                    category: 'release',
+                                    deleteLocalOnSuccess: true
+                                });
+                                audioPath = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                             } catch (copyErr) {
                                 console.warn('Audio copy failed:', copyErr.message || copyErr);
                             }
@@ -677,7 +705,15 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                             }
                             if (convertedClip) {
                                 try { fs.unlinkSync(absTmp); } catch {}
-                                clipPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                                const uploaded = await uploadLocalFileToDrive({
+                                    absPath: outAbs,
+                                    fileName: outName,
+                                    mimeType: 'audio/wav',
+                                    parentFolderId: driveReleaseFolderId,
+                                    category: 'release',
+                                    deleteLocalOnSuccess: true
+                                });
+                                clipPath = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                             }
                         }
                     }
@@ -950,6 +986,21 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
         const rel = rows[0];
         if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Access denied' });
+
+        try {
+            if (rel.cover_art && /^https?:\/\//i.test(String(rel.cover_art))) {
+                await deleteDriveFileByUrl(rel.cover_art);
+            }
+            const [trowsAll] = await db.query('SELECT audio_file, audio_clip, ipl_file FROM tracks WHERE release_id = ?', [releaseId]);
+            for (const t of trowsAll) {
+                const urls = [t.audio_file, t.audio_clip, t.ipl_file].filter(Boolean);
+                for (const u of urls) {
+                    if (/^https?:\/\//i.test(String(u))) {
+                        await deleteDriveFileByUrl(u);
+                    }
+                }
+            }
+        } catch {}
         const releasesBase = path.join(__dirname, '../../uploads/releases');
         const resolveDirFromPath = (p) => {
             if (!p || typeof p !== 'string') return null;
@@ -1088,9 +1139,10 @@ router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cov
         } catch {
             primaryArtists = [];
         }
-        const primaryArtist = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
-        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
-        const releaseDirName = sanitizeName(`${primaryArtist} - ${rel.title}`).substring(0, 80) || 'Untitled_Release';
+        const p0 = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
+        const primaryArtistName = (typeof p0 === 'object' && p0 !== null && p0.name) ? p0.name : p0;
+        const artistDirName = sanitizeName(primaryArtistName).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(`${primaryArtistName} - ${rel.title}`).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
 
         if (!fs.existsSync(UPLOADS_ROOT)) fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
@@ -1112,7 +1164,16 @@ router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cov
             }
         }
 
-        const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
+        const driveReleaseFolderId = await ensureReleaseFolder({ artistFolderName: artistDirName, releaseFolderName: releaseDirName });
+        const uploaded = await uploadLocalFileToDrive({
+            absPath: destPath,
+            fileName: destName,
+            mimeType: file.mimetype,
+            parentFolderId: driveReleaseFolderId,
+            category: 'release',
+            deleteLocalOnSuccess: true
+        });
+        const publicPath = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
         const nextStatus = req.user.role === 'Admin' ? rel.status : 'Request Edit';
         await db.query('UPDATE releases SET cover_art = ?, status = ? WHERE id = ?', [publicPath, nextStatus, releaseId]);
 
