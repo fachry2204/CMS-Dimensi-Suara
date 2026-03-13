@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User } from '../types';
 import { api } from '../utils/api';
-import { XCircle, Eye, Download, CheckCircle, Edit } from 'lucide-react';
+import { XCircle, Eye, Download, CheckCircle, Edit, ChevronLeft } from 'lucide-react';
 import { AlertModal } from '../components/AlertModal';
 
 export const UserDetailPage: React.FC = () => {
@@ -248,6 +248,13 @@ export const UserDetailPage: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 animate-fade-in">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/users')}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+              title="Kembali"
+            >
+              <ChevronLeft size={24} />
+            </button>
             <h3 className="text-base font-medium text-slate-800">Profile Lengkap</h3>
             {currentUser?.role === 'Admin' && (
               <button 

@@ -648,6 +648,14 @@ export const api = {
         });
         return parseResponse(res);
     },
+    clearNotifications: async (token) => {
+        const res = await fetch(`${API_BASE_URL}/notifications`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     // Contracts
     getAggregatorContracts: async (token: string) => {

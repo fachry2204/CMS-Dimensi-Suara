@@ -426,6 +426,34 @@ const App: React.FC = () => {
     }
   };
 
+  const markAllNotificationsRead = async () => {
+    try {
+      await api.markNotificationRead(token, undefined as any);
+    } catch (err) {
+      console.warn('Mark all read failed on server, updating UI anyway:', err);
+    }
+    try {
+      const localNotifs = JSON.parse(localStorage.getItem('cms_local_notifs') || '[]');
+      const updatedLocal = (Array.isArray(localNotifs) ? localNotifs : []).map((n: any) => ({ ...n, is_read: true }));
+      localStorage.setItem('cms_local_notifs', JSON.stringify(updatedLocal));
+    } catch {}
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await api.clearNotifications(token);
+    } catch (err) {
+      console.warn('Clear notifications failed on server, updating UI anyway:', err);
+    }
+    try {
+      localStorage.removeItem('cms_local_notifs');
+    } catch {}
+    setNotifications([]);
+    setUnreadCount(0);
+  };
+
   const handleUpdateUser = (updatedUser: any) => {
     setCurrentUserData(updatedUser);
     setCurrentUser(updatedUser.username); 
@@ -469,6 +497,7 @@ const App: React.FC = () => {
     localStorage.setItem('cms_user', user.username);
     localStorage.setItem('cms_token', token);
     localStorage.setItem('cms_role', user.role || 'User');
+    localStorage.removeItem('cms_impersonated_by');
     if (user.status) {
       localStorage.setItem('cms_status', user.status);
     } else {
@@ -504,6 +533,7 @@ const App: React.FC = () => {
     localStorage.removeItem('cms_token');
     localStorage.removeItem('cms_role');
     localStorage.removeItem('cms_status');
+    localStorage.removeItem('cms_impersonated_by');
     // Clear any wizard/draft remnants just in case
     try {
       sessionStorage.removeItem('cms_wizard_step');
@@ -964,9 +994,25 @@ const App: React.FC = () => {
 
                     {/* Notification Dropdown */}
                     {showNotifications && (
-                        <div className="fixed right-6 top-[60px] w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="fixed right-6 top-[60px] w-96 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                                    <button 
+                                        onClick={markAllNotificationsRead}
+                                        className="px-2 py-1 text-[11px] font-bold rounded bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100"
+                                        title="Baca semuanya"
+                                    >
+                                        Baca Semua
+                                    </button>
+                                    <button 
+                                        onClick={clearAllNotifications}
+                                        className="px-2 py-1 text-[11px] font-bold rounded bg-red-50 text-red-600 hover:bg-red-100 border border-red-100"
+                                        title="Clear notif"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
                                 <button 
                                     onClick={() => setShowNotifications(false)}
                                     className="text-slate-400 hover:text-slate-600"
