@@ -1,5 +1,6 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
+import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -89,4 +90,39 @@ export const syncAllUsersToSheet = async (users) => {
     for (const user of users) {
         await syncUserToSheet(user);
     }
+};
+
+export const createUserSheetTemplate = async (title) => {
+    const CREDENTIALS_PATH = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_PATH;
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    if (!CREDENTIALS_PATH) {
+        throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_JSON_PATH');
+    }
+    const fullPath = path.isAbsolute(CREDENTIALS_PATH) ? CREDENTIALS_PATH : path.join(__dirname, '../../', CREDENTIALS_PATH);
+    if (!fs.existsSync(fullPath)) {
+        throw new Error(`Credentials not found at ${fullPath}`);
+    }
+    const creds = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+    const auth = new google.auth.JWT({
+        email: creds.client_email,
+        key: creds.private_key,
+        scopes: ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets']
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const spreadsheet = await sheets.spreadsheets.create({
+        requestBody: {
+            properties: { title: title || 'User Registration Template' },
+            sheets: [{ properties: { title: 'Users' } }]
+        }
+    });
+    const spreadsheetId = spreadsheet.data.spreadsheetId;
+    const header = [['ID', 'Username', 'Email', 'Role', 'Status', 'Full Name', 'Account Type', 'Company Name', 'Registered At']];
+    await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: 'Users!A1:I1',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: header }
+    });
+    return { spreadsheetId, url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}` };
 };

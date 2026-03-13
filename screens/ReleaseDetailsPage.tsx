@@ -33,6 +33,23 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
       if (!id) { setError('Invalid release id'); setLoading(false); return; }
       try {
         const raw: any = await api.getRelease(token, id);
+        const normDate = (v: any) => {
+          if (!v) return '';
+          if (typeof v === 'string') {
+            const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
+            if (m) return m[1];
+            try {
+              const d = new Date(v);
+              if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+            } catch {}
+            return v.slice(0, 10);
+          }
+          try {
+            const d = new Date(v);
+            if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+          } catch {}
+          return '';
+        };
         const mapArtists = (arr: any) => {
           if (Array.isArray(arr)) return arr;
           if (typeof arr === 'string') {
@@ -97,8 +114,8 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
             };
           }),
           isNewRelease: raw.original_release_date ? false : true,
-          originalReleaseDate: raw.original_release_date || '',
-          plannedReleaseDate: raw.planned_release_date || ''
+          originalReleaseDate: normDate(raw.original_release_date),
+          plannedReleaseDate: normDate(raw.planned_release_date)
         };
         (mapped as any).ownerDisplayName = ownerDisplayName;
         setRelease(mapped);
