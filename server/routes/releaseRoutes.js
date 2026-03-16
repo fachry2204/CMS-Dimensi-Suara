@@ -8,6 +8,8 @@ import { spawn } from 'child_process';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import xlsx from 'xlsx';
 import { ensureReleaseFolder, uploadLocalFileToDrive, deleteDriveFileByUrl } from '../utils/googleDrive.js';
+import tls from 'tls';
+import net from 'net';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1339,6 +1341,136 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                         'INSERT INTO notifications (user_id, type, message, is_read, created_at) VALUES (?, ?, ?, ?, NOW())',
                         [release.user_id, 'RELEASE_STATUS', msg, false]
                     );
+
+                    try {
+                        const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+                        if (smtpRows.length > 0 && smtpRows[0].setting_value) {
+                            const smtp = JSON.parse(smtpRows[0].setting_value);
+                            if (smtp.host && smtp.port && smtp.from_email) {
+                                const [ownerRows] = await db.query('SELECT email, full_name FROM users WHERE id = ?', [release.user_id]);
+                                if (ownerRows.length > 0) {
+                                    const to = ownerRows[0].email || '';
+                                    const fullName = ownerRows[0].full_name || '';
+                                    if (to) {
+                                        const subject = `Update Status Rilisan: ${release.title} → ${status}`;
+                                        const html = `
+<div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:24px">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+    <tr>
+      <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+        <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+        <div style="font-size:12px;opacity:.9">Music Distribution Update</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:24px">
+        <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo ${fullName || 'User'},</div>
+        <div style="font-size:14px;color:#334155;line-height:1.6">
+          Status rilisan Anda telah diperbarui.
+        </div>
+        <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+          <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+          <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> ${release.title}</div>
+          <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> ${status}</div>
+          ${aggregator ? `<div style="font-size:14px;color:#0f172a"><strong>Aggregator:</strong> ${aggregator}</div>` : ''}
+          ${release.upc ? `<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> ${release.upc}</div>` : ''}
+        </div>
+        <div style="font-size:12px;color:#64748b;line-height:1.6">
+          Jika Anda tidak melakukan perubahan ini, silakan hubungi tim kami melalui menu Ticket Support.
+        </div>
+        <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+      </td>
+    </tr>
+  </table>
+</div>`;
+                                        const sendEmail = ({ host, port, secure, user, pass, from_email, to, subject, html }) => {
+                                            return new Promise((resolve, reject) => {
+                                                const socket = secure ? tls.connect(port, host, { servername: host }, onConnect) : net.connect(port, host, onConnect);
+                                                let buffer = '';
+                                                let closed = false;
+                                                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                                                function expect(code) {
+                                                    return new Promise((res, rej) => {
+                                                        const onData = (data) => {
+                                                            buffer += data.toString('utf8');
+                                                            const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                                                            const last = lines[lines.length - 1] || '';
+                                                            const m = last.match(/^(\d{3})/);
+                                                            if (m) {
+                                                                const lastCode = parseInt(m[1], 10);
+                                                                if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) {
+                                                                    socket.removeListener('data', onData);
+                                                                    buffer = '';
+                                                                    res(last);
+                                                                } else if (lastCode >= 400) {
+                                                                    socket.removeListener('data', onData);
+                                                                    rej(new Error(`SMTP error ${lastCode}: ${last}`));
+                                                                }
+                                                            }
+                                                        };
+                                                        socket.on('data', onData);
+                                                    });
+                                                }
+                                                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                                                function onConnect() {
+                                                    (async () => {
+                                                        try {
+                                                            await expect(220);
+                                                            await send(`EHLO localhost`);
+                                                            await expect(250);
+                                                            if (user && pass) {
+                                                                await send('AUTH LOGIN');
+                                                                await expect(334);
+                                                                await send(Buffer.from(String(user)).toString('base64'));
+                                                                await expect(334);
+                                                                await send(Buffer.from(String(pass)).toString('base64'));
+                                                                await expect(235);
+                                                            }
+                                                            await send(`MAIL FROM:<${from_email}>`);
+                                                            await expect(250);
+                                                            await send(`RCPT TO:<${to}>`);
+                                                            await expect([250, 251]);
+                                                            await send('DATA');
+                                                            await expect(354);
+                                                            const msg = [
+                                                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                                                `To: <${to}>`,
+                                                                `Subject: ${subject}`,
+                                                                'MIME-Version: 1.0',
+                                                                'Content-Type: text/html; charset=utf-8',
+                                                                '',
+                                                                html,
+                                                                ''
+                                                            ].join('\r\n');
+                                                            await send(msg + '\r\n.');
+                                                            await expect(250);
+                                                            await send('QUIT');
+                                                            cleanup();
+                                                        } catch (err) {
+                                                            cleanup(err);
+                                                        }
+                                                    })();
+                                                }
+                                                socket.once('error', (e) => cleanup(e));
+                                                socket.once('close', () => cleanup(new Error('SMTP connection closed')));
+                                            });
+                                        };
+                                        await sendEmail({
+                                            host: smtp.host,
+                                            port: Number(smtp.port || 587),
+                                            secure: Boolean(smtp.secure),
+                                            user: smtp.user,
+                                            pass: smtp.pass,
+                                            from_email: smtp.from_email,
+                                            to,
+                                            subject,
+                                            html
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {}
                 }
             }
         } catch (e) {
