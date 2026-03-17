@@ -30,6 +30,10 @@ import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { UserAnalytics } from './screens/UserAnalytics';
 import { UserPayments } from './screens/UserPayments';
 import Tickets from './screens/Tickets';
+import SystemMonitoring from './screens/SystemMonitoring';
+import EmailTemplates from './screens/EmailTemplates';
+import Broadcast from './screens/Broadcast';
+import MessagingGateway from './screens/MessagingGateway';
 import TicketDetail from './screens/TicketDetail';
 import { MyProfile } from './screens/MyProfile';
 import { MyContracts } from './screens/MyContracts';
@@ -1314,6 +1318,10 @@ const App: React.FC = () => {
                     onSaveAggregators={handleSaveAggregators} 
                 />
             } />
+            <Route path="/system/monitoring" element={<SystemMonitoring token={token} userRole={userRole} />} />
+            <Route path="/system/messaging/templates" element={<EmailTemplates token={token} />} />
+            <Route path="/system/messaging/broadcast" element={<Broadcast token={token} />} />
+            <Route path="/system/messaging/gateway" element={<MessagingGateway token={token} />} />
             <Route path="/users" element={
                 <UserManagement 
                     currentUserRole={userRole} 

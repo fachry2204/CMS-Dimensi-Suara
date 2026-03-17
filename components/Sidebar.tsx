@@ -16,6 +16,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
     report: false,
     reportUser: false,
     system: false,
+    messaging: false,
     dataSaya: false,
     bantuan: false,
     statistics: false,
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
   const toggleSection = (section: string) => {
     const TOP_SECTIONS = ['dashboard','aggregator','publishing','report','reportUser','system','dataSaya','bantuan', 'kontrak'];
     const REPORT_SUBS = ['statistics','reportList','importReports','payments','revenue'];
+    const SYSTEM_SUBS = ['messaging'];
     setExpandedSections(prev => {
       const next = { ...prev };
       // Accordion for top-level sections
@@ -43,6 +45,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
         next[section] = !prev[section];
         // ensure parent report container is open
         next.report = true;
+        return next;
+      }
+      // System sub-sections
+      if (SYSTEM_SUBS.includes(section)) {
+        next[section] = !prev[section];
+        next.system = true;
         return next;
       }
       // Default toggle
@@ -452,6 +460,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                   </>
                 )}
               </NavLink>
+            </li>
+            <li>
+              <div 
+                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group font-bold text-[13px] text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                onClick={() => toggleSection('messaging')}
+              >
+                <div className="flex items-center gap-3">
+                  <MessageSquare size={20} className="text-white/70 group-hover:text-white" />
+                  Messaging
+                </div>
+                {expandedSections.messaging ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </div>
+              {expandedSections.messaging && (
+                <ul className="pl-4 mt-1 space-y-1 border-l border-white/10 ml-6">
+                  <li>
+                    <NavLink to="/system/monitoring" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Monitoring
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/system/messaging/gateway" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Gateway
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/system/messaging/templates" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Template Email
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/system/messaging/broadcast" className={({ isActive }) => getSubLinkClass(isActive)}>
+                      Broadcast
+                    </NavLink>
+                  </li>
+                </ul>
+              )}
             </li>
             {(userRole === 'Admin' || userRole === 'Operator') && (
             <li>

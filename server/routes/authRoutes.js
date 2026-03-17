@@ -139,6 +139,132 @@ router.post('/register', async (req, res) => {
             userId: result.insertId,
             status: hasStatus ? 'Pending' : undefined
         });
+
+        // Fire-and-forget: send registration email (if SMTP configured)
+        (async () => {
+            try {
+                const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+                if (smtpRows.length === 0 || !smtpRows[0].setting_value) return;
+                const smtp = JSON.parse(smtpRows[0].setting_value);
+                if (!smtp.host || !smtp.port || !smtp.user || !smtp.pass || !smtp.from_email) return;
+                if (!email) return;
+                let subject = 'Registrasi Berhasil - Dimensi Suara';
+                let html = `
+<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr>
+    <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+      <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+      <div style="font-size:12px;opacity:.9">Registrasi Akun</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px">
+      <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo ${fullName || username},</div>
+      <div style="font-size:14px;color:#334155;line-height:1.6">Terima kasih telah mendaftar. Akun Anda telah tercatat dengan status <strong>Pending</strong> hingga diverifikasi.</div>
+      <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+    </td>
+  </tr>
+</table>
+</body></html>`;
+                try {
+                    const [tplRows] = await db.query('SELECT subject_template, body_template FROM email_templates WHERE template_key = ?', ['user_register']);
+                    if (tplRows.length > 0) {
+                        const t = tplRows[0];
+                        const replace = (s) => String(s || '')
+                            .replaceAll('{{fullName}}', fullName || '')
+                            .replaceAll('{{username}}', username || '');
+                        subject = replace(t.subject_template);
+                        html = replace(t.body_template);
+                    }
+                } catch {}
+                // Minimal SMTP sender (reuse test logic)
+                const tls = (await import('tls')).default;
+                const net = (await import('net')).default;
+                const sendEmail = ({ host, port, secure, user, pass, from_email, to, subject, html }) => {
+                    return new Promise((resolve, reject) => {
+                        const socket = secure ? tls.connect(port, host, { servername: host }, onConnect) : net.connect(port, host, onConnect);
+                        let buffer = ''; let closed = false;
+                        function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                        function expect(code) { return new Promise((res, rej) => {
+                            const onData = (data) => {
+                                buffer += data.toString('utf8');
+                                const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                                const last = lines[lines.length - 1] || '';
+                                const m = last.match(/^(\d{3})/);
+                                if (m) {
+                                    const lastCode = parseInt(m[1], 10);
+                                    if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                                    else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                                }
+                            };
+                            socket.on('data', onData);
+                        });}
+                        function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                        function onConnect() {
+                            (async () => {
+                                try {
+                                    await expect(220); await send(`EHLO localhost`); await expect(250);
+                                    if (user && pass) {
+                                        await send('AUTH LOGIN'); await expect(334);
+                                        await send(Buffer.from(String(user)).toString('base64')); await expect(334);
+                                        await send(Buffer.from(String(pass)).toString('base64')); await expect(235);
+                                    }
+                                    await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                                    await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                                    await send('DATA'); await expect(354);
+                                    const now = new Date();
+                                    const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${String(smtp.from_email).split('@')[1] || 'localhost'}>`;
+                                    const msg = [
+                                        `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                        `To: <${to}>`,
+                                        `Subject: ${subject}`,
+                                        `Date: ${now.toUTCString()}`,
+                                        `Message-ID: ${messageId}`,
+                                        `Reply-To: ${smtp.from_email}`,
+                                        'X-Mailer: DimensiSuaraCMS/1.0',
+                                        'MIME-Version: 1.0',
+                                        'Content-Type: text/html; charset=utf-8',
+                                        'Content-Transfer-Encoding: 8bit',
+                                        '', html, ''
+                                    ].join('\r\n');
+                                    await send(msg + '\r\n.'); const accepted = await expect(250); await send('QUIT'); cleanup();
+                                    if (logId) {
+                                        await db.query('UPDATE email_logs SET status = ?, sent_at = NOW(), server_response = ? WHERE id = ?', ['SENT', accepted?.slice(0, 480) || null, logId]);
+                                    }
+                                } catch (err) { cleanup(err); }
+                            })();
+                        }
+                        socket.once('error', (e) => cleanup(e));
+                        socket.once('close', () => cleanup(new Error('SMTP connection closed')));
+                    });
+                };
+                let logId = null;
+                try {
+                    const [logRes] = await db.query(
+                        'INSERT INTO email_logs (user_id, related_type, related_id, to_email, subject, status) VALUES (?, ?, ?, ?, ?, ?)',
+                        [result.insertId, 'USER_REGISTER', result.insertId, email, subject, 'PENDING']
+                    );
+                    logId = logRes?.insertId || null;
+                } catch {}
+                try {
+                    await sendEmail({
+                        host: smtp.host,
+                        port: Number(smtp.port || 587),
+                        secure: Boolean(smtp.secure),
+                        user: smtp.user,
+                        pass: smtp.pass,
+                        from_email: smtp.from_email,
+                        to: email,
+                        subject,
+                        html
+                    });
+                } catch (err) {
+                    if (logId) await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+                }
+            } catch {}
+        })();
     } catch (err) {
         if (err.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ error: 'Username or email already exists' });

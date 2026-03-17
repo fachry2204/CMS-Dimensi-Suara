@@ -1352,8 +1352,35 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                                     const to = ownerRows[0].email || '';
                                     const fullName = ownerRows[0].full_name || '';
                                     if (to) {
-                                        const subject = `Update Status Rilisan: ${release.title} → ${status}`;
-                                        const html = `
+                                        let subject = `Update Status Rilisan: ${release.title} → ${status}`;
+                                        // Build ISRC block: Single shows single ISRC; EP/Album lists Track Title + ISRC
+                                        let isrcBlock = '';
+                                        try {
+                                            const [trackRows] = await db.query('SELECT title, isrc FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [release.id]);
+                                            const tracksList = Array.isArray(trackRows) ? trackRows : [];
+                                            const relTypeRaw = String(release.release_type || release.type || '').toUpperCase();
+                                            const isSingle = relTypeRaw.includes('SINGLE') || tracksList.length === 1;
+                                            if (isSingle) {
+                                                const code = String(tracksList[0]?.isrc || '').trim();
+                                                if (code) {
+                                                    isrcBlock = `<div style="font-size:14px;color:#0f172a"><strong>ISRC:</strong> ${code}</div>`;
+                                                }
+                                            } else {
+                                                const items = tracksList.filter(t => t && String(t.isrc || '').trim().length > 0);
+                                                if (items.length > 0) {
+                                                    const listHtml = items.map(t => {
+                                                        const title = String(t.title || '').trim() || 'Track';
+                                                        const code = String(t.isrc || '').trim();
+                                                        return `<div style="font-size:14px;color:#0f172a"><strong>${title}:</strong> ${code}</div>`;
+                                                    }).join('');
+                                                    isrcBlock = `
+          <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin:16px 0 8px">Daftar Track &amp; ISRC</div>
+          ${listHtml}
+        `;
+                                                }
+                                            }
+                                        } catch {}
+                                        let html = `
 <div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:24px">
   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
     <tr>
@@ -1372,17 +1399,31 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
           <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
           <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> ${release.title}</div>
           <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> ${status}</div>
-          ${aggregator ? `<div style="font-size:14px;color:#0f172a"><strong>Aggregator:</strong> ${aggregator}</div>` : ''}
           ${release.upc ? `<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> ${release.upc}</div>` : ''}
-        </div>
-        <div style="font-size:12px;color:#64748b;line-height:1.6">
-          Jika Anda tidak melakukan perubahan ini, silakan hubungi tim kami melalui menu Ticket Support.
+          ${isrcBlock}
         </div>
         <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
       </td>
     </tr>
   </table>
 </div>`;
+                                        try {
+                                            const key = `release_status.${status}`;
+                                            const [tplRows] = await db.query('SELECT subject_template, body_template FROM email_templates WHERE template_key = ?', [key]);
+                                            if (tplRows.length > 0) {
+                                                const t = tplRows[0];
+                                                const replace = (s) => String(s || '')
+                                                    .replaceAll('{{fullName}}', fullName || 'User')
+                                                    .replaceAll('{{title}}', release.title || '')
+                                                    .replaceAll('{{status}}', status || '')
+                                                    .replaceAll('{{upc}}', release.upc || '')
+                                                    .replaceAll('{{isrcBlock}}', isrcBlock)
+                                                    .replaceAll('{{reason}}', String(rejectionReason || ''))
+                                                    .replaceAll('{{description}}', String(rejectionDescription || ''));
+                                                subject = replace(t.subject_template);
+                                                html = replace(t.body_template);
+                                            }
+                                        } catch {}
                                         const sendEmail = ({ host, port, secure, user, pass, from_email, to, subject, html }) => {
                                             return new Promise((resolve, reject) => {
                                                 const socket = secure ? tls.connect(port, host, { servername: host }, onConnect) : net.connect(port, host, onConnect);
@@ -1432,20 +1473,30 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                                                             await expect([250, 251]);
                                                             await send('DATA');
                                                             await expect(354);
+                                                            const now = new Date();
+                                                            const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${String(from_email).split('@')[1] || 'localhost'}>`;
                                                             const msg = [
                                                                 `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
                                                                 `To: <${to}>`,
                                                                 `Subject: ${subject}`,
+                                                                `Date: ${now.toUTCString()}`,
+                                                                `Message-ID: ${messageId}`,
+                                                                `Reply-To: ${smtp.from_email}`,
+                                                                'X-Mailer: DimensiSuaraCMS/1.0',
                                                                 'MIME-Version: 1.0',
                                                                 'Content-Type: text/html; charset=utf-8',
+                                                                'Content-Transfer-Encoding: 8bit',
                                                                 '',
                                                                 html,
                                                                 ''
                                                             ].join('\r\n');
                                                             await send(msg + '\r\n.');
-                                                            await expect(250);
+                                                            const accepted = await expect(250);
                                                             await send('QUIT');
                                                             cleanup();
+                                                            if (logId) {
+                                                                await db.query('UPDATE email_logs SET status = ?, sent_at = NOW(), server_response = ? WHERE id = ?', ['SENT', accepted?.slice(0, 480) || null, logId]);
+                                                            }
                                                         } catch (err) {
                                                             cleanup(err);
                                                         }
@@ -1455,17 +1506,31 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                                                 socket.once('close', () => cleanup(new Error('SMTP connection closed')));
                                             });
                                         };
-                                        await sendEmail({
-                                            host: smtp.host,
-                                            port: Number(smtp.port || 587),
-                                            secure: Boolean(smtp.secure),
-                                            user: smtp.user,
-                                            pass: smtp.pass,
-                                            from_email: smtp.from_email,
-                                            to,
-                                            subject,
-                                            html
-                                        });
+                                        let logId = null;
+                                        try {
+                                            const [logRes] = await db.query(
+                                                'INSERT INTO email_logs (user_id, related_type, related_id, to_email, subject, status) VALUES (?, ?, ?, ?, ?, ?)',
+                                                [release.user_id, 'RELEASE_STATUS', release.id, to, subject, 'PENDING']
+                                            );
+                                            logId = logRes?.insertId || null;
+                                        } catch {}
+                                        try {
+                                            await sendEmail({
+                                                host: smtp.host,
+                                                port: Number(smtp.port || 587),
+                                                secure: Boolean(smtp.secure),
+                                                user: smtp.user,
+                                                pass: smtp.pass,
+                                                from_email: smtp.from_email,
+                                                to,
+                                                subject,
+                                                html
+                                            });
+                                        } catch (err) {
+                                            if (logId) {
+                                                await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1889,6 +1954,108 @@ const importRowsHandler = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+router.get('/:id/email-preview', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const draftStatus = typeof req.query.status === 'string' ? req.query.status : '';
+        const overrideAgg = typeof req.query.aggregator === 'string' ? req.query.aggregator : undefined;
+        const overrideUpc = typeof req.query.upc === 'string' ? req.query.upc : undefined;
+        const reason = typeof req.query.reason === 'string' ? req.query.reason : '';
+        const description = typeof req.query.description === 'string' ? req.query.description : '';
+
+        const [rows] = await db.query('SELECT * FROM releases WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).send('Release not found');
+        const release = rows[0];
+
+        if (req.user.role !== 'Admin' && release.user_id !== req.user.id) {
+            return res.status(403).send('Access denied');
+        }
+
+        const status = draftStatus || release.status || 'Pending';
+        const aggregator = overrideAgg !== undefined ? overrideAgg : (release.aggregator || null);
+        const upc = overrideUpc !== undefined ? overrideUpc : (release.upc || null);
+
+        const [ownerRows] = await db.query('SELECT email, full_name FROM users WHERE id = ?', [release.user_id]);
+        const fullName = ownerRows.length > 0 ? (ownerRows[0].full_name || '') : '';
+
+        const subject = `Update Status Rilisan: ${release.title} → ${status}`;
+        // Build ISRC section for preview
+        let isrcBlock = '';
+        try {
+            const [trackRows] = await db.query('SELECT title, isrc FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [release.id]);
+            const tracksList = Array.isArray(trackRows) ? trackRows : [];
+            const relTypeRaw = String(release.release_type || release.type || '').toUpperCase();
+            const isSingle = relTypeRaw.includes('SINGLE') || tracksList.length === 1;
+            if (isSingle) {
+                const code = String(tracksList[0]?.isrc || '').trim();
+                if (code) {
+                    isrcBlock = `<div style="font-size:14px;color:#0f172a"><strong>ISRC:</strong> ${code}</div>`;
+                }
+            } else {
+                const items = tracksList.filter(t => t && String(t.isrc || '').trim().length > 0);
+                if (items.length > 0) {
+                    const listHtml = items.map(t => {
+                        const title = String(t.title || '').trim() || 'Track';
+                        const code = String(t.isrc || '').trim();
+                        return `<div style="font-size:14px;color:#0f172a"><strong>${title}:</strong> ${code}</div>`;
+                    }).join('');
+                    isrcBlock = `
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin:16px 0 8px">Daftar Track &amp; ISRC</div>
+      ${listHtml}
+    `;
+                }
+            }
+        } catch {}
+        const extraBlock = (status === 'Rejected' && (reason || description))
+            ? `
+        <div style="margin-top:12px;padding:16px;border:1px dashed #fecaca;border-radius:10px;background:#fff1f2">
+          <div style="font-size:12px;color:#b91c1c;text-transform:uppercase;font-weight:700;margin-bottom:8px">Alasan Penolakan</div>
+          ${reason ? `<div style="font-size:14px;color:#7f1d1d"><strong>Ringkas:</strong> ${reason}</div>` : ''}
+          ${description ? `<div style="font-size:14px;color:#7f1d1d;white-space:pre-wrap;margin-top:8px"><strong>Detail:</strong> ${description}</div>` : ''}
+        </div>` : '';
+
+        const html = `
+<!doctype html>
+<html lang="id">
+<meta charset="utf-8" />
+<title>${subject}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr>
+    <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+      <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+      <div style="font-size:12px;opacity:.9">Music Distribution Update</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px">
+      <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo ${fullName || 'User'},</div>
+      <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+      <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> ${release.title}</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> ${status}</div>
+        ${upc ? `<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> ${upc}</div>` : ''}
+        ${isrcBlock}
+      </div>
+      ${extraBlock}
+      <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+    </td>
+  </tr>
+</table>
+<div style="max-width:640px;margin:16px auto 0;color:#64748b;font-size:12px">
+  <div><strong>Subject:</strong> ${subject}</div>
+</div>
+</body>
+</html>`;
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (err) {
+        res.status(500).send(err?.message || 'Failed to build preview');
+    }
+});
 router.post('/import/rows', authenticateToken, importRowsHandler);
 router.post('/import-rows', authenticateToken, importRowsHandler);
 router.post('/excel/rows', authenticateToken, importRowsHandler);

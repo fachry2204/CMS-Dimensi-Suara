@@ -361,8 +361,13 @@ const smtpSendTest = ({ host, port, secure, user, pass, from_email, to, subject,
                     `From: <${from_email}>`,
                     `To: <${to}>`,
                     `Subject: ${subject}`,
+                    `Date: ${new Date().toUTCString()}`,
+                    `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@${String(from_email).split('@')[1] || 'localhost'}>`,
+                    `Reply-To: ${from_email}`,
+                    'X-Mailer: DimensiSuaraCMS/1.0',
                     'MIME-Version: 1.0',
                     'Content-Type: text/plain; charset=utf-8',
+                    'Content-Transfer-Encoding: 8bit',
                     '',
                     body || 'Test email dari CMS Dimensi Suara.',
                     ''
@@ -412,35 +417,196 @@ router.post('/gateway/test-email', authenticateToken, async (req, res) => {
 router.post('/gateway/test-wa', authenticateToken, async (req, res) => {
     try {
         const { phone, message, endpoint } = req.body || {};
-        if (!phone) return res.status(400).json({ error: 'Phone number is required' });
-        const [mpwaRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
-        if (mpwaRows.length === 0 || !mpwaRows[0].setting_value) {
+        if (!phone) return res.status(400).json({ error: 'Phone is required' });
+        const [rows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
+        if (rows.length === 0 || !rows[0].setting_value) {
             return res.status(400).json({ error: 'MPWA settings not configured' });
         }
-        const mpwa = JSON.parse(mpwaRows[0].setting_value);
-        if (!mpwa.base_url || !mpwa.token || !mpwa.device_id) {
-            return res.status(400).json({ error: 'Incomplete MPWA settings' });
+        const cfg = JSON.parse(rows[0].setting_value);
+        const url = (endpoint && endpoint.trim()) ? endpoint : (cfg.endpoint || '');
+        if (!url) return res.status(400).json({ error: 'MPWA endpoint not configured' });
+        const body = { phone, message: message || 'Test message from CMS Dimensi Suara.' };
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) {
+            const t = await r.text().catch(()=>'');
+            throw new Error(`MPWA request failed (${r.status}): ${t || r.statusText}`);
         }
-        const url = new URL(endpoint || '/api/send_message', mpwa.base_url).toString();
-        // Common MPWA payload (may vary; adjust as per your provider)
-        const payload = {
-            token: mpwa.token,
-            device_id: mpwa.device_id,
-            to: phone,
-            message: message || 'Test WA dari CMS Dimensi Suara'
-        };
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const json = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
-            return res.status(resp.status).json({ error: json?.error || 'Failed to send WA message' });
-        }
-        res.json({ message: 'WA test sent successfully', response: json });
+        res.json({ message: 'WA test sent successfully' });
     } catch (err) {
-        res.status(500).json({ error: err.message || 'Failed to send test WA' });
+        res.status(500).json({ error: err.message || 'Failed to send WA' });
+    }
+});
+
+// Email Logs Monitoring (Admin/Operator)
+router.get('/email/logs', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { status, type, page = '1', limit = '50' } = req.query || {};
+        const p = Math.max(parseInt(String(page), 10) || 1, 1);
+        const l = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 200);
+        const offset = (p - 1) * l;
+        const conds = [];
+        const params = [];
+        if (typeof status === 'string' && status.length > 0) {
+            conds.push('status = ?');
+            params.push(status.toUpperCase());
+        }
+        if (typeof type === 'string' && type.length > 0) {
+            conds.push('related_type = ?');
+            params.push(type);
+        }
+        const where = conds.length > 0 ? `WHERE ${conds.join(' AND ')}` : '';
+        const [rows] = await db.query(
+            `SELECT id, user_id, related_type, related_id, to_email, subject, status, error_message, created_at, sent_at
+             FROM email_logs
+             ${where}
+             ORDER BY created_at DESC
+             LIMIT ? OFFSET ?`,
+            [...params, l, offset]
+        );
+        const [[{ total }]] = await db.query(
+            `SELECT COUNT(*) as total FROM email_logs ${where}`,
+            params
+        );
+        res.json({ data: rows, total, page: p, limit: l });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Messaging Templates
+router.get('/messaging/templates', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT template_key, subject_template, body_template FROM email_templates');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/messaging/template', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { key, subject, body } = req.body || {};
+        if (!key || !subject || !body) return res.status(400).json({ error: 'key, subject, body required' });
+        await db.query(
+            'INSERT INTO email_templates (template_key, subject_template, body_template) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE subject_template = VALUES(subject_template), body_template = VALUES(body_template)',
+            [key, subject, body]
+        );
+        res.json({ message: 'Template saved' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Broadcast Messaging
+router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { channel = 'email', subject, html, message, recipients, delayMs = 1000 } = req.body || {};
+        const targets = Array.isArray(recipients) && recipients.length > 0
+            ? recipients
+            : (await db.query('SELECT email FROM users WHERE email IS NOT NULL AND email != ""'))[0].map(r => r.email);
+        if (!Array.isArray(targets) || targets.length === 0) return res.status(400).json({ error: 'No recipients' });
+        const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+        const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
+        const [waRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
+        const wa = (waRows.length > 0 && waRows[0].setting_value) ? JSON.parse(waRows[0].setting_value) : null;
+        const sendSmtp = ({ to }) => new Promise((resolve, reject) => {
+            try {
+                if (!smtp || !smtp.host || !smtp.port || !smtp.user || !smtp.pass || !smtp.from_email) return reject(new Error('SMTP not configured'));
+                const secure = Boolean(smtp.secure);
+                const socket = secure ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
+                let buffer = ''; let closed = false;
+                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                function expect(code) { return new Promise((res, rej) => {
+                    const onData = (data) => {
+                        buffer += data.toString('utf8');
+                        const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const last = lines[lines.length - 1] || '';
+                        const m = last.match(/^(\d{3})/);
+                        if (m) {
+                            const lastCode = parseInt(m[1], 10);
+                            if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                            else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                        }
+                    };
+                    socket.on('data', onData);
+                });}
+                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                function onConnect() {
+                    (async () => {
+                        try {
+                            await expect(220); await send(`EHLO localhost`); await expect(250);
+                            await send('AUTH LOGIN'); await expect(334);
+                            await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
+                            await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
+                            await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                            await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                            await send('DATA'); await expect(354);
+                            const now = new Date();
+                            const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${String(smtp.from_email).split('@')[1] || 'localhost'}>`;
+                            const msg = [
+                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                `To: <${to}>`,
+                                `Subject: ${subject || 'Broadcast'}`,
+                                `Date: ${now.toUTCString()}`,
+                                `Message-ID: ${messageId}`,
+                                `Reply-To: ${smtp.from_email}`,
+                                'X-Mailer: DimensiSuaraCMS/1.0',
+                                'MIME-Version: 1.0',
+                                'Content-Type: text/html; charset=utf-8',
+                                'Content-Transfer-Encoding: 8bit',
+                                '',
+                                html || 'Broadcast',
+                                ''
+                            ].join('\r\n');
+                            await send(msg + '\r\n.'); const accepted = await expect(250); await send('QUIT'); cleanup({ ok: true, accepted });
+                        } catch (err) { cleanup(err); }
+                    })();
+                }
+                socket.once('error', (e) => cleanup(e));
+                socket.once('close', () => cleanup(new Error('SMTP connection closed')));
+            } catch (e) { reject(e); }
+        });
+        const sendWa = async ({ to }) => {
+            if (!wa || !wa.endpoint) throw new Error('WA not configured');
+            const r = await fetch(wa.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: to, message: message || '' }) });
+            if (!r.ok) throw new Error(`WA error ${r.status}`);
+        };
+        (async () => {
+            for (const to of targets) {
+                let logId = null;
+                try {
+                    if (channel === 'email' || channel === 'both') {
+                        const [logRes] = await db.query('INSERT INTO email_logs (related_type, to_email, subject, status) VALUES (?, ?, ?, ?)', ['BROADCAST', to, subject || 'Broadcast', 'PENDING']);
+                        logId = logRes?.insertId || null;
+                        const sent = await sendSmtp({ to });
+                        if (logId) await db.query('UPDATE email_logs SET status = ?, sent_at = NOW(), server_response = ? WHERE id = ?', ['SENT', sent?.accepted?.slice(0, 480) || null, logId]);
+                    }
+                    if (channel === 'wa' || channel === 'both') {
+                        try {
+                            await sendWa({ to });
+                        } catch {}
+                    }
+                } catch (err) {
+                    if (logId) await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+                }
+                await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1000, 200)));
+            }
+        })();
+        res.json({ message: 'Broadcast started', total: targets.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

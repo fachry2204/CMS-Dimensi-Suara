@@ -592,6 +592,217 @@ const initDb = async () => {
             }
         }
 
+        // 13c. Ensure email_logs table exists (for monitoring email delivery)
+        try {
+            await connection.query('SELECT 1 FROM email_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: email_logs');
+                await connection.query(`
+                    CREATE TABLE email_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT NULL,
+                        related_type VARCHAR(50) NULL,
+                        related_id INT NULL,
+                        to_email VARCHAR(255) NOT NULL,
+                        subject VARCHAR(255) NOT NULL,
+                        status ENUM('PENDING','SENT','FAILED') DEFAULT 'PENDING',
+                        error_message TEXT NULL,
+                        server_response VARCHAR(500) NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        sent_at TIMESTAMP NULL,
+                        INDEX idx_email_logs_type (related_type),
+                        INDEX idx_email_logs_user (user_id),
+                        INDEX idx_email_logs_status (status)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+        // 13d. Ensure server_response column exists in email_logs
+        try {
+            await connection.query('SELECT server_response FROM email_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: server_response to email_logs');
+                await connection.query('ALTER TABLE email_logs ADD COLUMN server_response VARCHAR(500) NULL');
+            }
+        }
+        // 13e. Ensure email_templates table exists
+        try {
+            await connection.query('SELECT 1 FROM email_templates LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: email_templates');
+                await connection.query(`
+                    CREATE TABLE email_templates (
+                        template_key VARCHAR(100) PRIMARY KEY,
+                        subject_template VARCHAR(255) NOT NULL,
+                        body_template TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+        try {
+            const defaults = [
+                {
+                    key: 'release_status.Pending',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr>
+    <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+      <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+      <div style="font-size:12px;opacity:.9">Music Distribution Update</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px">
+      <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+      <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+      <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+        {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+        {{isrcBlock}}
+      </div>
+      <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+    </td>
+  </tr>
+</table>
+</body></html>`
+                },
+                {
+                    key: 'release_status.Request Edit',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'release_status.Processing',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'release_status.Live',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'release_status.Rejected',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:12px;padding:16px;border:1px dashed #fecaca;border-radius:10px;background:#fff1f2">
+      <div style="font-size:12px;color:#b91c1c;text-transform:uppercase;font-weight:700;margin-bottom:8px">Alasan Penolakan</div>
+      <div style="font-size:14px;color:#7f1d1d"><strong>Ringkas:</strong> {{reason}}</div>
+      <div style="font-size:14px;color:#7f1d1d;white-space:pre-wrap;margin-top:8px"><strong>Detail:</strong> {{description}}</div>
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'user_register',
+                    subject: 'Registrasi Berhasil - Dimensi Suara',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Registrasi Akun</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}}</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Terima kasih telah mendaftar. Akun Anda tercatat dan menunggu verifikasi.</div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'user_register_status.Pending',
+                    subject: 'Status Pendaftaran: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, status pendaftaran Anda: {{status}}.</div>`
+                },
+                {
+                    key: 'user_register_status.Approved',
+                    subject: 'Status Pendaftaran: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, pendaftaran Anda telah {{status}}. Selamat bergabung.</div>`
+                },
+                {
+                    key: 'user_register_status.Rejected',
+                    subject: 'Status Pendaftaran: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, pendaftaran Anda {{status}}. Alasan: {{reason}}</div>`
+                }
+            ];
+            for (const t of defaults) {
+                await connection.query(
+                    'INSERT IGNORE INTO email_templates (template_key, subject_template, body_template) VALUES (?, ?, ?)',
+                    [t.key, t.subject, t.body]
+                );
+            }
+        } catch (err) {
+            console.warn('Email template seed warning:', err.message);
+        }
+
         // 14. Check missing columns in 'writers' (for contract management)
         const writerContractCols = [
             { name: 'contract_status', type: "ENUM('Not Generated','On Review','Done') DEFAULT 'Not Generated'" },

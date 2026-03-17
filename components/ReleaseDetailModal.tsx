@@ -987,6 +987,27 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                     </div>
                                 )}
 
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={() => {
+                                            const params = new URLSearchParams();
+                                            params.set('status', status);
+                                            if (selectedAggregator) params.set('aggregator', selectedAggregator);
+                                            if (upcInput) params.set('upc', upcInput);
+                                            if (status === 'Rejected') {
+                                                if (rejectionReason) params.set('reason', rejectionReason);
+                                                if (rejectionDesc) params.set('description', rejectionDesc);
+                                            }
+                                            const url = `${API_BASE_URL}/releases/${release.id}/email-preview?${params.toString()}`;
+                                            window.open(url, '_blank');
+                                        }}
+                                        className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors"
+                                        title="Preview Email ke User"
+                                    >
+                                        Preview Email ke User
+                                    </button>
+                                </div>
+
                                 {/* --- PROCESSING WORKFLOW --- */}
                                 {(status === 'Processing' || status === 'Live') && (
                                     <div className="animate-fade-in-down">

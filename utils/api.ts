@@ -875,6 +875,49 @@ export const api = {
         });
         return parseResponse(res);
     },
+    getEmailLogs: async (token: string, params?: { status?: string; type?: string; page?: number; limit?: number }) => {
+        const qs = new URLSearchParams();
+        if (params?.status) qs.append('status', params.status);
+        if (params?.type) qs.append('type', params.type);
+        if (params?.page) qs.append('page', String(params.page));
+        if (params?.limit) qs.append('limit', String(params.limit));
+        const res = await fetch(`${API_BASE_URL}/settings/email/logs?${qs.toString()}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    getEmailTemplates: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/templates`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    saveEmailTemplate: async (token: string, payload: { key: string; subject: string; body: string }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/template`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    broadcastMessage: async (token: string, payload: { channel: 'email'|'wa'|'both'; subject?: string; html?: string; message?: string; recipients?: string[]; delayMs?: number }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/broadcast`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
     testGatewayEmail: async (token: string, payload: { to: string; subject?: string; body?: string }) => {
         const res = await fetch(`${API_BASE_URL}/settings/gateway/test-email`, {
             method: 'POST',
