@@ -127,6 +127,8 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [cropField, setCropField] = useState<'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature' | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+  const [cropBaseScale, setCropBaseScale] = useState(1);
+  const [cropNaturalSize, setCropNaturalSize] = useState<{ w: number; h: number }>({ w: 1, h: 1 });
   const [cropScale, setCropScale] = useState(1);
   const [cropAngle, setCropAngle] = useState(0);
   const [cropTranslate, setCropTranslate] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -512,11 +514,35 @@ export const RegisterScreen: React.FC<Props> = () => {
     setDocError('');
     if (!file) return;
     if (file.type && file.type.startsWith('image/')) {
+      const CONTAINER_W = 720;
+      const CONTAINER_H = 480;
       const url = URL.createObjectURL(file);
       setCropField(field);
       setCropFile(file);
       setCropImageUrl(url);
+      setCropBaseScale(1);
+      setCropNaturalSize({ w: 1, h: 1 });
       setCropScale(1);
+      setCropAngle(0);
+      setCropTranslate({ x: 0, y: 0 });
+      setCropRect({ x: 0, y: 0, w: CONTAINER_W, h: CONTAINER_H });
+      const img = new Image();
+      img.onload = () => {
+        const baseScale = Math.min(CONTAINER_W / img.width, CONTAINER_H / img.height);
+        setCropBaseScale(baseScale);
+        setCropNaturalSize({ w: img.width, h: img.height });
+        const dispW = img.width * baseScale;
+        const dispH = img.height * baseScale;
+        const x = Math.max(0, (CONTAINER_W - dispW) / 2);
+        const y = Math.max(0, (CONTAINER_H - dispH) / 2);
+        setCropRect({
+          x: Math.round(x),
+          y: Math.round(y),
+          w: Math.round(Math.min(CONTAINER_W - x, dispW)),
+          h: Math.round(Math.min(CONTAINER_H - y, dispH))
+        });
+      };
+      img.src = url;
       return;
     }
     handleDocChange(field, file);
@@ -533,7 +559,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       previewCanvas.height = CONTAINER_H;
       const pctx = previewCanvas.getContext('2d');
       if (!pctx) return;
-      const baseScale = Math.min(CONTAINER_W / img.width, CONTAINER_H / img.height);
+      const baseScale = cropBaseScale > 0 ? cropBaseScale : Math.min(CONTAINER_W / img.width, CONTAINER_H / img.height);
       const scale = baseScale * cropScale;
       pctx.clearRect(0, 0, CONTAINER_W, CONTAINER_H);
       pctx.save();
@@ -542,10 +568,10 @@ export const RegisterScreen: React.FC<Props> = () => {
       pctx.scale(scale, scale);
       pctx.drawImage(img, -img.width / 2, -img.height / 2);
       pctx.restore();
-      const sx = Math.max(0, Math.min(CONTAINER_W, cropRect.x));
-      const sy = Math.max(0, Math.min(CONTAINER_H, cropRect.y));
-      const sw = Math.max(1, Math.min(CONTAINER_W - sx, cropRect.w));
-      const sh = Math.max(1, Math.min(CONTAINER_H - sy, cropRect.h));
+      const sx = Math.round(Math.max(0, Math.min(CONTAINER_W, cropRect.x)));
+      const sy = Math.round(Math.max(0, Math.min(CONTAINER_H, cropRect.y)));
+      const sw = Math.round(Math.max(1, Math.min(CONTAINER_W - sx, cropRect.w)));
+      const sh = Math.round(Math.max(1, Math.min(CONTAINER_H - sy, cropRect.h)));
       const imageData = pctx.getImageData(sx, sy, sw, sh);
       const outCanvas = document.createElement('canvas');
       const maxOut = 2048;
@@ -824,7 +850,7 @@ export const RegisterScreen: React.FC<Props> = () => {
       </div>
       <div className="space-y-3">
         {field === 'signature' && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full">
             <button
               type="button"
               onClick={() => {
@@ -833,7 +859,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                 clearSignatureData();
                 setTimeout(() => ensureSignatureCanvasReady(), 0);
               }}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
+              className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
                 signatureMode === 'DRAW'
                   ? 'bg-slate-900 text-white border-slate-900'
                   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
@@ -848,7 +874,7 @@ export const RegisterScreen: React.FC<Props> = () => {
                 setSignatureMode('UPLOAD');
                 clearSignatureData();
               }}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
+              className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
                 signatureMode === 'UPLOAD'
                   ? 'bg-slate-900 text-white border-slate-900'
                   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
@@ -959,7 +985,7 @@ export const RegisterScreen: React.FC<Props> = () => {
         )}
 
         {field === 'signature' && signatureMode === 'DRAW' ? null : (
-        <label className="flex-1 px-3 py-2 bg-green-50 border border-dashed border-green-300 rounded-xl text-[10px] text-green-700 cursor-pointer hover:border-green-400 hover:bg-green-100">
+        <label className="block w-full px-3 py-2 bg-green-50 border border-dashed border-green-300 rounded-xl text-[10px] text-green-700 cursor-pointer hover:border-green-400 hover:bg-green-100">
           <input
             type="file"
             accept={field === 'kemenkumham' ? 'application/pdf' : 'image/*,application/pdf'}
@@ -1367,27 +1393,6 @@ export const RegisterScreen: React.FC<Props> = () => {
 
   const renderStep3 = () => (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {accountType === 'COMPANY' && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
-            {renderDocUploadItem('Upload NIB', 'nib', nibFile, true)}
-          </div>
-        )}
-        {accountType === 'COMPANY' && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
-            {renderDocUploadItem('Upload Dokumen Kemenkumham', 'kemenkumham', kemenkumhamFile, true)}
-          </div>
-        )}
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
-          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload KTP Direktur' : 'Upload KTP', 'ktp', ktpFile, true)}
-        </div>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
-          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload NPWP Perusahaan' : 'Upload NPWP', 'npwp', npwpFile, true)}
-        </div>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
-          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload Tanda Tangan Direktur' : 'Upload Tanda Tangan', 'signature', signatureFile, true)}
-        </div>
-      </div>
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -1420,6 +1425,27 @@ export const RegisterScreen: React.FC<Props> = () => {
               placeholder="Sesuai buku tabungan"
             />
           </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {accountType === 'COMPANY' && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+            {renderDocUploadItem('Upload NIB', 'nib', nibFile, true)}
+          </div>
+        )}
+        {accountType === 'COMPANY' && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+            {renderDocUploadItem('Upload Dokumen Kemenkumham', 'kemenkumham', kemenkumhamFile, true)}
+          </div>
+        )}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload KTP Direktur' : 'Upload KTP', 'ktp', ktpFile, true)}
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload NPWP Perusahaan' : 'Upload NPWP', 'npwp', npwpFile, true)}
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
+          {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload Tanda Tangan Direktur' : 'Upload Tanda Tangan', 'signature', signatureFile, true)}
         </div>
       </div>
       {docError && <p className="text-[10px] text-red-500 font-medium bg-red-50 p-2 rounded-lg border border-red-100">{docError}</p>}
@@ -1715,7 +1741,11 @@ export const RegisterScreen: React.FC<Props> = () => {
                   src={cropImageUrl || ''}
                   alt="Crop"
                   className="absolute left-1/2 top-1/2 select-none"
-                  style={{ transform: `translate(-50%, -50%) translate(${cropTranslate.x}px, ${cropTranslate.y}px) scale(${cropScale}) rotate(${cropAngle}deg)`, maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                  style={{
+                    width: cropNaturalSize.w,
+                    height: cropNaturalSize.h,
+                    transform: `translate(-50%, -50%) translate(${cropTranslate.x}px, ${cropTranslate.y}px) scale(${cropBaseScale * cropScale}) rotate(${cropAngle}deg)`
+                  }}
                   draggable={false}
                 />
                 <div
