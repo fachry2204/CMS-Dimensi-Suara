@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Building2, CheckCircle2, ChevronLeft } from 'lucide-react';
 import { api } from '../utils/api';
@@ -105,6 +105,11 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [nibFile, setNibFile] = useState<File | null>(null);
   const [kemenkumhamFile, setKemenkumhamFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signatureMode, setSignatureMode] = useState<'DRAW' | 'UPLOAD'>('UPLOAD');
+  const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const signatureIsDrawingRef = useRef(false);
+  const signatureLastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const [signatureHasStroke, setSignatureHasStroke] = useState(false);
 
   const [docPaths, setDocPaths] = useState({
     ktpDocPath: '',
@@ -156,6 +161,80 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [isPostalLoading, setIsPostalLoading] = useState(false);
 
   console.log('RegisterScreen rendering... checkingRegistration:', checkingRegistration, 'step:', step);
+
+  const clearSignatureData = () => {
+    setSignatureFile(null);
+    setSignatureHasStroke(false);
+    setDocPaths((prev) => ({ ...prev, signatureDocPath: '' }));
+    setDocPreviews((prev) => {
+      const { signature, ...rest } = prev;
+      return rest;
+    });
+
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+  };
+
+  const ensureSignatureCanvasReady = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const nextW = Math.max(1, Math.round(rect.width * dpr));
+    const nextH = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== nextW || canvas.height !== nextH) {
+      canvas.width = nextW;
+      canvas.height = nextH;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!signatureHasStroke) {
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    }
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+  };
+
+  const saveSignatureFromCanvas = async () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return false;
+    if (!signatureHasStroke) {
+      setDocError('Tanda tangan belum digambar.');
+      return false;
+    }
+    const dataUrl = canvas.toDataURL('image/png');
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) {
+      setDocError('Gagal menyimpan tanda tangan.');
+      return false;
+    }
+    setDocPreviews((prev) => ({ ...prev, signature: dataUrl }));
+    const file = new File([blob], `signature-${Date.now()}.png`, { type: 'image/png' });
+    await handleDocChange('signature', file);
+    return true;
+  };
+
+  useEffect(() => {
+    if (signatureMode !== 'DRAW') return;
+    ensureSignatureCanvasReady();
+    const onResize = () => ensureSignatureCanvasReady();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [signatureMode, signatureHasStroke]);
 
   useEffect(() => {
     if (country !== 'Indonesia') {
@@ -588,6 +667,14 @@ export const RegisterScreen: React.FC<Props> = () => {
 
   const goNextStep = async () => {
     setRegError('');
+    if (step === 3 && signatureMode === 'DRAW' && signatureHasStroke && !docPaths.signatureDocPath && !isUploadingDoc) {
+      setDocError('');
+      try {
+        await saveSignatureFromCanvas();
+      } catch (e: any) {
+        setDocError(e?.message || 'Gagal menyimpan tanda tangan.');
+      }
+    }
     if (!validateStep(step)) return;
     try {
       if (step === 1) {
@@ -736,6 +823,142 @@ export const RegisterScreen: React.FC<Props> = () => {
         )}
       </div>
       <div className="space-y-3">
+        {field === 'signature' && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (signatureMode === 'DRAW') return;
+                setSignatureMode('DRAW');
+                clearSignatureData();
+                setTimeout(() => ensureSignatureCanvasReady(), 0);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
+                signatureMode === 'DRAW'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              Draw
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (signatureMode === 'UPLOAD') return;
+                setSignatureMode('UPLOAD');
+                clearSignatureData();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
+                signatureMode === 'UPLOAD'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              Upload
+            </button>
+          </div>
+        )}
+
+        {field === 'signature' && signatureMode === 'DRAW' && (
+          <div className="space-y-2">
+            <div className="rounded-xl border border-dashed border-green-300 bg-white p-2">
+              <canvas
+                ref={signatureCanvasRef}
+                className="w-full h-36 rounded-lg border border-slate-200 bg-white"
+                style={{ touchAction: 'none' }}
+                onPointerDown={(e) => {
+                  setDocError('');
+                  ensureSignatureCanvasReady();
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  const rect = canvas.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) return;
+                  signatureIsDrawingRef.current = true;
+                  signatureLastPointRef.current = { x, y };
+                  if (!signatureHasStroke) setSignatureHasStroke(true);
+                  try {
+                    canvas.setPointerCapture(e.pointerId);
+                  } catch {}
+                  ctx.fillStyle = '#0f172a';
+                  ctx.beginPath();
+                  ctx.arc(x, y, 1, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.moveTo(x, y);
+                }}
+                onPointerMove={(e) => {
+                  if (!signatureIsDrawingRef.current) return;
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  const last = signatureLastPointRef.current;
+                  const rect = canvas.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) return;
+                  if (!last) {
+                    signatureLastPointRef.current = { x, y };
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    return;
+                  }
+                  ctx.lineTo(x, y);
+                  ctx.stroke();
+                  signatureLastPointRef.current = { x, y };
+                  if (!signatureHasStroke) setSignatureHasStroke(true);
+                }}
+                onPointerUp={(e) => {
+                  signatureIsDrawingRef.current = false;
+                  signatureLastPointRef.current = null;
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  try {
+                    canvas.releasePointerCapture(e.pointerId);
+                  } catch {}
+                }}
+                onPointerCancel={(e) => {
+                  signatureIsDrawingRef.current = false;
+                  signatureLastPointRef.current = null;
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  try {
+                    canvas.releasePointerCapture(e.pointerId);
+                  } catch {}
+                }}
+              />
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDocError('');
+                    clearSignatureData();
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[10px] font-semibold border border-slate-200 text-slate-700 hover:border-slate-300"
+                >
+                  Hapus
+                </button>
+                <button
+                  type="button"
+                  disabled={isUploadingDoc || !signatureHasStroke}
+                  onClick={async () => {
+                    setDocError('');
+                    await saveSignatureFromCanvas();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold text-white ${
+                    isUploadingDoc || !signatureHasStroke ? 'bg-slate-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  Simpan Tanda Tangan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {field === 'signature' && signatureMode === 'DRAW' ? null : (
         <label className="flex-1 px-3 py-2 bg-green-50 border border-dashed border-green-300 rounded-xl text-[10px] text-green-700 cursor-pointer hover:border-green-400 hover:bg-green-100">
           <input
             type="file"
@@ -748,6 +971,7 @@ export const RegisterScreen: React.FC<Props> = () => {
           />
           {file ? file.name : 'Pilih file'}
         </label>
+        )}
         {docPreviews[field] && (
           <div className="w-24 h-24 rounded-lg overflow-hidden border border-green-200 bg-green-50">
             <img

@@ -38,7 +38,7 @@ export const EmailTemplates: React.FC<Props> = ({ token }) => {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const map = new Map(rows.map(r => [r.template_key, r]));
+  const map = new Map<string, TemplateRow>(rows.map((r) => [r.template_key, r] as [string, TemplateRow]));
 
   const load = async () => {
     setLoading(true);
