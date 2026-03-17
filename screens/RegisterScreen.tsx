@@ -526,83 +526,147 @@ export const RegisterScreen: React.FC<Props> = () => {
       setCropAngle(0);
       setCropTranslate({ x: 0, y: 0 });
       setCropRect({ x: 0, y: 0, w: CONTAINER_W, h: CONTAINER_H });
-      const img = new Image();
-      img.onload = () => {
-        const baseScale = Math.min(CONTAINER_W / img.width, CONTAINER_H / img.height);
-        setCropBaseScale(baseScale);
-        setCropNaturalSize({ w: img.width, h: img.height });
-        const dispW = img.width * baseScale;
-        const dispH = img.height * baseScale;
-        const x = Math.max(0, (CONTAINER_W - dispW) / 2);
-        const y = Math.max(0, (CONTAINER_H - dispH) / 2);
-        setCropRect({
-          x: Math.round(x),
-          y: Math.round(y),
-          w: Math.round(Math.min(CONTAINER_W - x, dispW)),
-          h: Math.round(Math.min(CONTAINER_H - y, dispH))
-        });
-      };
-      img.src = url;
+      (async () => {
+        try {
+          const bmp = await createImageBitmap(file);
+          const w = bmp.width;
+          const h = bmp.height;
+          bmp.close();
+          if (!w || !h) return;
+          const baseScale = Math.min(CONTAINER_W / w, CONTAINER_H / h);
+          setCropBaseScale(baseScale);
+          setCropNaturalSize({ w, h });
+          const dispW = w * baseScale;
+          const dispH = h * baseScale;
+          const x = Math.max(0, (CONTAINER_W - dispW) / 2);
+          const y = Math.max(0, (CONTAINER_H - dispH) / 2);
+          setCropRect({
+            x: Math.round(x),
+            y: Math.round(y),
+            w: Math.round(Math.min(CONTAINER_W - x, dispW)),
+            h: Math.round(Math.min(CONTAINER_H - y, dispH))
+          });
+        } catch {
+          const img = new Image();
+          img.onload = () => {
+            const w = img.width || img.naturalWidth;
+            const h = img.height || img.naturalHeight;
+            if (!w || !h) return;
+            const baseScale = Math.min(CONTAINER_W / w, CONTAINER_H / h);
+            setCropBaseScale(baseScale);
+            setCropNaturalSize({ w, h });
+            const dispW = w * baseScale;
+            const dispH = h * baseScale;
+            const x = Math.max(0, (CONTAINER_W - dispW) / 2);
+            const y = Math.max(0, (CONTAINER_H - dispH) / 2);
+            setCropRect({
+              x: Math.round(x),
+              y: Math.round(y),
+              w: Math.round(Math.min(CONTAINER_W - x, dispW)),
+              h: Math.round(Math.min(CONTAINER_H - y, dispH))
+            });
+          };
+          img.src = url;
+        }
+      })();
       return;
     }
     handleDocChange(field, file);
   };
 
-  const applyCrop = () => {
+  const applyCrop = async () => {
     if (!cropFile || !cropImageUrl || !cropField) return;
-    const img = new Image();
-    img.onload = () => {
-      const CONTAINER_W = 720;
-      const CONTAINER_H = 480;
-      const previewCanvas = document.createElement('canvas');
-      previewCanvas.width = CONTAINER_W;
-      previewCanvas.height = CONTAINER_H;
-      const pctx = previewCanvas.getContext('2d');
-      if (!pctx) return;
-      const baseScale = cropBaseScale > 0 ? cropBaseScale : Math.min(CONTAINER_W / img.width, CONTAINER_H / img.height);
-      const scale = baseScale * cropScale;
-      pctx.clearRect(0, 0, CONTAINER_W, CONTAINER_H);
-      pctx.save();
-      pctx.translate(CONTAINER_W / 2 + cropTranslate.x, CONTAINER_H / 2 + cropTranslate.y);
-      pctx.rotate((cropAngle * Math.PI) / 180);
-      pctx.scale(scale, scale);
-      pctx.drawImage(img, -img.width / 2, -img.height / 2);
-      pctx.restore();
-      const sx = Math.round(Math.max(0, Math.min(CONTAINER_W, cropRect.x)));
-      const sy = Math.round(Math.max(0, Math.min(CONTAINER_H, cropRect.y)));
-      const sw = Math.round(Math.max(1, Math.min(CONTAINER_W - sx, cropRect.w)));
-      const sh = Math.round(Math.max(1, Math.min(CONTAINER_H - sy, cropRect.h)));
-      const imageData = pctx.getImageData(sx, sy, sw, sh);
-      const outCanvas = document.createElement('canvas');
-      const maxOut = 2048;
-      const scaleOut = Math.min(1, maxOut / Math.max(sw, sh));
-      outCanvas.width = Math.round(sw * scaleOut);
-      outCanvas.height = Math.round(sh * scaleOut);
-      const octx = outCanvas.getContext('2d');
-      if (!octx) return;
-      const tmp = document.createElement('canvas');
-      tmp.width = sw;
-      tmp.height = sh;
-      const tctx = tmp.getContext('2d');
-      if (!tctx) return;
-      tctx.putImageData(imageData, 0, 0);
-      octx.imageSmoothingQuality = 'high';
-      octx.drawImage(tmp, 0, 0, outCanvas.width, outCanvas.height);
-      const dataUrl = outCanvas.toDataURL('image/jpeg', 0.92);
-      outCanvas.toBlob((blob) => {
-        if (!blob) return;
-        const croppedFile = new File([blob], cropFile.name, { type: 'image/jpeg' });
-        setDocPreviews((prev) => ({ ...prev, [cropField]: dataUrl }));
-        handleDocChange(cropField, croppedFile);
-        URL.revokeObjectURL(cropImageUrl);
-        setCropField(null);
-        setCropFile(null);
-        setCropImageUrl(null);
-        setCropTranslate({ x: 0, y: 0 });
-        setCropAngle(0);
-      }, 'image/jpeg', 0.92);
-    };
-    img.src = cropImageUrl;
+    const CONTAINER_W = 720;
+    const CONTAINER_H = 480;
+    let srcW = 0;
+    let srcH = 0;
+    let src: ImageBitmap | HTMLImageElement | null = null;
+    let needsBitmapClose = false;
+
+    try {
+      const bmp = await createImageBitmap(cropFile);
+      src = bmp;
+      needsBitmapClose = true;
+      srcW = bmp.width;
+      srcH = bmp.height;
+    } catch {
+      const img = new Image();
+      img.src = cropImageUrl;
+      await img.decode();
+      src = img;
+      srcW = img.width || img.naturalWidth;
+      srcH = img.height || img.naturalHeight;
+    }
+
+    if (!src || !srcW || !srcH) {
+      if (needsBitmapClose && src && 'close' in src) (src as ImageBitmap).close();
+      return;
+    }
+
+    const previewCanvas = document.createElement('canvas');
+    previewCanvas.width = CONTAINER_W;
+    previewCanvas.height = CONTAINER_H;
+    const pctx = previewCanvas.getContext('2d');
+    if (!pctx) {
+      if (needsBitmapClose && src && 'close' in src) (src as ImageBitmap).close();
+      return;
+    }
+
+    const baseScale = cropBaseScale > 0 ? cropBaseScale : Math.min(CONTAINER_W / srcW, CONTAINER_H / srcH);
+    const scale = baseScale * cropScale;
+    pctx.clearRect(0, 0, CONTAINER_W, CONTAINER_H);
+    pctx.save();
+    pctx.translate(CONTAINER_W / 2 + cropTranslate.x, CONTAINER_H / 2 + cropTranslate.y);
+    pctx.rotate((cropAngle * Math.PI) / 180);
+    pctx.scale(scale, scale);
+    pctx.drawImage(src as any, -srcW / 2, -srcH / 2, srcW, srcH);
+    pctx.restore();
+
+    if (needsBitmapClose && src && 'close' in src) (src as ImageBitmap).close();
+
+    const sx = Math.round(Math.max(0, Math.min(CONTAINER_W, cropRect.x)));
+    const sy = Math.round(Math.max(0, Math.min(CONTAINER_H, cropRect.y)));
+    const sw = Math.round(Math.max(1, Math.min(CONTAINER_W - sx, cropRect.w)));
+    const sh = Math.round(Math.max(1, Math.min(CONTAINER_H - sy, cropRect.h)));
+    const imageData = pctx.getImageData(sx, sy, sw, sh);
+    const outCanvas = document.createElement('canvas');
+    const maxOut = 2048;
+    const scaleOut = Math.min(1, maxOut / Math.max(sw, sh));
+    outCanvas.width = Math.round(sw * scaleOut);
+    outCanvas.height = Math.round(sh * scaleOut);
+    const octx = outCanvas.getContext('2d');
+    if (!octx) return;
+    const tmp = document.createElement('canvas');
+    tmp.width = sw;
+    tmp.height = sh;
+    const tctx = tmp.getContext('2d');
+    if (!tctx) return;
+    tctx.putImageData(imageData, 0, 0);
+    octx.imageSmoothingQuality = 'high';
+    const isSignature = cropField === 'signature';
+    const outMime = isSignature ? 'image/png' : 'image/jpeg';
+    if (outMime === 'image/jpeg') {
+      octx.save();
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+      octx.restore();
+    }
+    octx.drawImage(tmp, 0, 0, outCanvas.width, outCanvas.height);
+    const dataUrl = outMime === 'image/png' ? outCanvas.toDataURL('image/png') : outCanvas.toDataURL('image/jpeg', 0.92);
+    outCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const baseName = (cropFile.name || 'upload').replace(/\.[^/.]+$/, '');
+      const fileName = outMime === 'image/png' ? `${baseName}.png` : `${baseName}.jpg`;
+      const croppedFile = new File([blob], fileName, { type: outMime });
+      setDocPreviews((prev) => ({ ...prev, [cropField]: dataUrl }));
+      handleDocChange(cropField, croppedFile);
+      URL.revokeObjectURL(cropImageUrl);
+      setCropField(null);
+      setCropFile(null);
+      setCropImageUrl(null);
+      setCropTranslate({ x: 0, y: 0 });
+      setCropAngle(0);
+    }, outMime, outMime === 'image/jpeg' ? 0.92 : undefined);
   };
 
   const cancelCrop = () => {
