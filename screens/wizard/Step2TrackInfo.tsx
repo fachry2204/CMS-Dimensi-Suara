@@ -564,86 +564,77 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         }
         try {
             const duration = await getAudioDuration(file);
-            // If user uploads a ready 60s clip, accept it directly and upload to TMP
-            if (Math.abs(duration - clipDurationSeconds) <= clipDurationToleranceSeconds) {
-                const token = localStorage.getItem('cms_token') || '';
-                if (token) {
-                    const trackIndex = data.tracks.findIndex(t => t.id === trackId);
-                    if (trackIndex >= 0) {
-                        const fieldName = `track_${trackIndex}_clip`;
-                        try {
-                            setClipProgress(trackId, 0);
-                            setProcessingState(prev => ({ ...prev, [`${trackId}-audioClip`]: true }));
-                            updateTrack(trackId, { processingClip: true });
-                            // Same for clip, lower threshold to 1MB
-                            const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
-                            const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
-                            const resp = useChunk
-                              ? await api.uploadTmpReleaseFileChunked(
-                                  token,
-                                  { title: data.title, primaryArtists: normalizedArtists },
-                                  fieldName,
-                                  file,
-                                  10 * 1024 * 1024,
-                                  (p: number) => setClipProgress(trackId, clampPercent(p))
-                                )
-                              : await api.uploadTmpReleaseFile(
-                                  token,
-                                  { title: data.title, primaryArtists: normalizedArtists },
-                                  fieldName,
-                                  file
-                                );
-                            const candidate =
-                              (resp && resp.paths && resp.paths[fieldName]) ||
-                              (resp && resp.paths && resp.paths['file']) ||
-                              (resp && resp.path) ||
-                              (resp && resp.url) ||
-                              (resp && resp[fieldName]) ||
-                              '';
-                            if (candidate) {
-                                updateTrack(trackId, { tempClipPath: candidate, audioClip: candidate, previewStart: 0 });
-                                return;
-                            }
-                        } catch (e) {
-                            console.error('Upload tmp 60s clip failed:', e);
-                            // Fallback to trimmer UI below
-                        } finally {
-                            setClipProgress(trackId, 100);
-                            setProcessingState(prev => {
-                                const p = { ...prev };
-                                delete p[`${trackId}-audioClip`];
-                                return p;
-                            });
-                            updateTrack(trackId, { processingClip: false });
-                        }
-                    }
-                }
-            }
-            if (!Number.isFinite(duration) || duration < clipDurationSeconds) {
+            if (!Number.isFinite(duration) || duration <= 0) {
               updateTrack(trackId, { audioClip: null });
               setAlertState({
                 isOpen: true,
-                title: 'Audio Clip harus 60 detik',
-                message: 'Durasi file yang diupload kurang dari 60 detik, jadi tidak bisa dipakai. Upload file lain atau Trim dari Full Audio.',
+                title: 'Gagal membaca durasi',
+                message: 'Tidak bisa membaca durasi audio clip. Coba upload file lain.',
                 type: 'error'
               });
               return;
             }
-            setAlertState({
-              isOpen: true,
-              title: 'Audio Clip harus 60 detik',
-              message: 'Durasi file yang diupload bukan 60 detik. Gunakan Trim untuk membuat clip 60 detik.',
-              type: 'warning'
-            });
-            // Otherwise, open trimmer to produce a 60s clip
-            setTrimmerState({
+            if (duration > clipDurationSeconds + clipDurationToleranceSeconds) {
+              updateTrack(trackId, { audioClip: null });
+              setAlertState({
                 isOpen: true,
-                trackId: trackId,
-                rawFile: file,
-                duration: duration,
-                startTime: 0,
-                isPlaying: false
-            });
+                title: 'Audio Clip maksimal 60 detik',
+                message: 'Durasi audio clip lebih dari 60 detik. Audio clip harus 60 detik atau bisa menggunakan Trim File.',
+                type: 'warning'
+              });
+              return;
+            }
+
+            const token = localStorage.getItem('cms_token') || '';
+            if (token) {
+              const trackIndex = data.tracks.findIndex(t => t.id === trackId);
+              if (trackIndex >= 0) {
+                const fieldName = `track_${trackIndex}_clip`;
+                try {
+                  setClipProgress(trackId, 0);
+                  setProcessingState(prev => ({ ...prev, [`${trackId}-audioClip`]: true }));
+                  updateTrack(trackId, { processingClip: true });
+                  const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
+                  const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
+                  const resp = useChunk
+                    ? await api.uploadTmpReleaseFileChunked(
+                        token,
+                        { title: data.title, primaryArtists: normalizedArtists },
+                        fieldName,
+                        file,
+                        10 * 1024 * 1024,
+                        (p: number) => setClipProgress(trackId, clampPercent(p))
+                      )
+                    : await api.uploadTmpReleaseFile(
+                        token,
+                        { title: data.title, primaryArtists: normalizedArtists },
+                        fieldName,
+                        file
+                      );
+                  const candidate =
+                    (resp && resp.paths && resp.paths[fieldName]) ||
+                    (resp && resp.paths && resp.paths['file']) ||
+                    (resp && resp.path) ||
+                    (resp && resp.url) ||
+                    (resp && resp[fieldName]) ||
+                    '';
+                  if (candidate) {
+                    updateTrack(trackId, { tempClipPath: candidate, audioClip: candidate, previewStart: 0 });
+                    return;
+                  }
+                } catch (e) {
+                  console.error('Upload tmp clip failed:', e);
+                } finally {
+                  setClipProgress(trackId, 100);
+                  setProcessingState(prev => {
+                    const p = { ...prev };
+                    delete p[`${trackId}-audioClip`];
+                    return p;
+                  });
+                  updateTrack(trackId, { processingClip: false });
+                }
+              }
+            }
         } catch (e) {
             setAlertState({
                 isOpen: true,
@@ -864,7 +855,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                     {/* AUDIO CLIP */}
                                     <div className="md:col-span-2 space-y-3">
                                         <label className="block text-xs font-medium text-slate-700 mb-2 flex items-center justify-between">
-                                            <span>Audio Clip (60s, 24-bit / 48kHz) <span className="text-red-500">*</span></span>
+                                            <span>Audio Clip (maks 60s, 24-bit / 48kHz) <span className="text-red-500">*</span></span>
                                             {isProcessingClip && (
                                               <span className="text-xs text-orange-500 flex items-center gap-2">
                                                 <Loader2 size={14} className="animate-spin"/>

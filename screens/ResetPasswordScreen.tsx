@@ -48,6 +48,7 @@ export const ResetPasswordScreen: React.FC = () => {
   const qs = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const initialEmail = (qs.get('email') || '').trim();
   const initialToken = (qs.get('token') || '').trim();
+  const hideEmailToken = Boolean(initialEmail || initialToken);
 
   const [email, setEmail] = useState(initialEmail);
   const [token, setToken] = useState(initialToken);
@@ -152,43 +153,47 @@ export const ResetPasswordScreen: React.FC = () => {
         )}
 
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold ml-1" style={{ color: branding.login_form_text_color || '#334155' }}>
-              Email
-            </label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                <Mail size={16} />
+          {!hideEmailToken && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold ml-1" style={{ color: branding.login_form_text_color || '#334155' }}>
+                  Email
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                    <Mail size={16} />
+                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
+                    style={{ color: branding.login_form_text_color || '#334155' }}
+                    placeholder="Email terdaftar"
+                  />
+                </div>
               </div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
-                style={{ color: branding.login_form_text_color || '#334155' }}
-                placeholder="Email terdaftar"
-              />
-            </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold ml-1" style={{ color: branding.login_form_text_color || '#334155' }}>
-              Token
-            </label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                <KeyRound size={16} />
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold ml-1" style={{ color: branding.login_form_text_color || '#334155' }}>
+                  Token
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                    <KeyRound size={16} />
+                  </div>
+                  <input
+                    type="text"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
+                    style={{ color: branding.login_form_text_color || '#334155' }}
+                    placeholder="Token reset"
+                  />
+                </div>
               </div>
-              <input
-                type="text"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50/10 border border-slate-200/50 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all font-normal text-xs text-slate-700 placeholder:text-slate-400 backdrop-blur-sm"
-                style={{ color: branding.login_form_text_color || '#334155' }}
-                placeholder="Token reset"
-              />
-            </div>
-          </div>
+            </>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold ml-1" style={{ color: branding.login_form_text_color || '#334155' }}>
@@ -272,4 +277,3 @@ export const ResetPasswordScreen: React.FC = () => {
     </div>
   );
 };
-
