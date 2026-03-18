@@ -90,6 +90,10 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     setStableAudioUrl(null);
   }, [trimmerState.rawFile]);
 
+  const clipDurationSeconds = 60;
+  const clipDurationToleranceSeconds = 0.5;
+  const clampPercent = (p: number) => Math.max(0, Math.min(100, p));
+
   // Initialize first track if empty
   useEffect(() => {
     if (!initializedRef.current && data.tracks.length === 0) {
@@ -237,11 +241,79 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     });
   };
 
+  const ensureFileFromTrackAudio = async (source: any): Promise<File> => {
+    if (source instanceof File) return source;
+    if (typeof source !== 'string' || !source.trim()) {
+      throw new Error('NO_AUDIO_SOURCE');
+    }
+    const res = await fetch(source, { credentials: 'include' });
+    if (!res.ok) throw new Error('FETCH_AUDIO_FAILED');
+    const blob = await res.blob();
+    const url = source.split('?')[0];
+    const nameFromUrl = url.split('/').pop() || `track_audio_${Date.now()}`;
+    const name = nameFromUrl.includes('.') ? nameFromUrl : `${nameFromUrl}.wav`;
+    return new File([blob], name, { type: blob.type || 'audio/wav' });
+  };
+
+  const openTrimmerFromTrackAudio = async (trackId: string) => {
+    const key = `${trackId}-openTrimmer`;
+    if (processingState[key]) return;
+
+    const track: any = data.tracks.find(t => t.id === trackId);
+    const source = track?.audioFile;
+    if (!source) {
+      setAlertState({
+        isOpen: true,
+        title: 'Audio belum ada',
+        message: 'Upload Full Audio dulu sebelum melakukan Trim.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    setProcessingState(prev => ({ ...prev, [key]: true }));
+    try {
+      const file = await ensureFileFromTrackAudio(source);
+      const duration = await getAudioDuration(file);
+      if (!Number.isFinite(duration) || duration < clipDurationSeconds) {
+        setAlertState({
+          isOpen: true,
+          title: 'Durasi tidak cukup',
+          message: 'Full Audio harus minimal 60 detik untuk membuat Audio Clip.',
+          type: 'error'
+        });
+        return;
+      }
+      setTrimmerState({
+        isOpen: true,
+        trackId,
+        rawFile: file,
+        duration,
+        startTime: 0,
+        isPlaying: false
+      });
+    } catch (e) {
+      setAlertState({
+        isOpen: true,
+        title: 'Gagal membuka trimmer',
+        message: 'Tidak bisa memuat audio untuk Trim. Coba upload ulang file audio.',
+        type: 'error'
+      });
+    } finally {
+      setProcessingState(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
   const saveTrimmedAudio = async () => {
       if (!trimmerState.rawFile || !trimmerState.trackId) return;
       
       const track = data.tracks.find(t => t.id === trimmerState.trackId);
       const processKey = `${trimmerState.trackId}-audioClip`;
+      setClipProgress(trimmerState.trackId, 0);
 
       setProcessingState(prev => ({ ...prev, [processKey]: true }));
       updateTrack(trimmerState.trackId, { processingClip: true });
@@ -256,11 +328,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 const croppedFile = await cropAndConvertAudio(
                     trimmerState.rawFile,
                     trimmerState.startTime,
-                    60, // duration
+                    clipDurationSeconds,
                     trimmerState.rawFile.name,
-                    (p) => {
-                         // Update progress if needed
-                    }
+                    (p) => setClipProgress(trimmerState.trackId as string, clampPercent(p))
                 );
 
                 const fieldName = `track_${trackIndex}_clip`;
@@ -272,7 +342,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         { title: data.title, primaryArtists: normalizedArtists },
                         fieldName,
                         croppedFile,
-                        10 * 1024 * 1024 // 10MB chunk
+                        10 * 1024 * 1024,
+                        (p: number) => setClipProgress(trimmerState.trackId as string, clampPercent(p))
                     );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
@@ -310,6 +381,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
               type: 'error'
           });
       } finally {
+        setClipProgress(trimmerState.trackId, 100);
         setProcessingState(prev => {
             const newState = { ...prev };
             delete newState[processKey];
@@ -422,6 +494,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         if (file) {
             updateTrack(trackId, { audioFile: file });
         }
+        setAudioProgress(trackId, 0);
         setProcessingState(prev => ({ ...prev, [processKey]: true }));
         updateTrack(trackId, { processingAudio: true });
             try {
@@ -474,6 +547,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 type: 'error'
             });
         } finally {
+            setAudioProgress(trackId, 100);
             setProcessingState(prev => {
                 const newState = { ...prev };
                 delete newState[processKey];
@@ -491,13 +565,14 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         try {
             const duration = await getAudioDuration(file);
             // If user uploads a ready 60s clip, accept it directly and upload to TMP
-            if (duration >= 58 && duration <= 62) {
+            if (Math.abs(duration - clipDurationSeconds) <= clipDurationToleranceSeconds) {
                 const token = localStorage.getItem('cms_token') || '';
                 if (token) {
                     const trackIndex = data.tracks.findIndex(t => t.id === trackId);
                     if (trackIndex >= 0) {
                         const fieldName = `track_${trackIndex}_clip`;
                         try {
+                            setClipProgress(trackId, 0);
                             setProcessingState(prev => ({ ...prev, [`${trackId}-audioClip`]: true }));
                             updateTrack(trackId, { processingClip: true });
                             // Same for clip, lower threshold to 1MB
@@ -510,7 +585,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                   fieldName,
                                   file,
                                   10 * 1024 * 1024,
-                                  (p: number) => setClipProgress(trackId, p)
+                                  (p: number) => setClipProgress(trackId, clampPercent(p))
                                 )
                               : await api.uploadTmpReleaseFile(
                                   token,
@@ -533,6 +608,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                             console.error('Upload tmp 60s clip failed:', e);
                             // Fallback to trimmer UI below
                         } finally {
+                            setClipProgress(trackId, 100);
                             setProcessingState(prev => {
                                 const p = { ...prev };
                                 delete p[`${trackId}-audioClip`];
@@ -543,6 +619,22 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                     }
                 }
             }
+            if (!Number.isFinite(duration) || duration < clipDurationSeconds) {
+              updateTrack(trackId, { audioClip: null });
+              setAlertState({
+                isOpen: true,
+                title: 'Audio Clip harus 60 detik',
+                message: 'Durasi file yang diupload kurang dari 60 detik, jadi tidak bisa dipakai. Upload file lain atau Trim dari Full Audio.',
+                type: 'error'
+              });
+              return;
+            }
+            setAlertState({
+              isOpen: true,
+              title: 'Audio Clip harus 60 detik',
+              message: 'Durasi file yang diupload bukan 60 detik. Gunakan Trim untuk membuat clip 60 detik.',
+              type: 'warning'
+            });
             // Otherwise, open trimmer to produce a 60s clip
             setTrimmerState({
                 isOpen: true,
@@ -743,11 +835,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                 )}
                                             </div>
                                             
-                                            {!track.audioFile && (
-                                                <div className="hidden sm:block">
-                                                    <span className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded text-xs font-medium border border-gray-200">Select File</span>
-                                                </div>
-                                            )}
+                                            <div className="hidden sm:block flex-shrink-0">
+                                                <span className={`px-3 py-1.5 rounded text-xs font-medium border ${track.audioFile ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                  {track.audioFile ? 'Change File' : 'Upload File'}
+                                                </span>
+                                            </div>
 
                                             <input 
                                                 type="file" 
@@ -757,6 +849,16 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                 onChange={(e) => handleFileChange(track.id, 'audioFile', e.target.files?.[0] || null)}
                                             />
                                         </label>
+                                        {isProcessingAudio && (
+                                          <div className="w-full">
+                                            <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-2 bg-blue-600 rounded-full transition-all"
+                                                style={{ width: `${clampPercent(Math.round(convertProgress[track.id]?.audio || 0))}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                        )}
                                     </div>
                                     
                                     {/* AUDIO CLIP */}
@@ -766,7 +868,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             {isProcessingClip && (
                                               <span className="text-xs text-orange-500 flex items-center gap-2">
                                                 <Loader2 size={14} className="animate-spin"/>
-                                                <span>Processing {Math.round(convertProgress[track.id]?.clip || 0)}%</span>
+                                                <span>Uploading {Math.round(convertProgress[track.id]?.clip || 0)}%</span>
                                               </span>
                                             )}
                                         </label>
@@ -810,18 +912,56 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
 
                                             {!track.audioClip && (
                                                 <div className="hidden sm:block">
-                                                    <span className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded text-xs font-medium border border-gray-200">Select File</span>
+                                                    <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded text-xs font-medium border border-gray-200">Upload File</span>
                                                 </div>
                                             )}
 
                                             <input 
                                                 type="file" 
                                                 accept="audio/*"
-                                                className="hidden" 
+                                                id={`clip-input-${track.id}`}
+                                                className="hidden"
                                                 disabled={isProcessingClip}
                                                 onChange={(e) => handleFileChange(track.id, 'audioClip', e.target.files?.[0] || null)}
                                             />
                                         </label>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const el = document.getElementById(`clip-input-${track.id}`) as HTMLInputElement | null;
+                                              el?.click();
+                                            }}
+                                            disabled={isProcessingClip}
+                                            className={`flex-1 px-4 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                                              isProcessingClip ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-slate-700 border-gray-200 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            Upload File
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => openTrimmerFromTrackAudio(track.id)}
+                                            disabled={isProcessingAudio || isProcessingClip || !track.audioFile}
+                                            className={`flex-1 px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                                              (isProcessingAudio || isProcessingClip || !track.audioFile)
+                                                ? 'bg-orange-100/40 text-orange-300 cursor-not-allowed'
+                                                : 'bg-orange-600 text-white hover:bg-orange-700'
+                                            }`}
+                                          >
+                                            Trim File
+                                          </button>
+                                        </div>
+                                        {isProcessingClip && (
+                                          <div className="w-full">
+                                            <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-2 bg-orange-600 rounded-full transition-all"
+                                                style={{ width: `${clampPercent(Math.round(convertProgress[track.id]?.clip || 0))}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                        )}
 
                                         {/* INLINE TRIMMER UI */}
                                         {isTrimmerActive && (
@@ -839,7 +979,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                 <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200">
                                                     <div className="text-center mb-4">
                                                         <div className="text-xs font-mono font-medium text-blue-600">
-                                                            {new Date(trimmerState.startTime * 1000).toISOString().substr(14, 5)} - {new Date((trimmerState.startTime + 60) * 1000).toISOString().substr(14, 5)}
+                                                            {new Date(trimmerState.startTime * 1000).toISOString().substr(14, 5)} - {new Date((trimmerState.startTime + clipDurationSeconds) * 1000).toISOString().substr(14, 5)}
                                                         </div>
                                                         <p className="text-xs text-slate-400 mt-1">Duration: 60 Seconds</p>
                                                     </div>
@@ -855,7 +995,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                              <input 
                                                                 type="range" 
                                                                 min="0" 
-                                                                max={Math.max(0, trimmerState.duration - 60)} 
+                                                                max={Math.max(0, trimmerState.duration - clipDurationSeconds)} 
                                                                 step="1" 
                                                                 value={trimmerState.startTime}
                                                                 onChange={handleTrimmerSliderChange}
@@ -870,7 +1010,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                     ref={previewAudioRef} 
                                                     src={stableAudioUrl || undefined} 
                                                     onTimeUpdate={(e) => {
-                                                        if (e.currentTarget.currentTime >= trimmerState.startTime + 60) {
+                                                        if (e.currentTarget.currentTime >= trimmerState.startTime + clipDurationSeconds) {
                                                             e.currentTarget.currentTime = trimmerState.startTime;
                                                         }
                                                     }}

@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import geoip from 'geoip-lite';
+import { createHash, randomBytes } from 'crypto';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { syncUserToSheet } from '../utils/googleSheets.js';
@@ -269,6 +270,238 @@ router.post('/register', async (req, res) => {
         if (err.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ error: 'Username or email already exists' });
         }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const email = String(req.body?.email || '').trim().toLowerCase();
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const [users] = await db.query('SELECT id, username, full_name, email FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
+        if (!Array.isArray(users) || users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const user = users[0];
+
+        try {
+            await db.query('DELETE FROM password_reset_tokens WHERE user_id = ? AND used_at IS NULL', [user.id]);
+        } catch {}
+
+        const token = randomBytes(32).toString('hex');
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        const [insertRes] = await db.query(
+            'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+            [user.id, tokenHash, expiresAt]
+        );
+        const tokenId = insertRes?.insertId || null;
+
+        const forwardedProto = req.headers['x-forwarded-proto'];
+        const forwardedHost = req.headers['x-forwarded-host'];
+        const proto = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto) || (req.secure ? 'https' : 'http');
+        const host = (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost) || req.get('host');
+        const origin = process.env.APP_URL || `${proto}://${host}`;
+        const link = `${origin.replace(/\/+$/, '')}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+
+        const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+        if (smtpRows.length === 0 || !smtpRows[0].setting_value) {
+            return res.status(500).json({ error: 'SMTP settings not configured' });
+        }
+        const smtp = JSON.parse(smtpRows[0].setting_value);
+        if (!smtp.host || !smtp.port || !smtp.user || !smtp.pass || !smtp.from_email) {
+            return res.status(500).json({ error: 'Incomplete SMTP settings' });
+        }
+
+        const displayName = user.full_name || user.username || user.email || 'User';
+        const subject = 'Reset Password - Dimensi Suara';
+        const html = `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr>
+    <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+      <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+      <div style="font-size:12px;opacity:.9">Reset Password</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px">
+      <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo ${String(displayName).replace(/</g, '&lt;').replace(/>/g, '&gt;')},</div>
+      <div style="font-size:14px;color:#334155;line-height:1.6">Kami menerima permintaan reset password untuk akun Anda. Klik tombol di bawah untuk membuat password baru.</div>
+      <div style="margin:18px 0">
+        <a href="${link}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px">Reset Password</a>
+      </div>
+      <div style="font-size:12px;color:#64748b;line-height:1.6">Link ini berlaku selama 60 menit. Jika Anda tidak meminta reset password, abaikan email ini.</div>
+      <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+    </td>
+  </tr>
+</table>
+</body></html>`;
+
+        const tls = (await import('tls')).default;
+        const net = (await import('net')).default;
+        const sendEmail = ({ host, port, secure, user, pass, from_email, to, subject, html }) => {
+            return new Promise((resolve, reject) => {
+                const socket = secure ? tls.connect(port, host, { servername: host }, onConnect) : net.connect(port, host, onConnect);
+                let buffer = '';
+                let closed = false;
+                function cleanup(err, result) {
+                    if (closed) return;
+                    closed = true;
+                    try { socket.end(); } catch {}
+                    if (err) reject(err);
+                    else resolve(result || { ok: true });
+                }
+                function expect(code) {
+                    return new Promise((res, rej) => {
+                        const onData = (data) => {
+                            buffer += data.toString('utf8');
+                            const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                            const last = lines[lines.length - 1] || '';
+                            const m = last.match(/^(\d{3})/);
+                            if (m) {
+                                const lastCode = parseInt(m[1], 10);
+                                if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) {
+                                    socket.removeListener('data', onData);
+                                    buffer = '';
+                                    res(last);
+                                } else if (lastCode >= 400) {
+                                    socket.removeListener('data', onData);
+                                    rej(new Error(`SMTP error ${lastCode}: ${last}`));
+                                }
+                            }
+                        };
+                        socket.on('data', onData);
+                    });
+                }
+                function send(cmd) {
+                    return new Promise((res, rej) => {
+                        try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); }
+                    });
+                }
+                function onConnect() {
+                    (async () => {
+                        try {
+                            await expect(220);
+                            await send(`EHLO localhost`);
+                            await expect(250);
+                            if (user && pass) {
+                                await send('AUTH LOGIN');
+                                await expect(334);
+                                await send(Buffer.from(String(user)).toString('base64'));
+                                await expect(334);
+                                await send(Buffer.from(String(pass)).toString('base64'));
+                                await expect(235);
+                            }
+                            await send(`MAIL FROM:<${from_email}>`);
+                            await expect(250);
+                            await send(`RCPT TO:<${to}>`);
+                            await expect([250, 251]);
+                            await send('DATA');
+                            await expect(354);
+                            const now = new Date();
+                            const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${String(from_email).split('@')[1] || 'localhost'}>`;
+                            const msg = [
+                                `From: ${smtp.from_name ? `${smtp.from_name} <${from_email}>` : `<${from_email}>`}`,
+                                `To: <${to}>`,
+                                `Subject: ${subject}`,
+                                `Date: ${now.toUTCString()}`,
+                                `Message-ID: ${messageId}`,
+                                `Reply-To: ${from_email}`,
+                                'X-Mailer: DimensiSuaraCMS/1.0',
+                                'MIME-Version: 1.0',
+                                'Content-Type: text/html; charset=utf-8',
+                                'Content-Transfer-Encoding: 8bit',
+                                '',
+                                html,
+                                ''
+                            ].join('\r\n');
+                            const accepted = await send(msg + '\r\n.').then(() => expect(250));
+                            await send('QUIT');
+                            cleanup(null, { ok: true, accepted });
+                        } catch (err) {
+                            cleanup(err);
+                        }
+                    })();
+                }
+                socket.once('error', (e) => cleanup(e));
+                socket.once('close', () => cleanup(new Error('SMTP connection closed')));
+            });
+        };
+
+        let logId = null;
+        try {
+            const [logRes] = await db.query(
+                'INSERT INTO email_logs (user_id, related_type, related_id, to_email, subject, status) VALUES (?, ?, ?, ?, ?, ?)',
+                [user.id, 'PASSWORD_RESET', tokenId, email, subject, 'PENDING']
+            );
+            logId = logRes?.insertId || null;
+        } catch {}
+
+        try {
+            const sent = await sendEmail({
+                host: smtp.host,
+                port: Number(smtp.port || 587),
+                secure: Boolean(smtp.secure),
+                user: smtp.user,
+                pass: smtp.pass,
+                from_email: smtp.from_email,
+                to: email,
+                subject,
+                html
+            });
+            if (logId) {
+                await db.query('UPDATE email_logs SET status = ?, sent_at = NOW(), server_response = ? WHERE id = ?', ['SENT', sent?.accepted?.slice(0, 480) || null, logId]);
+            }
+        } catch (err) {
+            if (logId) await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+            return res.status(500).json({ error: 'Failed to send reset email' });
+        }
+
+        res.json({ message: 'Reset link sent' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/reset-password', async (req, res) => {
+    try {
+        const email = String(req.body?.email || '').trim().toLowerCase();
+        const token = String(req.body?.token || '').trim();
+        const password = String(req.body?.password || '');
+        if (!email || !token || !password) return res.status(400).json({ error: 'email, token, password required' });
+
+        const strong = password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+        if (!strong) {
+            return res.status(400).json({ error: 'Password kurang kuat. Gunakan ≥8 char, huruf besar, kecil, angka, simbol.' });
+        }
+
+        const [users] = await db.query('SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
+        if (!Array.isArray(users) || users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const userId = users[0].id;
+
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const [rows] = await db.query(
+            'SELECT id, expires_at, used_at FROM password_reset_tokens WHERE user_id = ? AND token_hash = ? ORDER BY id DESC LIMIT 1',
+            [userId, tokenHash]
+        );
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return res.status(400).json({ error: 'Token tidak valid atau sudah kadaluarsa' });
+        }
+        const row = rows[0];
+        if (row.used_at) return res.status(400).json({ error: 'Token tidak valid atau sudah kadaluarsa' });
+        const exp = row.expires_at ? new Date(row.expires_at).getTime() : 0;
+        if (!exp || exp < Date.now()) return res.status(400).json({ error: 'Token tidak valid atau sudah kadaluarsa' });
+
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(password, salt);
+        await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, userId]);
+        await db.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = ?', [row.id]);
+        res.json({ message: 'Password berhasil direset' });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });

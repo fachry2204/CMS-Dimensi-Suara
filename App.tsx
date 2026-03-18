@@ -25,6 +25,7 @@ import { PaymentScreen } from './screens/PaymentScreen';
 import { PaymentDetailScreen } from './screens/PaymentDetailScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { RegisterScreen } from './screens/RegisterScreen';
+import { ResetPasswordScreen } from './screens/ResetPasswordScreen';
 import { UserStatusScreen } from './screens/UserStatusScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { UserAnalytics } from './screens/UserAnalytics';
@@ -864,6 +865,14 @@ const App: React.FC = () => {
             </Routes>
          );
     }
+    if (path === '/reset-password' || path.startsWith('/reset-password/')) {
+         return (
+            <Routes>
+                <Route path="/reset-password" element={<ResetPasswordScreen />} />
+                <Route path="*" element={<Navigate to="/reset-password" replace />} />
+            </Routes>
+         );
+    }
     
     // Fallback UI instead of null to identify if we are stuck here
     return (
@@ -882,6 +891,7 @@ const App: React.FC = () => {
         <Routes>
             <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
             <Route path="/register" element={<RegisterScreen onLogin={handleLogin} />} />
+            <Route path="/reset-password" element={<ResetPasswordScreen />} />
             <Route path="/user-status" element={<UserStatusScreen username={''} status={'Pending'} />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
