@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import db from '../config/db.js';
 import xlsx from 'xlsx';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { createNotification, sendWhatsApp } from '../utils/notification.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -435,10 +436,11 @@ router.put('/songs/:id/status', authenticateToken, async (req, res) => {
                 const s = rows[0];
                 if (typeof status === 'string' && status) {
                     const msg = `Status Lagu "${s.title}" berubah menjadi ${status}`;
-                    await db.query(
-                        'INSERT INTO notifications (user_id, type, message, is_read, created_at) VALUES (?, ?, ?, ?, NOW())',
-                        [s.user_id, 'SONG_STATUS', msg, false]
-                    );
+                    // Using release_status template as it's generic enough or we can create song_status.
+                    // Let's use release_status for consistency for now or fallback.
+                    const templateKey = `release_status.${status}`; 
+                    const templateData = { title: s.title, status: status };
+                    await createNotification(s.user_id, 'SONG_STATUS', msg, templateKey, templateData);
                 }
             }
         } catch (e) {

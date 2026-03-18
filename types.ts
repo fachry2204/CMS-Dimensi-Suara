@@ -88,7 +88,7 @@ export interface PrimaryArtist {
 export interface ReleaseData {
   id?: string; // Unique ID for the list
   userId?: string | number; // Owner ID
-  status?: 'Pending' | 'Request Edit' | 'Processing' | 'Live' | 'Rejected' | 'Draft';
+  status?: 'Pending' | 'Request Edit' | 'Processing' | 'Released' | 'Rejected' | 'Draft';
   submissionDate?: string;
   aggregator?: string; // New Field
   distributionTargets?: { id: string; label: string; logo: string }[];

@@ -938,6 +938,25 @@ export const api = {
         });
         return parseResponse(res);
     },
+    getWhatsAppTemplates: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/templates/wa`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    saveWhatsAppTemplate: async (token: string, payload: { key: string; body: string }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/template/wa`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
     broadcastMessage: async (token: string, payload: { channel: 'email'|'wa'|'both'; subject?: string; html?: string; message?: string; recipients?: string[]; delayMs?: number }) => {
         const res = await fetch(`${API_BASE_URL}/settings/messaging/broadcast`, {
             method: 'POST',

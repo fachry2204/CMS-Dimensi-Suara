@@ -52,7 +52,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
     { id: 'PENDING', label: 'Pending', statusMap: 'Pending' },
     { id: 'REQUEST_EDIT', label: 'Request Edit', statusMap: 'Request Edit' },
     { id: 'PROCESSING', label: 'Proses', statusMap: 'Processing' },
-    { id: 'RELEASED', label: 'Released', statusMap: 'Live' },
+    { id: 'RELEASED', label: 'Released', statusMap: 'Released' },
     { id: 'REJECTED', label: 'Reject', statusMap: 'Rejected' },
   ];
 
@@ -396,7 +396,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
 
                             // Determine color based on status
                             let statusClass = "bg-gray-100 text-gray-600 border-gray-200";
-                            if (status === 'Live') statusClass = "bg-green-100 text-green-700 border-green-200";
+                            if (status === 'Released') statusClass = "bg-green-100 text-green-700 border-green-200";
                             if (status === 'Processing') statusClass = "bg-blue-100 text-blue-700 border-blue-200";
                             if (status === 'Pending') statusClass = "bg-yellow-100 text-yellow-700 border-yellow-200";
                             if (status === 'Request Edit') statusClass = "bg-orange-100 text-orange-700 border-orange-200";
@@ -494,7 +494,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                 title={rejectionTooltip}
                                                 className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap border ${statusClass}`}
                                             >
-                                                {status === 'Live' ? 'Released' : status}
+                                                {status}
                                             </span>
                                         </div>
                                     </td>

@@ -32,7 +32,7 @@ import { UserAnalytics } from './screens/UserAnalytics';
 import { UserPayments } from './screens/UserPayments';
 import Tickets from './screens/Tickets';
 import SystemMonitoring from './screens/SystemMonitoring';
-import EmailTemplates from './screens/EmailTemplates';
+import TemplateGateway from './screens/TemplateGateway';
 import Broadcast from './screens/Broadcast';
 import NoticeManagement from './screens/NoticeManagement';
 import MessagingGateway from './screens/MessagingGateway';
@@ -1330,7 +1330,7 @@ const App: React.FC = () => {
                 />
             } />
             <Route path="/system/monitoring" element={<SystemMonitoring token={token} userRole={userRole} />} />
-            <Route path="/system/messaging/templates" element={<EmailTemplates token={token} />} />
+            <Route path="/system/messaging/templates" element={<TemplateGateway token={token} />} />
             <Route path="/system/messaging/broadcast" element={<Broadcast token={token} />} />
             <Route path="/system/messaging/notice" element={<NoticeManagement token={token} />} />
             <Route path="/system/messaging/gateway" element={<MessagingGateway token={token} />} />

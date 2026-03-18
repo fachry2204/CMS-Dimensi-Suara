@@ -8,6 +8,7 @@ import { spawn } from 'child_process';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import xlsx from 'xlsx';
 import { ensureReleaseFolder, uploadLocalFileToDrive, deleteDriveFileByUrl } from '../utils/googleDrive.js';
+import { createNotification, sendWhatsApp } from '../utils/notification.js';
 import tls from 'tls';
 import net from 'net';
 
@@ -1390,10 +1391,14 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                 const [users] = await db.query('SELECT id FROM users WHERE id = ?', [release.user_id]);
                 if (users.length > 0) {
                     const msg = `Status Rilisan "${release.title}" berubah menjadi ${status}`;
-                    await db.query(
-                        'INSERT INTO notifications (user_id, type, message, is_read, created_at) VALUES (?, ?, ?, ?, NOW())',
-                        [release.user_id, 'RELEASE_STATUS', msg, false]
-                    );
+                    const templateKey = `release_status.${status}`;
+                    const templateData = { 
+                        title: release.title, 
+                        status: status,
+                        upc: release.upc || ''
+                    };
+                    
+                    await createNotification(release.user_id, 'RELEASE_STATUS', msg, templateKey, templateData);
 
                     try {
                         const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);

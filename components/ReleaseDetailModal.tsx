@@ -307,8 +307,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           return;
       }
 
-      // 2. Validation for LIVE/RELEASED (Strict)
-      if (status === 'Live') {
+      // 2. Validation for RELEASED (Strict)
+      if (status === 'Released') {
           if (!upcInput || upcInput.trim() === "") {
              setAlertState({
                  isOpen: true,
@@ -568,13 +568,13 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                     
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                         <span className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
-                            status === 'Live' ? 'bg-green-100 text-green-700 border-green-200' :
+                            status === 'Released' ? 'bg-green-100 text-green-700 border-green-200' :
                             status === 'Processing' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                             status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200' :
                             'bg-yellow-100 text-yellow-700 border-yellow-200'
                         }`}>
                             {status === 'Rejected' && <AlertTriangle size={14} />}
-                            <span className="uppercase tracking-wider">{status === 'Live' ? 'Released' : status}</span>
+                            <span className="uppercase tracking-wider">{status}</span>
                         </span>
                         {userRole === 'Admin' && release.aggregator && (
                             <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1.5">
@@ -930,14 +930,14 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                         onChange={(e) => setStatus(e.target.value as any)}
                                         className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 font-bold text-slate-700
                                             ${status === 'Rejected' ? 'border-red-200 bg-red-50 focus:border-red-500 focus:ring-red-100' : 
-                                            status === 'Live' ? 'border-green-200 bg-green-50 focus:border-green-500 focus:ring-green-100' :
+                                            status === 'Released' ? 'border-green-200 bg-green-50 focus:border-green-500 focus:ring-green-100' :
                                             'border-blue-200 bg-white focus:border-blue-500 focus:ring-blue-100'}
                                         `}
                                     >
                                         <option value="Pending">Pending Review</option>
                                         <option value="Request Edit">Request Edit</option>
                                         <option value="Processing">Processing (Aggregator)</option>
-                                        <option value="Live">Released</option>
+                                        <option value="Released">Released</option>
                                         <option value="Rejected">Rejected</option>
                                     </select>
                                 </div>

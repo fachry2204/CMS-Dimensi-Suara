@@ -284,7 +284,7 @@ const initDb = async () => {
                 const enumOk = !isEnum ? true : (
                     type.includes("'pending'") &&
                     type.includes("'processing'") &&
-                    type.includes("'live'") &&
+                    type.includes("'released'") &&
                     type.includes("'rejected'") &&
                     type.includes("'request edit'")
                 );
@@ -294,8 +294,14 @@ const initDb = async () => {
                     await connection.query("ALTER TABLE releases MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'");
                 }
             }
+
+            // Migration: Live -> Released
+            console.log('🔄 Migrating release status: Live -> Released');
+            await connection.query("UPDATE releases SET status = 'Released' WHERE status = 'Live'");
+            await connection.query("UPDATE email_templates SET template_key = 'release_status.Released' WHERE template_key = 'release_status.Live'");
+
         } catch (e) {
-            console.warn('status column alteration warning:', e.message);
+            console.warn('status column alteration/migration warning:', e.message);
         }
 
         try {
@@ -643,6 +649,23 @@ const initDb = async () => {
                 `);
             }
         }
+
+        // 13f. Ensure whatsapp_templates table exists
+        try {
+            await connection.query('SELECT 1 FROM whatsapp_templates LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: whatsapp_templates');
+                await connection.query(`
+                    CREATE TABLE whatsapp_templates (
+                        template_key VARCHAR(100) PRIMARY KEY,
+                        body_template TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
         try {
             const defaults = [
                 {
@@ -717,7 +740,7 @@ const initDb = async () => {
 </table></body></html>`
                 },
                 {
-                    key: 'release_status.Live',
+                    key: 'release_status.Released',
                     subject: 'Update Status Rilisan: {{title}} → {{status}}',
                     body: `<!doctype html><html lang="id"><meta charset="utf-8" />
 <body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
@@ -799,8 +822,54 @@ const initDb = async () => {
                     [t.key, t.subject, t.body]
                 );
             }
+
+            // Seed WhatsApp Defaults
+            const waDefaults = [
+                {
+                    key: 'release_status.Pending',
+                    body: `Halo {{fullName}},\n\nStatus rilisan Anda "{{title}}" telah diperbarui menjadi: {{status}}.\n\nTerima kasih.`
+                },
+                {
+                    key: 'release_status.Request Edit',
+                    body: `Halo {{fullName}},\n\nStatus rilisan Anda "{{title}}" perlu diperbaiki. Status saat ini: {{status}}.\n\nMohon cek dashboard untuk detailnya.`
+                },
+                {
+                    key: 'release_status.Processing',
+                    body: `Halo {{fullName}},\n\nStatus rilisan Anda "{{title}}" sedang dalam proses distribusi (Processing).\n\nTerima kasih.`
+                },
+                {
+                    key: 'release_status.Released',
+                    body: `Halo {{fullName}},\n\nSelamat! Rilisan Anda "{{title}}" telah terbit (Released).\n\nCek dashboard untuk detail UPC/ISRC.`
+                },
+                {
+                    key: 'release_status.Rejected',
+                    body: `Halo {{fullName}},\n\nMaaf, rilisan Anda "{{title}}" ditolak.\nAlasan: {{reason}}\n\nMohon cek email atau dashboard untuk instruksi perbaikan.`
+                },
+                {
+                    key: 'user_register',
+                    body: `Halo {{fullName}},\n\nTerima kasih telah mendaftar di Dimensi Suara. Akun Anda sedang menunggu verifikasi dari admin.`
+                },
+                {
+                    key: 'user_register_status.Pending',
+                    body: `Halo {{fullName}},\n\nStatus pendaftaran akun Anda saat ini: {{status}} (Menunggu Verifikasi).`
+                },
+                {
+                    key: 'user_register_status.Approved',
+                    body: `Halo {{fullName}},\n\nSelamat! Pendaftaran akun Anda telah DISETUJUI. Silakan login ke dashboard Dimensi Suara.`
+                },
+                {
+                    key: 'user_register_status.Rejected',
+                    body: `Halo {{fullName}},\n\nMaaf, pendaftaran akun Anda ditolak.\nAlasan: {{reason}}`
+                }
+            ];
+            for (const t of waDefaults) {
+                await connection.query(
+                    'INSERT IGNORE INTO whatsapp_templates (template_key, body_template) VALUES (?, ?)',
+                    [t.key, t.body]
+                );
+            }
         } catch (err) {
-            console.warn('Email template seed warning:', err.message);
+            console.warn('Template seed warning:', err.message);
         }
 
         try {

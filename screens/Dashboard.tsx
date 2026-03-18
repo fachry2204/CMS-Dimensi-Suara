@@ -104,7 +104,7 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
   const releaseStats = {
     pending: releases.filter(r => (r.status || 'Pending') === 'Pending').length,
     processing: releases.filter(r => r.status === 'Processing').length,
-    live: releases.filter(r => r.status === 'Live').length,
+    released: releases.filter(r => r.status === 'Released').length,
     rejected: releases.filter(r => r.status === 'Rejected').length,
   };
 
@@ -223,7 +223,7 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
                 />
                 <StatCard 
                     title="Released" 
-                    count={releaseStats.live} 
+                    count={releaseStats.released} 
                     icon={<CheckCircle size={20} />} 
                     colorClass="text-green-600" 
                     bgClass="bg-green-50"

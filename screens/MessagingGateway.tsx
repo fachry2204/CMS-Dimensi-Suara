@@ -7,11 +7,11 @@ interface Props {
 }
 
 type SmtpCfg = { host: string; port: number; secure: boolean; user: string; pass: string; from_email: string; from_name?: string };
-type MpwaCfg = { base_url: string; token: string; device_id: string };
+type MpwaCfg = { base_url: string; token: string; device_id: string; enabled: boolean };
 
 export const MessagingGateway: React.FC<Props> = ({ token }) => {
   const [smtp, setSmtp] = useState<SmtpCfg>({ host: '', port: 587, secure: false, user: '', pass: '', from_email: '', from_name: '' });
-  const [mpwa, setMpwa] = useState<MpwaCfg>({ base_url: '', token: '', device_id: '' });
+  const [mpwa, setMpwa] = useState<MpwaCfg>({ base_url: '', token: '', device_id: '', enabled: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState('');
@@ -137,6 +137,18 @@ export const MessagingGateway: React.FC<Props> = ({ token }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Aktifkan WA Gateway</label>
+              <select 
+                value={mpwa.enabled ? 'true' : 'false'} 
+                onChange={(e) => setMpwa({...mpwa, enabled: e.target.value === 'true'})} 
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-slate-50 focus:bg-white transition-colors"
+              >
+                <option value="false">Tidak Aktif</option>
+                <option value="true">Aktif (Kirim Notifikasi Otomatis)</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Jika aktif, sistem akan mengirim notifikasi WhatsApp otomatis untuk setiap perubahan status (Release, Pendaftaran, dll).</p>
+            </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-bold text-slate-700 mb-2">Base URL MPWA</label>
               <input value={mpwa.base_url} onChange={(e)=>setMpwa({...mpwa, base_url: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-xl"/>

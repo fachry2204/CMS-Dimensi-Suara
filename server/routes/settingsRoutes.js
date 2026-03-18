@@ -423,10 +423,30 @@ router.post('/gateway/test-wa', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'MPWA settings not configured' });
         }
         const cfg = JSON.parse(rows[0].setting_value);
-        const url = (endpoint && endpoint.trim()) ? endpoint : (cfg.endpoint || '');
-        if (!url) return res.status(400).json({ error: 'MPWA endpoint not configured' });
-        const body = { phone, message: message || 'Test message from CMS Dimensi Suara.' };
-        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        
+        // Construct correct endpoint URL
+        let url = (endpoint && endpoint.trim()) ? endpoint : (cfg.base_url || cfg.endpoint || '');
+        if (!url) return res.status(400).json({ error: 'MPWA base URL not configured' });
+        
+        if (!url.includes('/send-message')) {
+            if (!url.endsWith('/')) url += '/';
+            url += 'send-message';
+        }
+
+        // Payload based on MPWA documentation
+        const body = { 
+            api_key: cfg.token,
+            sender: cfg.device_id,
+            number: phone, 
+            message: message || 'Test message from CMS Dimensi Suara.' 
+        };
+
+        const r = await fetch(url, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(body) 
+        });
+        
         if (!r.ok) {
             const t = await r.text().catch(()=>'');
             throw new Error(`MPWA request failed (${r.status}): ${t || r.statusText}`);
@@ -476,13 +496,13 @@ router.get('/email/logs', authenticateToken, async (req, res) => {
     }
 });
 
-// Messaging Templates
+// Messaging Templates (Email)
 router.get('/messaging/templates', authenticateToken, async (req, res) => {
     try {
         if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
             return res.status(403).json({ error: 'Access denied' });
         }
-        const [rows] = await db.query('SELECT template_key, subject_template, body_template FROM email_templates');
+        const [rows] = await db.query('SELECT * FROM email_templates');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -495,12 +515,42 @@ router.put('/messaging/template', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
         const { key, subject, body } = req.body || {};
-        if (!key || !subject || !body) return res.status(400).json({ error: 'key, subject, body required' });
+        if (!key) return res.status(400).json({ error: 'Key is required' });
         await db.query(
             'INSERT INTO email_templates (template_key, subject_template, body_template) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE subject_template = VALUES(subject_template), body_template = VALUES(body_template)',
-            [key, subject, body]
+            [key, subject || '', body || '']
         );
-        res.json({ message: 'Template saved' });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Messaging Templates (WhatsApp)
+router.get('/messaging/templates/wa', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM whatsapp_templates');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/messaging/template/wa', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { key, body } = req.body || {};
+        if (!key) return res.status(400).json({ error: 'Key is required' });
+        await db.query(
+            'INSERT INTO whatsapp_templates (template_key, body_template) VALUES (?, ?) ON DUPLICATE KEY UPDATE body_template = VALUES(body_template)',
+            [key, body || '']
+        );
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -579,9 +629,31 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
             } catch (e) { reject(e); }
         });
         const sendWa = async ({ to }) => {
-            if (!wa || !wa.endpoint) throw new Error('WA not configured');
-            const r = await fetch(wa.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: to, message: message || '' }) });
-            if (!r.ok) throw new Error(`WA error ${r.status}`);
+            if (!wa || (!wa.base_url && !wa.endpoint)) throw new Error('WA not configured');
+            
+            let url = wa.base_url || wa.endpoint || '';
+            if (!url.includes('/send-message')) {
+                if (!url.endsWith('/')) url += '/';
+                url += 'send-message';
+            }
+
+            const body = { 
+                api_key: wa.token,
+                sender: wa.device_id,
+                number: to, 
+                message: message || '' 
+            };
+
+            const r = await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(body) 
+            });
+            
+            if (!r.ok) {
+                const t = await r.text().catch(()=>'');
+                throw new Error(`WA error ${r.status}: ${t}`);
+            }
         };
         (async () => {
             for (const to of targets) {

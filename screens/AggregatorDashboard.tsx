@@ -40,7 +40,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
     total: releases.length,
     pending: releases.filter(r => (r.status || 'Pending') === 'Pending').length,
     processing: releases.filter(r => r.status === 'Processing').length,
-    live: releases.filter(r => r.status === 'Live').length,
+    released: releases.filter(r => r.status === 'Released').length,
     rejected: releases.filter(r => r.status === 'Rejected').length,
   };
 
@@ -100,7 +100,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
             />
             <StatCard 
                 title="Released" 
-                count={stats.live} 
+                count={stats.released} 
                 icon={<CheckCircle size={20} />} 
                 colorClass="text-green-600" 
                 bgClass="bg-green-50"

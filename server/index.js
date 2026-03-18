@@ -12,6 +12,8 @@ import reportRoutes from './routes/reportRoutes.js';
 import publishingRoutes from './routes/publishingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import emailTemplateRoutes from './routes/emailTemplateRoutes.js';
+import whatsappTemplateRoutes from './routes/whatsappTemplateRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import noticeRoutes from './routes/noticeRoutes.js';
 import { loadBackupScheduleFromDb } from './utils/scheduler.js';

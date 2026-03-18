@@ -4,6 +4,7 @@ import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { syncUserToSheet } from '../utils/googleSheets.js';
 import { uploadLocalFileToDrive } from '../utils/googleDrive.js';
+import { createNotification, sendWhatsApp } from '../utils/notification.js';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
@@ -726,6 +727,20 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         // Sync to Google Sheets only if status is Approved
         if (updatedUser[0].status === 'Approved') {
             syncUserToSheet(updatedUser[0]);
+        }
+
+        // Send Notification (Notification table + WhatsApp)
+        try {
+            const user = updatedUser[0];
+            const msg = `Status Akun Anda telah diperbarui menjadi ${user.status}${user.rejection_reason ? ` (Alasan: ${user.rejection_reason})` : ''}`;
+            const templateKey = `user_register_status.${user.status}`;
+            const templateData = { 
+                status: user.status, 
+                reason: user.rejection_reason || user.block_reason || '' 
+            };
+            await createNotification(user.id, 'ACCOUNT_STATUS', msg, templateKey, templateData);
+        } catch (notifErr) {
+            console.warn('Failed to send account status notification:', notifErr.message);
         }
 
         // Build select query based on available columns for response

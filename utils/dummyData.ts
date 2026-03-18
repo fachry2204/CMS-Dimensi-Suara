@@ -53,8 +53,8 @@ const generateTitle = () => `${pick(SONG_ADJECTIVES)} ${pick(SONG_NOUNS)}`;
 
 export const generateReleases = (count: number): ReleaseData[] => {
     return Array.from({ length: count }, (_, i) => {
-        const statusPool: ('Pending' | 'Processing' | 'Live' | 'Rejected' | 'Draft')[] = 
-            ['Live', 'Live', 'Live', 'Processing', 'Processing', 'Pending', 'Pending', 'Rejected'];
+        const statusPool: ('Pending' | 'Processing' | 'Released' | 'Rejected' | 'Draft')[] = 
+            ['Released', 'Released', 'Released', 'Processing', 'Processing', 'Pending', 'Pending', 'Rejected'];
         
         const status = pick(statusPool);
         const isAlbum = Math.random() > 0.7; // 30% chance album
@@ -72,7 +72,7 @@ export const generateReleases = (count: number): ReleaseData[] => {
                 trackNumber: (tIdx + 1).toString(),
                 title: generateTitle(),
                 releaseDate: "",
-                isrc: status === 'Live' ? `ID-A01-${randomInt(23, 24)}-${randomInt(10000, 99999)}` : "",
+                isrc: status === 'Released' ? `ID-A01-${randomInt(23, 24)}-${randomInt(10000, 99999)}` : "",
                 duration: `${randomInt(2, 4)}:${randomInt(10, 59)}`,
                 artists: trackArtists,
                 genre: pick(TRACK_GENRES),

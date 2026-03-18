@@ -496,7 +496,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                   </li>
                   <li>
                     <NavLink to="/system/messaging/templates" className={({ isActive }) => getSubLinkClass(isActive)}>
-                      Template Email
+                      Template Gateway
                     </NavLink>
                   </li>
                 </ul>

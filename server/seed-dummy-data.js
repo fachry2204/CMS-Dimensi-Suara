@@ -48,7 +48,7 @@ const SONG_NOUNS = [
 
 const AGGREGATORS = ["LokaMusik", "SoundOn", "Tunecore", "DistroKid", "CDBaby", "Believe"];
 const GENRES = ["Pop", "Rock", "Jazz", "Dangdut", "Indie", "Hip Hop", "R&B", "Folk"];
-const STATUSES = ['Pending', 'Processing', 'Live', 'Rejected'];
+const STATUSES = ['Pending', 'Processing', 'Released', 'Rejected'];
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
