@@ -155,7 +155,7 @@ export const MessagingGateway: React.FC<Props> = ({ token }) => {
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Token API</label>
-              <input type="password" value={mpwa.token} onChange={(e)=>setMpwa({...mpwa, token: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-xl"/>
+              <input type="text" value={mpwa.token} onChange={(e)=>setMpwa({...mpwa, token: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-xl"/>
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Device ID</label>

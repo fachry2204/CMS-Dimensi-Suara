@@ -453,7 +453,7 @@ router.post('/gateway/test-wa', authenticateToken, async (req, res) => {
         const r = await fetch(url, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(body) 
+            body: JSON.stringify(body)
         });
         
         const responseText = await r.text().catch(()=>'');
@@ -682,7 +682,7 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
             const r = await fetch(url, { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(body) 
+                body: JSON.stringify(body)
             });
             
             const responseText = await r.text().catch(()=>'');
