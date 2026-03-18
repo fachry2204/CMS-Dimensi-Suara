@@ -69,6 +69,13 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack, userRole })
         if (!data.label) errors.push("Record Label is required.");
         if (!data.plannedReleaseDate) errors.push("Release Date is required.");
 
+        // Mandatory validation for Released status (e.g. if editing already released)
+        if (data.status === 'Released') {
+            if (!data.upc || data.upc.trim() === '') {
+                errors.push("UPC is required for Released status.");
+            }
+        }
+
         // 2. Validate Track Level
         if (!data.tracks || data.tracks.length === 0) {
             errors.push("At least one track is required.");
@@ -76,6 +83,13 @@ export const Step4Review: React.FC<Props> = ({ data, onSave, onBack, userRole })
             data.tracks.forEach((track, idx) => {
                 const trackNum = idx + 1;
                 if (!track.title) errors.push(`Track ${trackNum}: Title is required.`);
+
+                if (data.status === 'Released') {
+                    if (!track.isrc || track.isrc.trim() === '') {
+                        errors.push(`Track ${trackNum}: ISRC is required for Released status.`);
+                    }
+                }
+
                 const hasAudio = (typeof (track as any).audioFile === 'string' && (track as any).audioFile.trim().length > 0)
                   || (typeof (track as any).tempAudioPath === 'string' && (track as any).tempAudioPath.trim().length > 0)
                   || ((track as any).audioFile instanceof File);

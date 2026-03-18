@@ -312,8 +312,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           if (!upcInput || upcInput.trim() === "") {
              setAlertState({
                  isOpen: true,
-                 title: 'CRITICAL ERROR',
-                 message: 'Album UPC is REQUIRED for Released status.',
+                 title: 'Validasi Gagal',
+                 message: 'UPC Album wajib diisi untuk status Released.',
                  type: 'error'
              });
              return;
@@ -327,8 +327,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           if (missingIsrcs) {
               setAlertState({
                   isOpen: true,
-                  title: 'CRITICAL ERROR',
-                  message: 'ISRC Codes are REQUIRED for ALL tracks when status is Released.',
+                  title: 'Validasi Gagal',
+                  message: 'Seluruh Track wajib memiliki ISRC untuk status Released.',
                   type: 'error'
               });
               return;
@@ -877,9 +877,12 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
                                                         {/* ISRC Code (moved below Additional Contributors) */}
                                                         <div>
-                                                            <span className="text-[10px] uppercase font-bold text-slate-400">ISRC Code</span>
-                                                            <div className="font-mono text-sm font-medium text-slate-700 bg-white px-2 py-1 rounded border border-gray-200 mt-1">
-                                                                {isrcInputs[track.id] || track.isrc || "N/A"}
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                                                                ISRC Code {status === 'Released' && <span className="text-red-500">*</span>}
+                                                            </span>
+                                                            <div className={`font-mono text-sm font-medium px-2 py-1 rounded border mt-1
+                                                                ${status === 'Released' && (!isrcInputs[track.id] && !track.isrc) ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-slate-700'}`}>
+                                                                {isrcInputs[track.id] || track.isrc || (status === 'Released' ? "WAJIB DIISI" : "N/A")}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1009,18 +1012,18 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                 </div>
 
                                 {/* --- PROCESSING WORKFLOW --- */}
-                                {(status === 'Processing' || status === 'Live') && (
+                                {(status === 'Processing' || status === 'Released') && (
                                     <div className="animate-fade-in-down">
                                         <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                                             <Globe size={16} className="text-purple-500" />
-                                            Select Aggregator
+                                            Pilih Aggregator <span className="text-red-500">*</span>
                                         </label>
                                         <select 
                                             value={selectedAggregator}
                                             onChange={(e) => setSelectedAggregator(e.target.value)}
                                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-purple-500 shadow-sm"
                                         >
-                                            <option value="">-- Choose Aggregator --</option>
+                                            <option value="">-- Pilih Aggregator --</option>
                                             {availableAggregators.map(agg => (
                                                 <option key={agg} value={agg}>{agg}</option>
                                             ))}
@@ -1029,11 +1032,11 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                 )}
 
                                 {/* --- LIVE WORKFLOW (CODES) --- */}
-                                {status === 'Live' && (
+                                {status === 'Released' && (
                                     <div className="animate-fade-in-down bg-green-50 p-6 rounded-xl border border-green-100 space-y-6">
                                         <div className="flex items-center gap-2 border-b border-green-200 pb-3">
                                             <CheckCircle size={20} className="text-green-600" />
-                                            <span className="font-bold text-green-800 text-lg">Mandatory Release Codes</span>
+                                            <span className="font-bold text-green-800 text-lg">Input Kode Rilisan (Wajib diisi)</span>
                                         </div>
                                         
                                         <div>
@@ -1043,11 +1046,11 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                             <input 
                                                 value={upcInput}
                                                 onChange={(e) => setUpcInput(e.target.value)}
-                                                placeholder="Enter UPC Code (Required)"
+                                                placeholder="Masukkan Kode UPC (Wajib)"
                                                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm shadow-sm
                                                     ${!upcInput ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-white' : 'border-green-200 focus:ring-green-500'}`}
                                             />
-                                            {!upcInput && <p className="text-[10px] text-red-500 mt-1 font-bold">UPC is required to set status to Released.</p>}
+                                            {!upcInput && <p className="text-[10px] text-red-500 mt-1 font-bold">UPC wajib diisi untuk status Released.</p>}
                                         </div>
 
                                         <div>
@@ -1064,7 +1067,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                             <input 
                                                                 value={isrcInputs[track.id] || ''}
                                                                 onChange={(e) => setIsrcInputs(prev => ({...prev, [track.id]: e.target.value}))}
-                                                                placeholder="ISRC (Required)"
+                                                                placeholder="ISRC (Wajib)"
                                                                 className={`flex-1 px-3 py-2 border rounded text-sm font-mono focus:outline-none
                                                                     ${!hasVal ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-green-500'}`}
                                                             />

@@ -1352,6 +1352,25 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
 
         if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Access denied' });
 
+        // --- VALIDATION FOR RELEASED STATUS ---
+        if (status === 'Released') {
+            if (!upc || String(upc).trim() === '') {
+                return res.status(400).json({ error: 'UPC wajib diisi untuk status Released' });
+            }
+            if (!Array.isArray(tracks) || tracks.length === 0) {
+                // If tracks not provided in body, check existing tracks in DB
+                const [existingTracks] = await db.query('SELECT id, isrc FROM tracks WHERE release_id = ?', [releaseId]);
+                if (existingTracks.some(t => !t.isrc || String(t.isrc).trim() === '')) {
+                    return res.status(400).json({ error: 'Seluruh Track wajib memiliki ISRC untuk status Released' });
+                }
+            } else {
+                // If tracks provided in body, validate them
+                if (tracks.some(t => !t.isrc || String(t.isrc).trim() === '')) {
+                    return res.status(400).json({ error: 'Seluruh Track wajib memiliki ISRC untuk status Released' });
+                }
+            }
+        }
+
         const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
         const releaseColNames = releaseCols.map(c => c.Field);
         const setParts = [];
