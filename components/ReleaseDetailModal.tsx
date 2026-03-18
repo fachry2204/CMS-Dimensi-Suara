@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ReleaseData, Track } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp, Edit3, Trash2, Upload, Camera } from 'lucide-react';
+import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp, Edit3, Trash2, Upload, Camera, Mail, X } from 'lucide-react';
 import { formatDMY } from '../utils/date';
 import { assetUrl } from '../utils/url';
 import { api, API_BASE_URL } from '../utils/api';
@@ -54,6 +54,10 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
   const [rejectionReason, setRejectionReason] = useState(release.rejectionReason || '');
   const [rejectionDesc, setRejectionDesc] = useState(release.rejectionDescription || '');
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+  // Email Preview State
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const upcDisplay = upcInput || release.upc || '';
   const primaryIsrc = release.tracks[0]?.isrc || '';
@@ -921,8 +925,31 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                 {userRole === 'Admin' && activeTab === 'DISTRIBUTION' && (
                     <div className="max-w-4xl mx-auto">
                         <div className="bg-white border border-gray-200 p-8 rounded-2xl shadow-sm mb-8 animate-fade-in-up">
-                            <h3 className="font-bold text-xl text-slate-800 mb-2">Workflow Management</h3>
-                            <p className="text-sm text-slate-500 mb-8 pb-4 border-b border-gray-100">Update the status of this release to move it through the pipeline.</p>
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                                <div>
+                                    <h3 className="font-bold text-xl text-slate-800 mb-1">Workflow Management</h3>
+                                    <p className="text-sm text-slate-500">Update the status of this release to move it through the pipeline.</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const params = new URLSearchParams();
+                                        params.set('status', status);
+                                        if (selectedAggregator) params.set('aggregator', selectedAggregator);
+                                        if (upcInput) params.set('upc', upcInput);
+                                        if (status === 'Rejected') {
+                                            if (rejectionReason) params.set('reason', rejectionReason);
+                                            if (rejectionDesc) params.set('description', rejectionDesc);
+                                        }
+                                        const url = `${API_BASE_URL}/releases/${release.id}/email-preview?${params.toString()}`;
+                                        setPreviewUrl(url);
+                                        setShowEmailPreview(true);
+                                    }}
+                                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all flex items-center gap-2 shadow-sm"
+                                    title="Preview Email ke User"
+                                >
+                                    <FileText size={18} /> Preview Email
+                                </button>
+                            </div>
                             
                             <div className="space-y-8">
                                 {/* Status Selector */}
@@ -989,27 +1016,6 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                         </div>
                                     </div>
                                 )}
-
-                                <div className="flex justify-end">
-                                    <button
-                                        onClick={() => {
-                                            const params = new URLSearchParams();
-                                            params.set('status', status);
-                                            if (selectedAggregator) params.set('aggregator', selectedAggregator);
-                                            if (upcInput) params.set('upc', upcInput);
-                                            if (status === 'Rejected') {
-                                                if (rejectionReason) params.set('reason', rejectionReason);
-                                                if (rejectionDesc) params.set('description', rejectionDesc);
-                                            }
-                                            const url = `${API_BASE_URL}/releases/${release.id}/email-preview?${params.toString()}`;
-                                            window.open(url, '_blank');
-                                        }}
-                                        className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors"
-                                        title="Preview Email ke User"
-                                    >
-                                        Preview Email ke User
-                                    </button>
-                                </div>
 
                                 {/* --- PROCESSING WORKFLOW --- */}
                                 {(status === 'Processing' || status === 'Released') && (
@@ -1084,6 +1090,46 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                 )}
             </div>
         </div>
+
+        {/* Email Preview Modal */}
+        {showEmailPreview && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shadow-sm">
+                                <Mail size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800">Preview Email ke User</h3>
+                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tampilan yang akan diterima oleh user</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setShowEmailPreview(false)}
+                            className="p-2 hover:bg-gray-200 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="flex-1 bg-slate-200 p-4 overflow-hidden relative">
+                        <iframe 
+                            src={previewUrl} 
+                            className="w-full h-full border-0 rounded-lg bg-white shadow-lg"
+                            title="Email Preview"
+                        />
+                    </div>
+                    <div className="p-4 border-t border-gray-100 flex justify-end bg-white gap-3">
+                        <button 
+                            onClick={() => setShowEmailPreview(false)}
+                            className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-all"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };
