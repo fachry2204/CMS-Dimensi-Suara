@@ -1000,6 +1000,22 @@ export const api = {
         });
         return parseResponse(res);
     },
+    resendEmailLog: async (token: string, id: number) => {
+        const res = await fetch(`${API_BASE_URL}/settings/email/resend/${id}`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    resendBroadcastLog: async (token: string, id: number) => {
+        const res = await fetch(`${API_BASE_URL}/settings/broadcast/resend/${id}`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     // User Management
     updateUser: async (token, id, data) => {

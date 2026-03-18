@@ -34,9 +34,10 @@ type BroadcastLog = {
 };
 
 export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
-  const [activeTab, setActiveTab] = useState<'email' | 'broadcast'>('email');
+  const [activeTab, setActiveTab] = useState<'email' | 'whatsapp' | 'broadcast'>('email');
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [broadcastLogs, setBroadcastLogs] = useState<BroadcastLog[]>([]);
+  const [resendingId, setResendingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -83,6 +84,25 @@ export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
     }
   };
 
+  const handleResend = async (id: number, type: 'email' | 'broadcast') => {
+    if (!token) return;
+    setResendingId(id);
+    try {
+        if (type === 'email') {
+            await api.resendEmailLog(token, id);
+        } else {
+            await api.resendBroadcastLog(token, id);
+        }
+        alert('Pesan berhasil dikirim ulang!');
+        if (type === 'email') fetchEmailLogs();
+        else fetchBroadcastLogs();
+    } catch (e: any) {
+        alert('Gagal mengirim ulang: ' + (e?.message || 'Unknown error'));
+    } finally {
+        setResendingId(null);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'email') fetchEmailLogs();
     else fetchBroadcastLogs();
@@ -120,12 +140,20 @@ export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
           <Mail size={16} /> Monitoring Email
         </button>
         <button
+          onClick={() => { setActiveTab('whatsapp'); setPage(1); }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            activeTab === 'whatsapp' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'
+          }`}
+        >
+          <MessageCircle size={16} /> Monitoring WhatsApp
+        </button>
+        <button
           onClick={() => { setActiveTab('broadcast'); setPage(1); }}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
             activeTab === 'broadcast' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'
           }`}
         >
-          <MessageCircle size={16} /> Status Broadcast
+          <Activity size={16} /> Status Broadcast
         </button>
       </div>
       
@@ -164,6 +192,14 @@ export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
         </div>
       )}
 
+      {activeTab === 'whatsapp' && (
+        <div className="flex justify-end mb-4">
+          <button onClick={fetchBroadcastLogs} className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''}/> Refresh Status
+          </button>
+        </div>
+      )}
+
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           {activeTab === 'email' ? (
@@ -176,15 +212,16 @@ export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
                   <th className="px-4 py-3 text-left font-bold">Type</th>
                   <th className="px-4 py-3 text-left font-bold">Status</th>
                   <th className="px-4 py-3 text-left font-bold">Error</th>
+                  <th className="px-4 py-3 text-right font-bold">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Memuat data...</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">Memuat data...</td></tr>
                 ) : error ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-red-600">{error}</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-6 text-center text-red-600">{error}</td></tr>
                 ) : logs.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Belum ada log email.</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">Belum ada log email.</td></tr>
                 ) : (
                   logs.map(log => (
                     <tr key={log.id} className="border-t border-slate-100">
@@ -194,6 +231,62 @@ export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
                       <td className="px-4 py-3 text-slate-600">{pretty(log.related_type)}</td>
                       <td className="px-4 py-3">{statusBadge(log.status)}</td>
                       <td className="px-4 py-3 text-slate-500 truncate max-w-[200px]" title={log.error_message || ''}>{log.error_message || '-'}</td>
+                      <td className="px-4 py-3 text-right">
+                        {log.status === 'FAILED' && (
+                          <button 
+                            onClick={() => handleResend(log.id, 'email')}
+                            disabled={resendingId === log.id}
+                            className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                            title="Kirim Ulang"
+                          >
+                            <RefreshCw size={14} className={resendingId === log.id ? 'animate-spin' : ''} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : activeTab === 'whatsapp' ? (
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-3 text-left font-bold">Time</th>
+                  <th className="px-4 py-3 text-left font-bold">Recipient</th>
+                  <th className="px-4 py-3 text-left font-bold">Message</th>
+                  <th className="px-4 py-3 text-left font-bold">Status</th>
+                  <th className="px-4 py-3 text-left font-bold">Error</th>
+                  <th className="px-4 py-3 text-right font-bold">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Memuat data...</td></tr>
+                ) : error ? (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-red-600">{error}</td></tr>
+                ) : broadcastLogs.filter(l => l.channel === 'wa').length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Belum ada log WhatsApp.</td></tr>
+                ) : (
+                  broadcastLogs.filter(l => l.channel === 'wa').map(log => (
+                    <tr key={log.id} className="border-t border-slate-100">
+                      <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</td>
+                      <td className="px-4 py-3 font-mono">{log.recipient}</td>
+                      <td className="px-4 py-3 text-slate-700 truncate max-w-[300px]" title={log.message}>{log.message}</td>
+                      <td className="px-4 py-3">{statusBadge(log.status)}</td>
+                      <td className="px-4 py-3 text-slate-500 truncate max-w-[200px]" title={log.error_message || ''}>{log.error_message || '-'}</td>
+                      <td className="px-4 py-3 text-right">
+                        {log.status === 'FAILED' && (
+                          <button 
+                            onClick={() => handleResend(log.id, 'broadcast')}
+                            disabled={resendingId === log.id}
+                            className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                            title="Kirim Ulang"
+                          >
+                            <RefreshCw size={14} className={resendingId === log.id ? 'animate-spin' : ''} />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -209,15 +302,16 @@ export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
                   <th className="px-4 py-3 text-left font-bold">Subject / Msg</th>
                   <th className="px-4 py-3 text-left font-bold">Status</th>
                   <th className="px-4 py-3 text-left font-bold">Error</th>
+                  <th className="px-4 py-3 text-right font-bold">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Memuat data...</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">Memuat data...</td></tr>
                 ) : error ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-red-600">{error}</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-6 text-center text-red-600">{error}</td></tr>
                 ) : broadcastLogs.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Belum ada log broadcast.</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">Belum ada log broadcast.</td></tr>
                 ) : (
                   broadcastLogs.map(log => (
                     <tr key={log.id} className="border-t border-slate-100">
@@ -231,6 +325,18 @@ export const SystemMonitoring: React.FC<Props> = ({ token, userRole }) => {
                       <td className="px-4 py-3 text-slate-700 truncate max-w-[200px]" title={log.subject || log.message}>{log.subject || log.message}</td>
                       <td className="px-4 py-3">{statusBadge(log.status)}</td>
                       <td className="px-4 py-3 text-slate-500 truncate max-w-[200px]" title={log.error_message || ''}>{log.error_message || '-'}</td>
+                      <td className="px-4 py-3 text-right">
+                        {log.status === 'FAILED' && (
+                          <button 
+                            onClick={() => handleResend(log.id, 'broadcast')}
+                            disabled={resendingId === log.id}
+                            className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                            title="Kirim Ulang"
+                          >
+                            <RefreshCw size={14} className={resendingId === log.id ? 'animate-spin' : ''} />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}

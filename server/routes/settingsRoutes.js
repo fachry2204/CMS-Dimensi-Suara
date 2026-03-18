@@ -753,4 +753,173 @@ router.get('/messaging/broadcast/logs', authenticateToken, async (req, res) => {
     }
 });
 
+// Resend Email Log
+router.post('/email/resend/:id', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM email_logs WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Log not found' });
+        const log = rows[0];
+
+        const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+        const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
+        if (!smtp) return res.status(400).json({ error: 'SMTP not configured' });
+
+        // Helper for SMTP (Reuse existing logic or similar)
+        const sendSmtp = ({ to, subject, html }) => new Promise((resolve, reject) => {
+            const socket = Boolean(smtp.secure) ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
+            let buffer = ''; let closed = false;
+            function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+            function expect(code) { return new Promise((res, rej) => {
+                const onData = (data) => {
+                    buffer += data.toString('utf8');
+                    const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                    const last = lines[lines.length - 1] || '';
+                    const m = last.match(/^(\d{3})/);
+                    if (m) {
+                        const lastCode = parseInt(m[1], 10);
+                        if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                        else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                    }
+                };
+                socket.on('data', onData);
+            });}
+            function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+            function onConnect() {
+                (async () => {
+                    try {
+                        await expect(220); await send(`EHLO localhost`); await expect(250);
+                        await send('AUTH LOGIN'); await expect(334);
+                        await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
+                        await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
+                        await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                        await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                        await send('DATA'); await expect(354);
+                        const msg = [
+                            `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                            `To: <${to}>`,
+                            `Subject: ${subject}`,
+                            `Date: ${new Date().toUTCString()}`,
+                            'MIME-Version: 1.0',
+                            'Content-Type: text/html; charset=utf-8',
+                            '', html, ''
+                        ].join('\r\n');
+                        await send(msg + '\r\n.'); await expect(250); await send('QUIT'); cleanup();
+                    } catch (err) { cleanup(err); }
+                })();
+            }
+            socket.once('error', (e) => cleanup(e));
+        });
+
+        // For email_logs, we might need to reconstruct the body if not stored. 
+        // But if it's not stored in email_logs, we can only resend if we have a way to regenerate it.
+        // Let's assume for now we only support resending if we have the content or it's a simple notification.
+        // If server_response or error_message doesn't have the body, we might be stuck.
+        // Wait, let's check if we can store the body in email_logs in the future.
+        // For now, let's try to resend based on what we have.
+        
+        // Actually, if it's a RELEASE_STATUS, we could potentially regenerate it.
+        // But a simpler way is to just use the subject and a generic "Resent" message if body is missing.
+        // For broadcast_logs, we DO have the message stored.
+        
+        res.status(400).json({ error: 'Resending from email_logs is currently only supported if body is preserved. Please use Broadcast logs for full resend capability.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Resend Broadcast Log
+router.post('/broadcast/resend/:id', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM broadcast_logs WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Log not found' });
+        const log = rows[0];
+
+        if (log.channel === 'email') {
+            const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+            const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
+            if (!smtp) throw new Error('SMTP not configured');
+            
+            // Re-use SMTP helper
+            const sendSmtp = ({ to, subject, html }) => new Promise((resolve, reject) => {
+                const socket = Boolean(smtp.secure) ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
+                let buffer = ''; let closed = false;
+                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                function expect(code) { return new Promise((res, rej) => {
+                    const onData = (data) => {
+                        buffer += data.toString('utf8');
+                        const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const last = lines[lines.length - 1] || '';
+                        const m = last.match(/^(\d{3})/);
+                        if (m) {
+                            const lastCode = parseInt(m[1], 10);
+                            if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                            else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                        }
+                    };
+                    socket.on('data', onData);
+                });}
+                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                function onConnect() {
+                    (async () => {
+                        try {
+                            await expect(220); await send(`EHLO localhost`); await expect(250);
+                            await send('AUTH LOGIN'); await expect(334);
+                            await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
+                            await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
+                            await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                            await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                            await send('DATA'); await expect(354);
+                            const msg = [
+                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                `To: <${to}>`,
+                                `Subject: ${subject}`,
+                                `Date: ${new Date().toUTCString()}`,
+                                'MIME-Version: 1.0',
+                                'Content-Type: text/html; charset=utf-8',
+                                '', log.message || '', ''
+                            ].join('\r\n');
+                            await send(msg + '\r\n.'); await expect(250); await send('QUIT'); cleanup();
+                        } catch (err) { cleanup(err); }
+                    })();
+                }
+                socket.once('error', (e) => cleanup(e));
+            });
+            
+            await sendSmtp({ to: log.recipient, subject: log.subject, html: log.message });
+        } else if (log.channel === 'wa') {
+            const [waRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
+            const wa = (waRows.length > 0 && waRows[0].setting_value) ? JSON.parse(waRows[0].setting_value) : null;
+            if (!wa) throw new Error('WA not configured');
+            
+            let url = wa.base_url || wa.endpoint || '';
+            if (!url.includes('/send-message')) {
+                if (!url.endsWith('/')) url += '/';
+                url += 'send-message';
+            }
+            const cleanPhone = String(log.recipient).replace(/\D/g, '');
+            const finalPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+
+            const r = await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ api_key: wa.token, sender: wa.device_id, number: finalPhone, message: log.message })
+            });
+            if (!r.ok) throw new Error(`WA Gateway error ${r.status}`);
+            const resJson = await r.json();
+            if (resJson.status === false || resJson.status === 'false') throw new Error(resJson.msg || 'WA Failed');
+        }
+
+        await db.query('UPDATE broadcast_logs SET status = "SENT", error_message = NULL, sent_at = NOW() WHERE id = ?', [log.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;
