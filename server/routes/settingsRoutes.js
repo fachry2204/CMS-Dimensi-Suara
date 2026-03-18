@@ -416,43 +416,63 @@ router.post('/gateway/test-email', authenticateToken, async (req, res) => {
 
 router.post('/gateway/test-wa', authenticateToken, async (req, res) => {
     try {
-        const { phone, message, endpoint } = req.body || {};
+        const { phone, message, endpoint, token, device_id } = req.body || {};
         if (!phone) return res.status(400).json({ error: 'Phone is required' });
-        const [rows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
-        if (rows.length === 0 || !rows[0].setting_value) {
-            return res.status(400).json({ error: 'MPWA settings not configured' });
-        }
-        const cfg = JSON.parse(rows[0].setting_value);
         
-        // Construct correct endpoint URL
+        const [rows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
+        const cfg = (rows.length > 0 && rows[0].setting_value) ? JSON.parse(rows[0].setting_value) : {};
+        
+        // Use provided values or fallback to DB
         let url = (endpoint && endpoint.trim()) ? endpoint : (cfg.base_url || cfg.endpoint || '');
+        const apiKey = (token && token.trim()) ? token : cfg.token;
+        const sender = (device_id && device_id.trim()) ? device_id : cfg.device_id;
+
         if (!url) return res.status(400).json({ error: 'MPWA base URL not configured' });
+        if (!apiKey) return res.status(400).json({ error: 'API Token is required' });
+        if (!sender) return res.status(400).json({ error: 'Device ID (Sender) is required' });
         
         if (!url.includes('/send-message')) {
             if (!url.endsWith('/')) url += '/';
             url += 'send-message';
         }
 
+        // Clean phone number: digits only
+        const cleanPhone = String(phone).replace(/\D/g, '');
+        const finalPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+
         // Payload based on MPWA documentation
         const body = { 
-            api_key: cfg.token,
-            sender: cfg.device_id,
-            number: phone, 
+            api_key: apiKey,
+            sender: sender,
+            number: finalPhone, 
             message: message || 'Test message from CMS Dimensi Suara.' 
         };
 
+        console.log(`Sending MPWA test to ${url}...`);
+        
         const r = await fetch(url, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify(body) 
         });
         
+        const responseText = await r.text().catch(()=>'');
+        let responseJson = {};
+        try { responseJson = JSON.parse(responseText); } catch {}
+
         if (!r.ok) {
-            const t = await r.text().catch(()=>'');
-            throw new Error(`MPWA request failed (${r.status}): ${t || r.statusText}`);
+            console.error(`MPWA Error ${r.status}:`, responseText);
+            throw new Error(`MPWA request failed (${r.status}): ${responseJson.msg || responseJson.error || responseText || r.statusText}`);
         }
-        res.json({ message: 'WA test sent successfully' });
+
+        // Check if response has status: false despite 200 OK
+        if (responseJson.status === false || responseJson.status === 'false') {
+            throw new Error(`MPWA Gateway Error: ${responseJson.msg || 'Unknown error'}`);
+        }
+
+        res.json({ message: 'WA test sent successfully', detail: responseJson });
     } catch (err) {
+        console.error('Test WA Exception:', err);
         res.status(500).json({ error: err.message || 'Failed to send WA' });
     }
 });
@@ -562,15 +582,26 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
         if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
             return res.status(403).json({ error: 'Access denied' });
         }
-        const { channel = 'email', subject, html, message, recipients, delayMs = 1000 } = req.body || {};
-        const targets = Array.isArray(recipients) && recipients.length > 0
-            ? recipients
-            : (await db.query('SELECT email FROM users WHERE email IS NOT NULL AND email != ""'))[0].map(r => r.email);
-        if (!Array.isArray(targets) || targets.length === 0) return res.status(400).json({ error: 'No recipients' });
+        const { channel = 'email', subject, html, message, recipients, delayMs = 1500 } = req.body || {};
+        
+        // Resolve targets: if recipients provided, use them; otherwise all users
+        let targets = [];
+        if (Array.isArray(recipients) && recipients.length > 0) {
+            targets = recipients;
+        } else {
+            const [userRows] = await db.query('SELECT email, phone FROM users WHERE (email IS NOT NULL AND email != "") OR (phone IS NOT NULL AND phone != "")');
+            targets = userRows.map(u => ({ email: u.email, phone: u.phone }));
+        }
+
+        if (targets.length === 0) return res.status(400).json({ error: 'No recipients found' });
+
         const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
         const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
+        
         const [waRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
         const wa = (waRows.length > 0 && waRows[0].setting_value) ? JSON.parse(waRows[0].setting_value) : null;
+
+        // Helper for SMTP
         const sendSmtp = ({ to }) => new Promise((resolve, reject) => {
             try {
                 if (!smtp || !smtp.host || !smtp.port || !smtp.user || !smtp.pass || !smtp.from_email) return reject(new Error('SMTP not configured'));
@@ -617,7 +648,7 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
                                 'Content-Type: text/html; charset=utf-8',
                                 'Content-Transfer-Encoding: 8bit',
                                 '',
-                                html || 'Broadcast',
+                                html || message || 'Broadcast',
                                 ''
                             ].join('\r\n');
                             await send(msg + '\r\n.'); const accepted = await expect(250); await send('QUIT'); cleanup({ ok: true, accepted });
@@ -628,20 +659,24 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
                 socket.once('close', () => cleanup(new Error('SMTP connection closed')));
             } catch (e) { reject(e); }
         });
+
+        // Helper for WA
         const sendWa = async ({ to }) => {
             if (!wa || (!wa.base_url && !wa.endpoint)) throw new Error('WA not configured');
-            
             let url = wa.base_url || wa.endpoint || '';
             if (!url.includes('/send-message')) {
                 if (!url.endsWith('/')) url += '/';
                 url += 'send-message';
             }
+            // Clean phone number
+            const cleanPhone = String(to).replace(/\D/g, '');
+            const finalPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
 
             const body = { 
                 api_key: wa.token,
                 sender: wa.device_id,
-                number: to, 
-                message: message || '' 
+                number: finalPhone, 
+                message: message || subject || '' 
             };
 
             const r = await fetch(url, { 
@@ -650,33 +685,69 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
                 body: JSON.stringify(body) 
             });
             
+            const responseText = await r.text().catch(()=>'');
+            let responseJson = {};
+            try { responseJson = JSON.parse(responseText); } catch {}
+
             if (!r.ok) {
-                const t = await r.text().catch(()=>'');
-                throw new Error(`WA error ${r.status}: ${t}`);
+                throw new Error(`WA Gateway error (${r.status}): ${responseJson.msg || responseJson.error || responseText || r.statusText}`);
             }
+            if (responseJson.status === false || responseJson.status === 'false') {
+                throw new Error(`WA Gateway logic error: ${responseJson.msg || 'Unknown'}`);
+            }
+            return { ok: true };
         };
+
+        // Async Background Broadcast
         (async () => {
-            for (const to of targets) {
-                let logId = null;
-                try {
-                    if (channel === 'email' || channel === 'both') {
-                        const [logRes] = await db.query('INSERT INTO email_logs (related_type, to_email, subject, status) VALUES (?, ?, ?, ?)', ['BROADCAST', to, subject || 'Broadcast', 'PENDING']);
-                        logId = logRes?.insertId || null;
-                        const sent = await sendSmtp({ to });
-                        if (logId) await db.query('UPDATE email_logs SET status = ?, sent_at = NOW(), server_response = ? WHERE id = ?', ['SENT', sent?.accepted?.slice(0, 480) || null, logId]);
+            for (const target of targets) {
+                const recipientEmail = typeof target === 'string' ? target : target.email;
+                const recipientPhone = typeof target === 'string' ? target : target.phone;
+
+                // Handle Email Channel
+                if ((channel === 'email' || channel === 'both') && recipientEmail && recipientEmail.includes('@')) {
+                    const [logRes] = await db.query('INSERT INTO broadcast_logs (channel, recipient, subject, message, status) VALUES (?, ?, ?, ?, ?)', 
+                        ['email', recipientEmail, subject || 'Broadcast', html || message, 'PENDING']);
+                    const logId = logRes?.insertId;
+                    try {
+                        const sent = await sendSmtp({ to: recipientEmail });
+                        await db.query('UPDATE broadcast_logs SET status = ?, sent_at = NOW() WHERE id = ?', ['SENT', logId]);
+                    } catch (err) {
+                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', err.message, logId]);
                     }
-                    if (channel === 'wa' || channel === 'both') {
-                        try {
-                            await sendWa({ to });
-                        } catch {}
-                    }
-                } catch (err) {
-                    if (logId) await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+                    await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1500, 200)));
                 }
-                await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1000, 200)));
+
+                // Handle WA Channel
+                if ((channel === 'wa' || channel === 'both') && recipientPhone) {
+                    const [logRes] = await db.query('INSERT INTO broadcast_logs (channel, recipient, subject, message, status) VALUES (?, ?, ?, ?, ?)', 
+                        ['wa', recipientPhone, subject || 'Broadcast', message || html, 'PENDING']);
+                    const logId = logRes?.insertId;
+                    try {
+                        await sendWa({ to: recipientPhone });
+                        await db.query('UPDATE broadcast_logs SET status = ?, sent_at = NOW() WHERE id = ?', ['SENT', logId]);
+                    } catch (err) {
+                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', err.message, logId]);
+                    }
+                    await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1500, 200)));
+                }
             }
         })();
+
         res.json({ message: 'Broadcast started', total: targets.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET Broadcast Logs
+router.get('/messaging/broadcast/logs', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM broadcast_logs ORDER BY created_at DESC LIMIT 100');
+        res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

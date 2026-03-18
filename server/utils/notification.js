@@ -33,7 +33,20 @@ export const sendWhatsApp = async (phone, message) => {
             body: JSON.stringify(body)
         });
 
-        const result = await response.json();
+        const responseText = await response.text().catch(()=>'');
+        let result = {};
+        try { result = JSON.parse(responseText); } catch {}
+
+        if (!response.ok) {
+            console.error(`WA Gateway Error ${response.status}:`, responseText);
+            return null;
+        }
+
+        if (result.status === false || result.status === 'false') {
+            console.error(`WA Gateway Logic Error:`, result.msg || 'Unknown error');
+            return null;
+        }
+
         return result;
     } catch (error) {
         console.error('Error sending WhatsApp notification:', error);

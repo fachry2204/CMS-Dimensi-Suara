@@ -666,6 +666,28 @@ const initDb = async () => {
             }
         }
 
+        // 13g. Ensure broadcast_logs table exists
+        try {
+            await connection.query('SELECT 1 FROM broadcast_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: broadcast_logs');
+                await connection.query(`
+                    CREATE TABLE broadcast_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        channel ENUM('email', 'wa', 'both') NOT NULL,
+                        recipient VARCHAR(255) NOT NULL,
+                        subject VARCHAR(255),
+                        message TEXT,
+                        status ENUM('PENDING', 'SENT', 'FAILED') DEFAULT 'PENDING',
+                        error_message TEXT,
+                        sent_at TIMESTAMP NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
         try {
             const defaults = [
                 {

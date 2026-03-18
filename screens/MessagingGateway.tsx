@@ -166,7 +166,24 @@ export const MessagingGateway: React.FC<Props> = ({ token }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input value={testWaPhone} onChange={(e)=>setTestWaPhone(e.target.value)} placeholder="628xxxxxxxxxx" className="w-full px-4 py-2 border border-gray-200 rounded-xl"/>
                 <input value={testWaMsg} onChange={(e)=>setTestWaMsg(e.target.value)} placeholder="Pesan (opsional)" className="w-full px-4 py-2 border border-gray-200 rounded-xl"/>
-                <button onClick={async ()=>{ if(!testWaPhone){ alert('Masukkan nomor WhatsApp'); return;} setTestingWa(true); try { await api.testGatewayWa(token||'', { phone: testWaPhone, message: testWaMsg }); alert('Test WA berhasil'); } catch(e:any){ alert('Gagal: '+(e?.message||'Unknown')); } finally { setTestingWa(false);} }} disabled={testingWa} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold disabled:opacity-50">{testingWa?'Mengirim...':'Kirim Test WA'}</button>
+                <button onClick={async ()=>{ 
+                  if(!testWaPhone){ alert('Masukkan nomor WhatsApp'); return;} 
+                  setTestingWa(true); 
+                  try { 
+                    await api.testGatewayWa(token||'', { 
+                      phone: testWaPhone, 
+                      message: testWaMsg,
+                      endpoint: mpwa.base_url,
+                      token: mpwa.token,
+                      device_id: mpwa.device_id
+                    }); 
+                    alert('Test WA berhasil'); 
+                  } catch(e:any){ 
+                    alert('Gagal: '+(e?.message||'Unknown')); 
+                  } finally { 
+                    setTestingWa(false);
+                  } 
+                }} disabled={testingWa} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold disabled:opacity-50">{testingWa?'Mengirim...':'Kirim Test WA'}</button>
               </div>
             </div>
           </div>

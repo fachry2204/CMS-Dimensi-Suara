@@ -993,6 +993,13 @@ export const api = {
         });
         return parseResponse(res);
     },
+    getBroadcastLogs: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/broadcast/logs`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     // User Management
     updateUser: async (token, id, data) => {
