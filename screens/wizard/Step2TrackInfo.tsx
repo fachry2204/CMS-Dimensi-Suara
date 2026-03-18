@@ -527,11 +527,66 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   };
 
   const [convertProgress, setConvertProgress] = useState<Record<string, { audio?: number; clip?: number }>>({});
+  const progressTargetsRef = useRef<Record<string, { audio?: number; clip?: number }>>({});
+  const progressRafRef = useRef<number | null>(null);
+  const [displayProgress, setDisplayProgress] = useState<Record<string, { audio?: number; clip?: number }>>({});
+
+  const startProgressAnimation = () => {
+    if (progressRafRef.current) return;
+    const tick = () => {
+      let active = false;
+      setDisplayProgress(prev => {
+        const next: Record<string, { audio?: number; clip?: number }> = { ...prev };
+        const targets = progressTargetsRef.current || {};
+        for (const trackId of Object.keys(targets)) {
+          const t = targets[trackId] || {};
+          const cur = next[trackId] || {};
+          const updateKey = (k: 'audio' | 'clip') => {
+            const target = typeof t[k] === 'number' ? clampPercent(t[k] as number) : undefined;
+            if (typeof target !== 'number') return;
+            const current = typeof cur[k] === 'number' ? (cur[k] as number) : 0;
+            const diff = target - current;
+            if (Math.abs(diff) < 0.2) {
+              cur[k] = target;
+              return;
+            }
+            const step = Math.max(0.4, Math.abs(diff) * 0.18);
+            cur[k] = clampPercent(current + Math.sign(diff) * step);
+            active = true;
+          };
+          updateKey('audio');
+          updateKey('clip');
+          next[trackId] = cur;
+        }
+        return next;
+      });
+      if (active) {
+        progressRafRef.current = requestAnimationFrame(tick);
+      } else {
+        progressRafRef.current = null;
+      }
+    };
+    progressRafRef.current = requestAnimationFrame(tick);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (progressRafRef.current) cancelAnimationFrame(progressRafRef.current);
+      progressRafRef.current = null;
+    };
+  }, []);
+
   const setAudioProgress = (trackId: string, p: number) => {
-    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), audio: p } }));
+    const v = clampPercent(p);
+    progressTargetsRef.current = { ...progressTargetsRef.current, [trackId]: { ...(progressTargetsRef.current[trackId] || {}), audio: v } };
+    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), audio: v } }));
+    startProgressAnimation();
   };
   const setClipProgress = (trackId: string, p: number) => {
-    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), clip: p } }));
+    const v = clampPercent(p);
+    progressTargetsRef.current = { ...progressTargetsRef.current, [trackId]: { ...(progressTargetsRef.current[trackId] || {}), clip: v } };
+    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), clip: v } }));
+    startProgressAnimation();
   };
 
   // --- File Handlers ---
@@ -566,24 +621,15 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 if (trackIndex >= 0) {
                     const fieldName = `track_${trackIndex}_audio`;
                     try {
-                        // Use chunked upload for files > 20MB
-                        const useChunk = (file?.size || 0) > (20 * 1024 * 1024);
                         const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
-                        const resp = useChunk
-                          ? await api.uploadTmpReleaseFileChunked(
-                              token,
-                              { title: data.title, primaryArtists: normalizedArtists },
-                              fieldName,
-                              file,
-                              10 * 1024 * 1024,
-                              (p: number) => setAudioProgress(trackId, p)
-                            )
-                          : await api.uploadTmpReleaseFile(
-                              token,
-                              { title: data.title, primaryArtists: normalizedArtists },
-                              fieldName,
-                              file
-                            );
+                        const resp = await api.uploadTmpReleaseFileChunked(
+                          token,
+                          { title: data.title, primaryArtists: normalizedArtists },
+                          fieldName,
+                          file,
+                          10 * 1024 * 1024,
+                          (p: number) => setAudioProgress(trackId, p)
+                        );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
                       (resp && resp.paths && resp.paths['file']) ||
@@ -592,7 +638,18 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp[fieldName]) ||
                       '';
                     if (candidate) {
-                        updateTrack(trackId, { tempAudioPath: candidate });
+                        updateTrack(trackId, { tempAudioPath: candidate, audioFormatChecking: true, audioFormatOk: undefined, audioSampleRate: null, audioBitDepth: null, audioFormatSkipped: undefined });
+                        api.validateTmpAudio(token, candidate)
+                          .then((r: any) => {
+                            const ok = Boolean(r?.ok);
+                            const skipped = Boolean(r?.skipped);
+                            const sampleRate = (typeof r?.sampleRate === 'number' ? r.sampleRate : null);
+                            const bitDepth = (typeof r?.bitDepth === 'number' ? r.bitDepth : null);
+                            updateTrack(trackId, { audioFormatChecking: false, audioFormatOk: ok, audioFormatSkipped: skipped, audioSampleRate: sampleRate, audioBitDepth: bitDepth });
+                          })
+                          .catch(() => {
+                            updateTrack(trackId, { audioFormatChecking: false, audioFormatSkipped: true });
+                          });
                     }
                     } catch (e) {
                         console.error('Upload tmp audio failed:', e);
@@ -777,6 +834,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             const isProcessingClip = processingState[`${track.id}-audioClip`];
             const audioUploaded = Boolean((track as any).tempAudioPath) || typeof (track as any).audioFile === 'string';
             const isOpeningTrimmer = Boolean(processingState[`${track.id}-openTrimmer`]);
+            const audioFmtChecking = Boolean((track as any).audioFormatChecking);
+            const audioFmtOk = typeof (track as any).audioFormatOk === 'boolean' ? (track as any).audioFormatOk : undefined;
+            const audioFmtSkipped = Boolean((track as any).audioFormatSkipped);
+            const audioSampleRate = (track as any).audioSampleRate as number | null | undefined;
+            const audioBitDepth = (track as any).audioBitDepth as number | null | undefined;
             
             // Check if Trimmer should be active for this specific track
             const isTrimmerActive = trimmerState.isOpen && trimmerState.trackId === track.id;
@@ -848,7 +910,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             {isProcessingAudio && (
                                               <span className="text-xs text-blue-500 flex items-center gap-2">
                                                 <Loader2 size={14} className="animate-spin"/>
-                                                <span>Uploading {Math.round(convertProgress[track.id]?.audio || 0)}%</span>
+                                                <span>Uploading {Math.round((displayProgress[track.id]?.audio ?? convertProgress[track.id]?.audio) ?? 0)}%</span>
                                               </span>
                                             )}
                                         </label>
@@ -869,8 +931,26 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                             <p className="text-sm font-medium text-blue-900 truncate">
                                                                 {typeof track.audioFile === 'string' ? 'Existing Audio' : track.audioFile.name}
                                                             </p>
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-2 flex-wrap">
                                                                 <span className="text-xs text-blue-500">{audioUploaded ? 'Uploaded' : 'Local'}</span>
+                                                                {audioUploaded && (
+                                                                  audioFmtChecking ? (
+                                                                    <span className="text-xs text-slate-500 flex items-center gap-2">
+                                                                      <Loader2 size={12} className="animate-spin" />
+                                                                      Validating...
+                                                                    </span>
+                                                                  ) : audioFmtOk === true ? (
+                                                                    <span className="text-xs text-green-600 flex items-center gap-1">
+                                                                      <Check size={12} />
+                                                                      48kHz / 24-bit OK
+                                                                    </span>
+                                                                  ) : audioFmtOk === false ? (
+                                                                    <span className="text-xs text-orange-600 flex items-center gap-1">
+                                                                      <Info size={12} />
+                                                                      {audioFmtSkipped ? 'Format check skipped' : `Format: ${audioSampleRate || '?'}Hz / ${audioBitDepth || '?'}-bit`}
+                                                                    </span>
+                                                                  ) : null
+                                                                )}
                                                                 <div className="scale-75 origin-left w-32">
                                                                     <AudioPreview file={track.audioFile} />
                                                                 </div>
@@ -909,7 +989,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
                                               <div
                                                 className="h-2 bg-blue-600 rounded-full transition-all"
-                                                style={{ width: `${clampPercent(Math.round(convertProgress[track.id]?.audio || 0))}%` }}
+                                                style={{ width: `${clampPercent(Math.round((displayProgress[track.id]?.audio ?? convertProgress[track.id]?.audio) ?? 0))}%` }}
                                               />
                                             </div>
                                           </div>
@@ -923,7 +1003,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             {isProcessingClip && (
                                               <span className="text-xs text-orange-500 flex items-center gap-2">
                                                 <Loader2 size={14} className="animate-spin"/>
-                                                <span>Uploading {Math.round(convertProgress[track.id]?.clip || 0)}%</span>
+                                                <span>Uploading {Math.round((displayProgress[track.id]?.clip ?? convertProgress[track.id]?.clip) ?? 0)}%</span>
                                               </span>
                                             )}
                                         </label>
@@ -1019,7 +1099,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
                                               <div
                                                 className="h-2 bg-orange-600 rounded-full transition-all"
-                                                style={{ width: `${clampPercent(Math.round(convertProgress[track.id]?.clip || 0))}%` }}
+                                                style={{ width: `${clampPercent(Math.round((displayProgress[track.id]?.clip ?? convertProgress[track.id]?.clip) ?? 0))}%` }}
                                               />
                                             </div>
                                           </div>

@@ -48,6 +48,11 @@ export interface Track {
   previewStart?: number;
   processingAudio?: boolean;
   processingClip?: boolean;
+  audioFormatChecking?: boolean;
+  audioFormatOk?: boolean;
+  audioSampleRate?: number | null;
+  audioBitDepth?: number | null;
+  audioFormatSkipped?: boolean;
   
   // Metadata
   trackNumber: string;

@@ -612,6 +612,18 @@ export const api = {
         });
         return parseResponse(res);
     },
+    validateTmpAudio: async (token: string, tmpPath: string) => {
+        const res = await fetch(`${API_BASE_URL}/releases/tmp/validate-audio`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            credentials: 'include',
+            body: JSON.stringify({ tmpPath })
+        });
+        return parseResponse(res);
+    },
     generateClipPreview: async (token: string, tmpPath: string, startSec: number, durationSec = 60) => {
         const res = await fetch(`${API_BASE_URL}/releases/tmp/preview-clip`, {
             method: 'POST',

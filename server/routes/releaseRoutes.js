@@ -167,6 +167,36 @@ const uploadTmpChunk = multer({
     limits: { fileSize: Math.min(MAX_BYTES, 16 * 1024 * 1024) }
 });
 
+const probeAudioFormat24_48 = (inPath) => {
+    return new Promise((resolve) => {
+        const args = [
+            '-v', 'error',
+            '-select_streams', 'a:0',
+            '-show_entries', 'stream=sample_rate,bits_per_raw_sample',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            inPath
+        ];
+        const proc = spawn('ffprobe', args);
+        let out = '';
+        let errOut = '';
+        proc.stdout.on('data', (d) => { out += d.toString(); });
+        proc.stderr.on('data', (d) => { errOut += d.toString(); });
+        proc.on('error', () => resolve({ ok: true, skipped: true, sampleRate: null, bitDepth: null }));
+        proc.on('exit', (code) => {
+            if (code !== 0) {
+                console.warn('ffprobe exited with code', code, errOut);
+                resolve({ ok: true, skipped: true, sampleRate: null, bitDepth: null });
+                return;
+            }
+            const parts = out.trim().split(/\s+/).filter(Boolean);
+            const sampleRate = parts[0] ? parseInt(parts[0], 10) : null;
+            const bitDepth = parts[1] ? parseInt(parts[1], 10) : null;
+            const ok = sampleRate === 48000 && bitDepth === 24;
+            resolve({ ok, skipped: false, sampleRate, bitDepth });
+        });
+    });
+};
+
 // Middleware wrapper to catch Multer errors with JSON response
 const handleUpload = (uploader) => (req, res, next) => {
     uploader(req, res, (err) => {
@@ -400,6 +430,29 @@ router.post('/tmp/preview-clip', authenticateToken, async (req, res) => {
         res.json({ previewPath: pub });
     } catch (err) {
         console.error('TMP Preview Clip Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/tmp/validate-audio', authenticateToken, async (req, res) => {
+    try {
+        const tmpPath = String(req.body?.tmpPath || '').trim();
+        if (!tmpPath) return res.status(400).json({ error: 'tmpPath required' });
+        const userId = String(req.user.id);
+        const normalized = tmpPath.replace(/^[\\/]+/, '');
+        const abs = path.join(__dirname, '../../', normalized);
+        const userBase = path.join(TMP_DIR, userId) + path.sep;
+        if (!abs.startsWith(userBase) || !fs.existsSync(abs)) {
+            return res.status(400).json({ error: 'Invalid tmpPath' });
+        }
+        const fmt = await probeAudioFormat24_48(abs);
+        res.json({
+            ok: Boolean(fmt.ok),
+            skipped: Boolean(fmt.skipped),
+            sampleRate: fmt.sampleRate ?? null,
+            bitDepth: fmt.bitDepth ?? null
+        });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
