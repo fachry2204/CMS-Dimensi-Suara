@@ -34,6 +34,7 @@ import Tickets from './screens/Tickets';
 import SystemMonitoring from './screens/SystemMonitoring';
 import EmailTemplates from './screens/EmailTemplates';
 import Broadcast from './screens/Broadcast';
+import NoticeManagement from './screens/NoticeManagement';
 import MessagingGateway from './screens/MessagingGateway';
 import TicketDetail from './screens/TicketDetail';
 import { MyProfile } from './screens/MyProfile';
@@ -1331,6 +1332,7 @@ const App: React.FC = () => {
             <Route path="/system/monitoring" element={<SystemMonitoring token={token} userRole={userRole} />} />
             <Route path="/system/messaging/templates" element={<EmailTemplates token={token} />} />
             <Route path="/system/messaging/broadcast" element={<Broadcast token={token} />} />
+            <Route path="/system/messaging/notice" element={<NoticeManagement token={token} />} />
             <Route path="/system/messaging/gateway" element={<MessagingGateway token={token} />} />
             <Route path="/users" element={
                 <UserManagement 

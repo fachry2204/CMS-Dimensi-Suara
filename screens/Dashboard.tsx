@@ -10,7 +10,12 @@ import {
     AlertTriangle, 
     Music, 
     FileText,
-    Plus
+    Plus,
+    Bell,
+    X,
+    Calendar,
+    ChevronRight,
+    Info
 } from 'lucide-react';
 import { api } from '../utils/api';
 
@@ -24,6 +29,14 @@ interface Song {
     [key: string]: any;
 }
 
+interface Notice {
+    id: number;
+    title: string;
+    content: string;
+    start_date: string;
+    end_date: string;
+}
+
 export const Dashboard: React.FC<Props> = ({ releases, token }) => {
   const navigate = useNavigate();
   const { getButtonColor } = useBranding();
@@ -33,9 +46,14 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
   const [publishingPage, setPublishingPage] = useState(1);
   const pageSize = 5;
 
+  // Notice State
+  const [activeNotices, setActiveNotices] = useState<Notice[]>([]);
+  const [showNoticeModal, setShowNoticeModal] = useState<Notice | null>(null);
+
   useEffect(() => {
     if (token) {
         fetchSongs();
+        fetchActiveNotices();
     }
   }, [token]);
 
@@ -48,6 +66,37 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
         console.error('Failed to fetch songs', error);
     } finally {
         setIsLoadingSongs(false);
+    }
+  };
+
+  const fetchActiveNotices = async () => {
+    if (!token) return;
+    try {
+        const response = await fetch('/api/notices/active', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            setActiveNotices(data);
+            
+            // Logic for Modal (show only if not closed in this session)
+            if (data.length > 0) {
+                const firstNotice = data[0];
+                const isClosed = sessionStorage.getItem(`notice_closed_${firstNotice.id}`);
+                if (!isClosed) {
+                    setShowNoticeModal(firstNotice);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch active notices', error);
+    }
+  };
+
+  const handleCloseNoticeModal = () => {
+    if (showNoticeModal) {
+        sessionStorage.setItem(`notice_closed_${showNoticeModal.id}`, 'true');
+        setShowNoticeModal(null);
     }
   };
 
@@ -103,6 +152,43 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
 
   return (
     <div className="p-4 md:p-8 w-full max-w-[1400px] mx-auto min-h-screen">
+       {/* Notice Card View */}
+       {activeNotices.length > 0 && (
+         <div className="mb-8 space-y-4">
+           {activeNotices.map((notice) => (
+             <div key={notice.id} className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-4 shadow-lg shadow-blue-500/20 text-white relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                 <Bell size={80} />
+               </div>
+               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                 <div className="flex gap-4">
+                   <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0">
+                     <Bell size={24} className="text-white" />
+                   </div>
+                   <div>
+                     <h3 className="font-bold text-lg leading-tight">{notice.title}</h3>
+                     <p className="text-blue-100 text-sm mt-1 line-clamp-2 max-w-2xl">{notice.content}</p>
+                     <div className="flex items-center gap-4 mt-3 text-[11px] font-medium text-blue-200">
+                       <span className="flex items-center gap-1.5">
+                         <Calendar size={14} />
+                         Berlaku s/d {new Date(notice.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                       </span>
+                     </div>
+                   </div>
+                 </div>
+                 <button 
+                   onClick={() => setShowNoticeModal(notice)}
+                   className="px-5 py-2.5 bg-white text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95 shrink-0"
+                 >
+                   Baca Selengkapnya
+                   <ChevronRight size={16} />
+                 </button>
+               </div>
+             </div>
+           ))}
+         </div>
+       )}
+
        <div className="mb-8">
             <h1 className="text-lg font-bold text-slate-800 tracking-tight">Dashboard Overview</h1>
             <p className="text-slate-500 mt-1 text-xs">Welcome back, here is your catalog and publishing overview.</p>
@@ -375,6 +461,45 @@ export const Dashboard: React.FC<Props> = ({ releases, token }) => {
                 </div>
             </div>
        </div>
+
+       {/* Notice Modal */}
+       {showNoticeModal && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-300">
+             <div className="p-6 pb-0 flex justify-end">
+               <button 
+                 onClick={handleCloseNoticeModal}
+                 className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+               >
+                 <X size={24} />
+               </button>
+             </div>
+             
+             <div className="p-8 pt-2 text-center">
+               <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                 <Bell size={36} />
+               </div>
+               <h3 className="text-2xl font-extrabold text-slate-900 mb-4 leading-tight">{showNoticeModal.title}</h3>
+               <div className="max-h-[300px] overflow-y-auto px-2 text-slate-600 leading-relaxed mb-8 text-left whitespace-pre-wrap">
+                 {showNoticeModal.content}
+               </div>
+               
+               <div className="flex flex-col gap-4">
+                 <button 
+                   onClick={handleCloseNoticeModal}
+                   className="w-full py-4 bg-blue-600 text-white font-extrabold rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center justify-center gap-2"
+                 >
+                   Saya Mengerti
+                 </button>
+                 <div className="flex items-center justify-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                   <Info size={14} />
+                   Pemberitahuan Sistem
+                 </div>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   );
 };

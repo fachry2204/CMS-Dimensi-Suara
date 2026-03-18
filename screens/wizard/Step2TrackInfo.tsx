@@ -1443,8 +1443,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       />
 
       {trimmerState.isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 pt-8 overflow-y-auto">
+          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-4rem)]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="text-sm font-semibold text-slate-800">Trim online</div>
               <button
@@ -1456,7 +1456,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
               </button>
             </div>
 
-            <div className="px-6 py-5">
+            <div className="px-6 py-5 overflow-y-auto">
               <div className="relative w-full rounded-xl border border-slate-200 bg-white overflow-hidden">
                 {waveform.isLoading ? (
                   <div className="h-44 flex flex-col items-center justify-center gap-3 text-slate-500">

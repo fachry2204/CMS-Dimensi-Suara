@@ -842,6 +842,26 @@ const initDb = async () => {
             }
         }
 
+        // 15. Ensure notices table exists
+        try {
+            await connection.query('SELECT 1 FROM notices LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: notices');
+                await connection.query(`
+                    CREATE TABLE notices (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        title VARCHAR(255) NOT NULL,
+                        content TEXT NOT NULL,
+                        start_date DATE NOT NULL,
+                        end_date DATE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
         console.log('✅ Database initialized successfully!');
         try {
             await writeLastDbName(dbName);

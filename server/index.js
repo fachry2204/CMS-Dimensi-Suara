@@ -13,6 +13,7 @@ import publishingRoutes from './routes/publishingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import noticeRoutes from './routes/noticeRoutes.js';
 import { loadBackupScheduleFromDb } from './utils/scheduler.js';
 import userRoutes from './routes/userRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
@@ -111,6 +112,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notices', noticeRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/spotify', spotifyRoutes);
 
