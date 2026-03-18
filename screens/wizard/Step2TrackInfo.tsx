@@ -94,6 +94,51 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   const clipDurationToleranceSeconds = 0.5;
   const clampPercent = (p: number) => Math.max(0, Math.min(100, p));
 
+  const [waveform, setWaveform] = useState<{ isLoading: boolean; peaks: number[]; error: string | null }>({
+    isLoading: false,
+    peaks: [],
+    error: null
+  });
+
+  const formatTime = (seconds: number, digits = 1) => {
+    const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    const m = Math.floor(s / 60);
+    const r = s - m * 60;
+    const ss = r.toFixed(digits).padStart(2 + (digits > 0 ? digits + 1 : 0), '0');
+    return `${m}:${ss}`;
+  };
+
+  const decodeAudioFile = async (file: File) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    try { await audioContext.close(); } catch {}
+    return audioBuffer;
+  };
+
+  const buildWaveformPeaks = (audioBuffer: AudioBuffer, bars = 220) => {
+    const length = audioBuffer.length || 0;
+    if (!length || bars <= 0) return [];
+    const channels = audioBuffer.numberOfChannels || 1;
+    const step = Math.max(1, Math.floor(length / bars));
+    const peaks = new Array(bars).fill(0);
+    for (let i = 0; i < bars; i++) {
+      const start = i * step;
+      const end = Math.min(length, start + step);
+      let max = 0;
+      for (let ch = 0; ch < channels; ch++) {
+        const data = audioBuffer.getChannelData(ch);
+        for (let j = start; j < end; j++) {
+          const v = Math.abs(data[j] || 0);
+          if (v > max) max = v;
+        }
+      }
+      peaks[i] = max;
+    }
+    const maxPeak = peaks.reduce((a, b) => Math.max(a, b), 0) || 1;
+    return peaks.map(p => p / maxPeak);
+  };
+
   // Initialize first track if empty
   useEffect(() => {
     if (!initializedRef.current && data.tracks.length === 0) {
@@ -231,6 +276,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     if (previewAudioRef.current) {
         previewAudioRef.current.pause();
     }
+    setWaveform({ isLoading: false, peaks: [], error: null });
     setTrimmerState({
         isOpen: false,
         trackId: null,
@@ -271,10 +317,21 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       return;
     }
 
+    setTrimmerState({
+      isOpen: true,
+      trackId,
+      rawFile: null,
+      duration: 0,
+      startTime: 0,
+      isPlaying: false
+    });
+    setWaveform({ isLoading: true, peaks: [], error: null });
+
     setProcessingState(prev => ({ ...prev, [key]: true }));
     try {
       const file = await ensureFileFromTrackAudio(source);
-      const duration = await getAudioDuration(file);
+      const audioBuffer = await decodeAudioFile(file);
+      const duration = audioBuffer.duration;
       if (!Number.isFinite(duration) || duration < clipDurationSeconds) {
         setAlertState({
           isOpen: true,
@@ -282,8 +339,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
           message: 'Full Audio harus minimal 60 detik untuk membuat Audio Clip.',
           type: 'error'
         });
+        closeTrimmer();
         return;
       }
+      const peaks = buildWaveformPeaks(audioBuffer, 220);
+      setWaveform({ isLoading: false, peaks, error: null });
       setTrimmerState({
         isOpen: true,
         trackId,
@@ -293,12 +353,14 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         isPlaying: false
       });
     } catch (e) {
+      setWaveform({ isLoading: false, peaks: [], error: 'Gagal memuat waveform.' });
       setAlertState({
         isOpen: true,
         title: 'Gagal membuka trimmer',
         message: 'Tidak bisa memuat audio untuk Trim. Coba upload ulang file audio.',
         type: 'error'
       });
+      closeTrimmer();
     } finally {
       setProcessingState(prev => {
         const next = { ...prev };
@@ -492,7 +554,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     // 1. Handle Full Audio (WAV Force Convert & Rename)
     if (field === 'audioFile') {
         if (file) {
-            updateTrack(trackId, { audioFile: file });
+            updateTrack(trackId, { audioFile: file, tempAudioPath: '' });
         }
         setAudioProgress(trackId, 0);
         setProcessingState(prev => ({ ...prev, [processKey]: true }));
@@ -530,7 +592,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp[fieldName]) ||
                       '';
                     if (candidate) {
-                        updateTrack(trackId, { tempAudioPath: candidate, audioFile: candidate });
+                        updateTrack(trackId, { tempAudioPath: candidate });
                     }
                     } catch (e) {
                         console.error('Upload tmp audio failed:', e);
@@ -713,9 +775,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             const isExpanded = releaseType === 'SINGLE' || expandedTrackId === track.id;
             const isProcessingAudio = processingState[`${track.id}-audioFile`];
             const isProcessingClip = processingState[`${track.id}-audioClip`];
+            const audioUploaded = Boolean((track as any).tempAudioPath) || typeof (track as any).audioFile === 'string';
+            const isOpeningTrimmer = Boolean(processingState[`${track.id}-openTrimmer`]);
             
             // Check if Trimmer should be active for this specific track
-            const isTrimmerActive = trimmerState.isOpen && trimmerState.trackId === track.id && trimmerState.rawFile;
+            const isTrimmerActive = trimmerState.isOpen && trimmerState.trackId === track.id;
 
             return (
                 <div key={track.id} className={`bg-white rounded-xl border transition-all duration-300 ${isExpanded ? 'border-blue-200 shadow-sm ring-1 ring-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
@@ -738,7 +802,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             <Loader2 size={16} className="animate-spin" /> Uploading...
                                         </span>
                                     ) : track.audioFile ? (
-                                        typeof track.audioFile === 'string' ? (
+                                        audioUploaded ? (
                                             <span className="flex items-center gap-1 text-green-600 font-medium">
                                                 <FileAudio size={16} /> Uploaded
                                             </span>
@@ -806,7 +870,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                                 {typeof track.audioFile === 'string' ? 'Existing Audio' : track.audioFile.name}
                                                             </p>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-xs text-blue-500">Uploaded</span>
+                                                                <span className="text-xs text-blue-500">{audioUploaded ? 'Uploaded' : 'Local'}</span>
                                                                 <div className="scale-75 origin-left w-32">
                                                                     <AudioPreview file={track.audioFile} />
                                                                 </div>
@@ -933,14 +997,21 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                           <button
                                             type="button"
                                             onClick={() => openTrimmerFromTrackAudio(track.id)}
-                                            disabled={isProcessingAudio || isProcessingClip || !track.audioFile}
+                                            disabled={isProcessingAudio || isProcessingClip || isOpeningTrimmer || !audioUploaded}
                                             className={`flex-1 px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                                              (isProcessingAudio || isProcessingClip || !track.audioFile)
+                                              (isProcessingAudio || isProcessingClip || isOpeningTrimmer || !audioUploaded)
                                                 ? 'bg-orange-100/40 text-orange-300 cursor-not-allowed'
                                                 : 'bg-orange-600 text-white hover:bg-orange-700'
                                             }`}
                                           >
-                                            Trim File
+                                            {isOpeningTrimmer ? (
+                                              <span className="inline-flex items-center justify-center gap-2">
+                                                <Loader2 size={14} className="animate-spin" />
+                                                Memuat...
+                                              </span>
+                                            ) : (
+                                              'Trim File'
+                                            )}
                                           </button>
                                         </div>
                                         {isProcessingClip && (
@@ -954,76 +1025,6 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                           </div>
                                         )}
 
-                                        {/* INLINE TRIMMER UI */}
-                                        {isTrimmerActive && (
-                                            <div className="mt-6 p-6 bg-white rounded-xl border-2 border-blue-100 shadow-sm animate-fade-in">
-                                                <div className="flex justify-between items-center mb-6">
-                                                    <h3 className="text-xs font-medium text-slate-800 flex items-center gap-2">
-                                                        <Scissors size={20} className="text-blue-500" />
-                                                        Trim Audio Clip
-                                                    </h3>
-                                                    <button onClick={closeTrimmer} className="text-slate-400 hover:text-slate-600">
-                                                        <X size={20} />
-                                                    </button>
-                                                </div>
-
-                                                <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200">
-                                                    <div className="text-center mb-4">
-                                                        <div className="text-xs font-mono font-medium text-blue-600">
-                                                            {new Date(trimmerState.startTime * 1000).toISOString().substr(14, 5)} - {new Date((trimmerState.startTime + clipDurationSeconds) * 1000).toISOString().substr(14, 5)}
-                                                        </div>
-                                                        <p className="text-xs text-slate-400 mt-1">Duration: 60 Seconds</p>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-4">
-                                                         <button 
-                                                            onClick={handleTrimmerPlayToggle}
-                                                            className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors flex-shrink-0"
-                                                         >
-                                                            {trimmerState.isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
-                                                         </button>
-                                                         <div className="flex-1 relative">
-                                                             <input 
-                                                                type="range" 
-                                                                min="0" 
-                                                                max={Math.max(0, trimmerState.duration - clipDurationSeconds)} 
-                                                                step="1" 
-                                                                value={trimmerState.startTime}
-                                                                onChange={handleTrimmerSliderChange}
-                                                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                                                             />
-                                                         </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Hidden Audio for preview logic */}
-                                                <audio 
-                                                    ref={previewAudioRef} 
-                                                    src={stableAudioUrl || undefined} 
-                                                    onTimeUpdate={(e) => {
-                                                        if (e.currentTarget.currentTime >= trimmerState.startTime + clipDurationSeconds) {
-                                                            e.currentTarget.currentTime = trimmerState.startTime;
-                                                        }
-                                                    }}
-                                                />
-
-                                                <div className="flex gap-4 justify-end">
-                                                    <button 
-                                                        onClick={closeTrimmer}
-                                                        className="px-6 py-2.5 text-slate-500 font-medium text-xs hover:bg-slate-100 rounded-lg transition-colors"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                    <button 
-                                                        onClick={saveTrimmedAudio}
-                                                        className="px-6 py-2.5 bg-blue-600 text-white font-medium text-xs rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                                                    >
-                                                        <Check size={20} />
-                                                        Crop 60s Clip
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                     
                                     {/* IPL Document (if required by version) */}
@@ -1360,6 +1361,153 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         type={alertState.type}
         onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {trimmerState.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="text-sm font-semibold text-slate-800">Trim online</div>
+              <button
+                type="button"
+                onClick={closeTrimmer}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              <div className="relative w-full rounded-xl border border-slate-200 bg-white overflow-hidden">
+                {waveform.isLoading ? (
+                  <div className="h-44 flex flex-col items-center justify-center gap-3 text-slate-500">
+                    <Loader2 size={22} className="animate-spin" />
+                    <div className="text-xs font-medium">Memuat waveform...</div>
+                  </div>
+                ) : waveform.error ? (
+                  <div className="h-44 flex items-center justify-center text-xs text-slate-500">
+                    {waveform.error}
+                  </div>
+                ) : (
+                  <div
+                    className="relative h-44 px-4 py-6 select-none"
+                    onClick={(e) => {
+                      if (!trimmerState.duration || trimmerState.duration <= clipDurationSeconds) return;
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+                      const p = rect.width ? x / rect.width : 0;
+                      const raw = p * trimmerState.duration;
+                      const maxStart = Math.max(0, trimmerState.duration - clipDurationSeconds);
+                      const nextStart = Math.max(0, Math.min(maxStart, raw));
+                      setTrimmerState(prev => ({ ...prev, startTime: nextStart, isPlaying: false }));
+                      if (previewAudioRef.current) {
+                        previewAudioRef.current.pause();
+                        previewAudioRef.current.currentTime = nextStart;
+                      }
+                    }}
+                  >
+                    <div className="absolute left-0 right-0 bottom-10 h-1 bg-slate-300 rounded-full mx-4" />
+
+                    <div className="absolute inset-x-4 top-6 bottom-12 flex items-center gap-[2px]">
+                      {waveform.peaks.map((p, idx) => (
+                        <div
+                          key={idx}
+                          className="flex-1 bg-slate-200 rounded"
+                          style={{ height: `${Math.max(6, Math.round(p * 100))}%`, opacity: 0.9 }}
+                        />
+                      ))}
+                    </div>
+
+                    {trimmerState.duration > 0 && (
+                      (() => {
+                        const maxStart = Math.max(0, trimmerState.duration - clipDurationSeconds);
+                        const start = Math.max(0, Math.min(maxStart, trimmerState.startTime));
+                        const leftPct = trimmerState.duration ? (start / trimmerState.duration) * 100 : 0;
+                        const widthPct = trimmerState.duration ? (clipDurationSeconds / trimmerState.duration) * 100 : 0;
+                        const left = Math.max(0, Math.min(100, leftPct));
+                        const width = Math.max(0, Math.min(100 - left, widthPct));
+                        return (
+                          <div
+                            className="absolute inset-y-6 pointer-events-none"
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                          >
+                            <div className="absolute inset-0 bg-rose-500/15 border-x-2 border-rose-500" />
+                            <div className="absolute -bottom-6 left-0 w-4 h-4 rounded-full bg-white border-2 border-rose-500" />
+                            <div className="absolute -bottom-6 right-0 w-4 h-4 rounded-full bg-white border-2 border-rose-500" />
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-6 text-xs text-slate-700">
+                  <div>
+                    <span className="text-slate-500">From</span>{' '}
+                    <span className="font-medium">{formatTime(trimmerState.startTime, 1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">To</span>{' '}
+                    <span className="font-medium">{formatTime(trimmerState.startTime + clipDurationSeconds, 1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Length</span>{' '}
+                    <span className="font-medium">{Math.round(trimmerState.duration || 0)}s</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(0, (trimmerState.duration || 0) - clipDurationSeconds)}
+                    step={0.1}
+                    value={Math.min(Math.max(0, trimmerState.startTime), Math.max(0, (trimmerState.duration || 0) - clipDurationSeconds))}
+                    onChange={handleTrimmerSliderChange}
+                    disabled={waveform.isLoading || !trimmerState.rawFile || (trimmerState.duration || 0) <= clipDurationSeconds}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTrimmerPlayToggle}
+                    disabled={waveform.isLoading || !trimmerState.rawFile}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+                      waveform.isLoading || !trimmerState.rawFile ? 'bg-slate-50 text-slate-300 border-slate-200' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {trimmerState.isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveTrimmedAudio}
+                    disabled={waveform.isLoading || !trimmerState.rawFile || (trimmerState.duration || 0) < clipDurationSeconds}
+                    className={`px-5 h-11 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 ${
+                      waveform.isLoading || !trimmerState.rawFile || (trimmerState.duration || 0) < clipDurationSeconds
+                        ? 'bg-rose-200 text-white cursor-not-allowed'
+                        : 'bg-rose-500 hover:bg-rose-600 text-white'
+                    }`}
+                  >
+                    <Check size={16} />
+                    Confirm
+                  </button>
+                </div>
+              </div>
+
+              <audio
+                ref={previewAudioRef}
+                src={stableAudioUrl || undefined}
+                onTimeUpdate={(e) => {
+                  if (!Number.isFinite(trimmerState.startTime) || !Number.isFinite(clipDurationSeconds)) return;
+                  if (e.currentTarget.currentTime >= trimmerState.startTime + clipDurationSeconds) {
+                    e.currentTarget.currentTime = trimmerState.startTime;
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
