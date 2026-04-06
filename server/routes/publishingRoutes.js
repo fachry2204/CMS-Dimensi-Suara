@@ -453,7 +453,12 @@ router.put('/songs/:id/status', authenticateToken, async (req, res) => {
                     // Using release_status template as it's generic enough or we can create song_status.
                     // Let's use release_status for consistency for now or fallback.
                     const templateKey = `release_status.${status}`; 
-                    const templateData = { title: s.title, status: status };
+                    const templateData = { 
+                        title: s.title, 
+                        status: status,
+                        reason: rejection_reason || '',
+                        description: '' // No description for songs currently in body
+                    };
                     await createNotification(s.user_id, 'SONG_STATUS', msg, templateKey, templateData);
                 }
             }

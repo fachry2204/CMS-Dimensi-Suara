@@ -1388,11 +1388,11 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
             setParts.push('upc = ?');
             vals.push(upc || null);
         }
-        if (releaseColNames.includes('rejection_reason')) {
+        if (releaseColNames.includes('rejection_reason') && Object.prototype.hasOwnProperty.call(req.body, 'rejectionReason')) {
             setParts.push('rejection_reason = ?');
             vals.push(rejectionReason || null);
         }
-        if (releaseColNames.includes('rejection_description')) {
+        if (releaseColNames.includes('rejection_description') && Object.prototype.hasOwnProperty.call(req.body, 'rejectionDescription')) {
             setParts.push('rejection_description = ?');
             vals.push(rejectionDescription || null);
         }
@@ -1415,7 +1415,8 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                         title: release.title, 
                         status: status,
                         upc: release.upc || '',
-                        reason: rejectionReason || ''
+                        reason: rejectionReason || '',
+                        description: rejectionDescription || ''
                     };
                     
                     await createNotification(release.user_id, 'RELEASE_STATUS', msg, templateKey, templateData);

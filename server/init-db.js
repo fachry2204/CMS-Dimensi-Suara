@@ -259,7 +259,9 @@ const initDb = async () => {
             { name: 'language', type: "VARCHAR(50)" },
             { name: 'label', type: "VARCHAR(100)" },
             { name: 'upc', type: "VARCHAR(50)" },
-            { name: 'aggregator', type: "VARCHAR(50)" }
+            { name: 'aggregator', type: "VARCHAR(50)" },
+            { name: 'rejection_reason', type: "TEXT" },
+            { name: 'rejection_description', type: "TEXT" }
         ];
 
         for (const col of releaseColumns) {
@@ -836,6 +838,16 @@ const initDb = async () => {
                     key: 'user_register_status.Rejected',
                     subject: 'Status Pendaftaran: {{status}} - Dimensi Suara',
                     body: `<div>Halo {{fullName}}, pendaftaran Anda {{status}}. Alasan: {{reason}}</div>`
+                },
+                {
+                    key: 'user_contract_status.On Review',
+                    subject: 'Update Status Kontrak: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, kontrak Anda sedang dalam proses peninjauan ({{status}}). Terima kasih.</div>`
+                },
+                {
+                    key: 'user_contract_status.Done',
+                    subject: 'Update Status Kontrak: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, selamat! Kontrak Anda telah selesai ({{status}}). Silakan cek dashboard untuk detailnya.</div>`
                 }
             ];
             for (const t of defaults) {
@@ -865,7 +877,7 @@ const initDb = async () => {
                 },
                 {
                     key: 'release_status.Rejected',
-                    body: `Halo {{fullName}},\n\nMaaf, rilisan Anda "{{title}}" ditolak.\nAlasan: {{reason}}\n\nMohon cek email atau dashboard untuk instruksi perbaikan.`
+                    body: `Halo {{fullName}},\n\nMaaf, rilisan Anda "{{title}}" ditolak.\nAlasan: {{reason}}\nDetail: {{description}}\n\nMohon cek email atau dashboard untuk instruksi perbaikan.`
                 },
                 {
                     key: 'user_register',
