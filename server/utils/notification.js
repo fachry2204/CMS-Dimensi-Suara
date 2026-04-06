@@ -221,11 +221,13 @@ export const sendTemplatedWhatsApp = async (userId, templateKey, data = {}) => {
         // Replace placeholders
         const mergedData = { ...data, fullName: userRows[0].full_name || 'User' };
         Object.entries(mergedData).forEach(([k, v]) => {
-            message = message.replace(new RegExp(`{{${k}}}`, 'g'), v || '');
+            const val = String(v || '');
+            // Use split/join to avoid regex $ issues and ensure global replacement
+            message = message.split(`{{${k}}}`).join(val);
         });
 
         // Clean up any remaining {{placeholder}} markers
-        message = message.replace(/{{[a-zA-Z0-9]+}}/g, '');
+        message = message.replace(/{{[a-zA-Z0-9_]+}}/g, '');
 
         const cleanPhone = String(userRows[0].phone).replace(/\D/g, '');
         if (!cleanPhone) return null;
