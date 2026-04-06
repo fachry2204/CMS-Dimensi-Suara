@@ -102,7 +102,8 @@ router.get('/profile', authenticateToken, async (req, res) => {
             colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
             colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
             colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name',
-            colNames.includes('contract_doc_path') ? 'contract_doc_path' : 'NULL as contract_doc_path'
+            colNames.includes('contract_doc_path') ? 'contract_doc_path' : 'NULL as contract_doc_path',
+            colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`
         ];
 
         const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`;

@@ -10,7 +10,8 @@ interface Props {
 }
 
 export const MyContracts: React.FC<Props> = ({ currentUserData, defaultTab }) => {
-  const user = currentUserData || {} as User;
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const user = userProfile || currentUserData || {} as User;
   
   // State for Admin View
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
@@ -23,10 +24,40 @@ export const MyContracts: React.FC<Props> = ({ currentUserData, defaultTab }) =>
   useEffect(() => {
     if (isAdminView) {
       fetchUsers();
-    } else if (user.role === 'User' && defaultTab === 'publishing') {
-      fetchPublishingData();
+    } else {
+      // For normal user, always fetch latest profile to get up-to-date contract status
+      fetchMyProfile();
+      if (defaultTab === 'publishing') {
+        fetchPublishingData();
+      }
     }
   }, [isAdminView, defaultTab]);
+
+  const fetchMyProfile = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('cms_token');
+      if (!token) return;
+      const profile = await api.getProfile(token);
+      if (profile) {
+        // Map backend fields if necessary (like in App.tsx)
+        const mapped: User = {
+            ...profile,
+            id: String(profile.id),
+            role: profile.role || 'User',
+            status: profile.status || 'Pending',
+            joinedDate: profile.joined_date || profile.created_at || '',
+            contract_status: profile.contract_status,
+            contract_doc_path: profile.contract_doc_path
+        };
+        setUserProfile(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user profile:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setIsLoading(true);

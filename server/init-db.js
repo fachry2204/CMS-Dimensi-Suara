@@ -124,7 +124,8 @@ const initDb = async () => {
             { name: 'bank_name', type: "VARCHAR(100)" },
             { name: 'bank_account_number', type: "VARCHAR(50)" },
             { name: 'bank_account_name', type: "VARCHAR(100)" },
-            { name: 'contract_doc_path', type: "VARCHAR(255)" }
+            { name: 'contract_doc_path', type: "VARCHAR(255)" },
+            { name: 'contract_status', type: "ENUM('Not Generated','On Review','Done') DEFAULT 'Not Generated'" }
         ];
 
         for (const col of userProfileColumns) {
