@@ -170,6 +170,8 @@ export interface User {
   ktp_doc_path?: string;
   npwp_doc_path?: string;
   signature_doc_path?: string;
+  contract_doc_path?: string;
+  contract_status?: 'Not Generated' | 'On Review' | 'Done';
   bank_name?: string;
   bank_account_number?: string;
   bank_account_name?: string;
