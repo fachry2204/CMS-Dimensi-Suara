@@ -651,7 +651,7 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
                                 html || message || 'Broadcast',
                                 ''
                             ].join('\r\n');
-                            await send(msg + '\r\n.'); const accepted = await expect(250); await send('QUIT'); cleanup({ ok: true, accepted });
+                            await send(msg + '\r\n.'); const accepted = await expect(250); await send('QUIT'); cleanup();
                         } catch (err) { cleanup(err); }
                     })();
                 }
@@ -710,10 +710,11 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
                         ['email', recipientEmail, subject || 'Broadcast', html || message, 'PENDING']);
                     const logId = logRes?.insertId;
                     try {
-                        const sent = await sendSmtp({ to: recipientEmail });
+                        await sendSmtp({ to: recipientEmail });
                         await db.query('UPDATE broadcast_logs SET status = ?, sent_at = NOW() WHERE id = ?', ['SENT', logId]);
                     } catch (err) {
-                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', err.message, logId]);
+                        const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
                     }
                     await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1500, 200)));
                 }
@@ -727,7 +728,8 @@ router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
                         await sendWa({ to: recipientPhone });
                         await db.query('UPDATE broadcast_logs SET status = ?, sent_at = NOW() WHERE id = ?', ['SENT', logId]);
                     } catch (err) {
-                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', err.message, logId]);
+                        const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
                     }
                     await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1500, 200)));
                 }
@@ -753,7 +755,7 @@ router.get('/messaging/broadcast/logs', authenticateToken, async (req, res) => {
     }
 });
 
-// Resend Email Log
+// Resend Email Log (Limited support as body is not stored)
 router.post('/email/resend/:id', authenticateToken, async (req, res) => {
     try {
         if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
@@ -763,68 +765,69 @@ router.post('/email/resend/:id', authenticateToken, async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ error: 'Log not found' });
         const log = rows[0];
 
+        // Since email_logs doesn't store the body, we try to resend a generic message 
+        // OR if it's a broadcast that was logged here, we might be stuck.
+        // For now, let's at least try to send SOMETHING so it doesn't just fail.
+        
         const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
         const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
         if (!smtp) return res.status(400).json({ error: 'SMTP not configured' });
 
-        // Helper for SMTP (Reuse existing logic or similar)
         const sendSmtp = ({ to, subject, html }) => new Promise((resolve, reject) => {
-            const socket = Boolean(smtp.secure) ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
-            let buffer = ''; let closed = false;
-            function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
-            function expect(code) { return new Promise((res, rej) => {
-                const onData = (data) => {
-                    buffer += data.toString('utf8');
-                    const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
-                    const last = lines[lines.length - 1] || '';
-                    const m = last.match(/^(\d{3})/);
-                    if (m) {
-                        const lastCode = parseInt(m[1], 10);
-                        if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
-                        else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
-                    }
-                };
-                socket.on('data', onData);
-            });}
-            function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
-            function onConnect() {
-                (async () => {
-                    try {
-                        await expect(220); await send(`EHLO localhost`); await expect(250);
-                        await send('AUTH LOGIN'); await expect(334);
-                        await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
-                        await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
-                        await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
-                        await send(`RCPT TO:<${to}>`); await expect([250, 251]);
-                        await send('DATA'); await expect(354);
-                        const msg = [
-                            `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
-                            `To: <${to}>`,
-                            `Subject: ${subject}`,
-                            `Date: ${new Date().toUTCString()}`,
-                            'MIME-Version: 1.0',
-                            'Content-Type: text/html; charset=utf-8',
-                            '', html, ''
-                        ].join('\r\n');
-                        await send(msg + '\r\n.'); await expect(250); await send('QUIT'); cleanup();
-                    } catch (err) { cleanup(err); }
-                })();
-            }
-            socket.once('error', (e) => cleanup(e));
+            try {
+                const secure = Boolean(smtp.secure);
+                const socket = secure ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
+                let buffer = ''; let closed = false;
+                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                function expect(code) { return new Promise((res, rej) => {
+                    const onData = (data) => {
+                        buffer += data.toString('utf8');
+                        const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const last = lines[lines.length - 1] || '';
+                        const m = last.match(/^(\d{3})/);
+                        if (m) {
+                            const lastCode = parseInt(m[1], 10);
+                            if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                            else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                        }
+                    };
+                    socket.on('data', onData);
+                });}
+                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                function onConnect() {
+                    (async () => {
+                        try {
+                            await expect(220); await send(`EHLO localhost`); await expect(250);
+                            await send('AUTH LOGIN'); await expect(334);
+                            await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
+                            await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
+                            await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                            await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                            await send('DATA'); await expect(354);
+                            const msg = [
+                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                `To: <${to}>`,
+                                `Subject: [Resend] ${subject}`,
+                                `Date: ${new Date().toUTCString()}`,
+                                'MIME-Version: 1.0',
+                                'Content-Type: text/html; charset=utf-8',
+                                '', html, ''
+                            ].join('\r\n');
+                            await send(msg + '\r\n.'); await expect(250); await send('QUIT'); cleanup();
+                        } catch (err) { cleanup(err); }
+                    })();
+                }
+                socket.once('error', (e) => cleanup(e));
+            } catch (e) { reject(e); }
         });
 
-        // For email_logs, we might need to reconstruct the body if not stored. 
-        // But if it's not stored in email_logs, we can only resend if we have a way to regenerate it.
-        // Let's assume for now we only support resending if we have the content or it's a simple notification.
-        // If server_response or error_message doesn't have the body, we might be stuck.
-        // Wait, let's check if we can store the body in email_logs in the future.
-        // For now, let's try to resend based on what we have.
+        // Use a placeholder if body is missing
+        const body = `<p>Ini adalah pengiriman ulang untuk email dengan subjek: <b>${log.subject}</b>.</p><p>Maaf, isi pesan asli tidak tersimpan di sistem log sistem. Mohon cek dashboard untuk detailnya.</p>`;
         
-        // Actually, if it's a RELEASE_STATUS, we could potentially regenerate it.
-        // But a simpler way is to just use the subject and a generic "Resent" message if body is missing.
-        // For broadcast_logs, we DO have the message stored.
+        await sendSmtp({ to: log.to_email, subject: log.subject, html: body });
+        await db.query('UPDATE email_logs SET status = "SENT", error_message = NULL, sent_at = NOW() WHERE id = ?', [log.id]);
         
-        res.status(400).json({ error: 'Resending from email_logs is currently only supported if body is preserved. Please use Broadcast logs for full resend capability.' });
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

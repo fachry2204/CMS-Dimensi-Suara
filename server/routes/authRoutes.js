@@ -262,7 +262,10 @@ router.post('/register', async (req, res) => {
                         html
                     });
                 } catch (err) {
-                    if (logId) await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+                    if (logId) {
+                        const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                        await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
+                    }
                 }
             } catch {}
         })();
@@ -455,7 +458,10 @@ router.post('/forgot-password', async (req, res) => {
                 await db.query('UPDATE email_logs SET status = ?, sent_at = NOW(), server_response = ? WHERE id = ?', ['SENT', sent?.accepted?.slice(0, 480) || null, logId]);
             }
         } catch (err) {
-            if (logId) await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+            if (logId) {
+                const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
+            }
             return res.status(500).json({ error: 'Failed to send reset email' });
         }
 

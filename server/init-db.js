@@ -882,6 +882,14 @@ const initDb = async () => {
                 {
                     key: 'user_register_status.Rejected',
                     body: `Halo {{fullName}},\n\nMaaf, pendaftaran akun Anda ditolak.\nAlasan: {{reason}}`
+                },
+                {
+                    key: 'user_contract_status.On Review',
+                    body: `Halo {{fullName}},\n\nKontrak Anda sedang dalam proses peninjauan (On Review).\n\nTerima kasih.`
+                },
+                {
+                    key: 'user_contract_status.Done',
+                    body: `Halo {{fullName}},\n\nSelamat! Kontrak Anda telah selesai (Done) dan ditandatangani.\n\nSilakan cek dashboard untuk detailnya.`
                 }
             ];
             for (const t of waDefaults) {

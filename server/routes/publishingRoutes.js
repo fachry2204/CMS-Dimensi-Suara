@@ -281,6 +281,10 @@ router.put('/creators/:id/status', authenticateToken, async (req, res) => {
         }
         
         const { id } = req.params;
+        const [oldWriterRows] = await db.query('SELECT user_id, contract_status, name FROM writers WHERE id = ?', [id]);
+        if (oldWriterRows.length === 0) return res.status(404).json({ message: 'Writer not found' });
+        const oldWriter = oldWriterRows[0];
+
         const { contract_status, contract_doc_path } = req.body;
         
         const allowed = ['Not Generated', 'On Review', 'Done'];
@@ -305,6 +309,16 @@ router.put('/creators/:id/status', authenticateToken, async (req, res) => {
         params.push(id);
         await db.query(`UPDATE writers SET ${updates.join(', ')} WHERE id = ?`, params);
         
+        // Send Notification if contract_status changed
+        if (contract_status && contract_status !== oldWriter.contract_status && contract_status !== 'Not Generated') {
+            const msg = `Status Kontrak Writer untuk "${oldWriter.name}" telah diperbarui menjadi ${contract_status}`;
+            const templateKey = `user_contract_status.${contract_status}`;
+            const templateData = { 
+                status: contract_status
+            };
+            await createNotification(oldWriter.user_id, 'CONTRACT_STATUS', msg, templateKey, templateData);
+        }
+
         res.json({ message: 'Status updated' });
     } catch (error) {
         console.error('Error updating writer status:', error);

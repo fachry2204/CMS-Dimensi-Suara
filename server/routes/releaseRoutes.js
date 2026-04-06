@@ -1414,7 +1414,8 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                     const templateData = { 
                         title: release.title, 
                         status: status,
-                        upc: release.upc || ''
+                        upc: release.upc || '',
+                        reason: rejectionReason || ''
                     };
                     
                     await createNotification(release.user_id, 'RELEASE_STATUS', msg, templateKey, templateData);
@@ -1605,7 +1606,8 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                                             });
                                         } catch (err) {
                                             if (logId) {
-                                                await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', String(err?.message || err), logId]);
+                                                const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                                                await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
                                             }
                                         }
                                     }

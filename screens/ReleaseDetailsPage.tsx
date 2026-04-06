@@ -86,6 +86,8 @@ export const ReleaseDetailsPage: React.FC<Props> = ({ token, userRole, aggregato
           pLine: raw.p_line || '',
           cLine: raw.c_line || '',
           version: raw.version || '',
+          rejectionReason: raw.rejection_reason || '',
+          rejectionDescription: raw.rejection_description || '',
           tracks: (raw.tracks || []).map((t: any) => {
             const p = mapArtists(t.primaryArtists ?? t.primary_artists);
             const f = mapArtists(t.featuredArtists ?? t.featured_artists);

@@ -610,6 +610,12 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
+        const [oldUserRows] = await db.query('SELECT status, contract_status FROM users WHERE id = ?', [userId]);
+        if (oldUserRows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const oldUser = oldUserRows[0];
+
         const { status, reason, aggregator_percentage, publishing_percentage, contract_status, contract_doc_path } = req.body || {};
         const allowed = ['Pending', 'Review', 'Approved', 'Rejected', 'Active', 'Inactive', 'Blocked'];
         if (!allowed.includes(String(status))) {
@@ -732,15 +738,29 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         // Send Notification (Notification table + WhatsApp)
         try {
             const user = updatedUser[0];
-            const msg = `Status Akun Anda telah diperbarui menjadi ${user.status}${user.rejection_reason ? ` (Alasan: ${user.rejection_reason})` : ''}`;
-            const templateKey = `user_register_status.${user.status}`;
-            const templateData = { 
-                status: user.status, 
-                reason: user.rejection_reason || user.block_reason || '' 
-            };
-            await createNotification(user.id, 'ACCOUNT_STATUS', msg, templateKey, templateData);
+            
+            // 1. Notification for Registration Status (if changed)
+            if (user.status !== oldUser.status) {
+                const msg = `Status Akun Anda telah diperbarui menjadi ${user.status}${user.rejection_reason ? ` (Alasan: ${user.rejection_reason})` : ''}`;
+                const templateKey = `user_register_status.${user.status}`;
+                const templateData = { 
+                    status: user.status, 
+                    reason: user.rejection_reason || user.block_reason || '' 
+                };
+                await createNotification(user.id, 'ACCOUNT_STATUS', msg, templateKey, templateData);
+            }
+
+            // 2. Notification for Contract Status (if changed)
+            if (hasContractStatus && user.contract_status !== oldUser.contract_status && user.contract_status !== 'Not Generated') {
+                const msg = `Status Kontrak Anda telah diperbarui menjadi ${user.contract_status}`;
+                const templateKey = `user_contract_status.${user.contract_status}`;
+                const templateData = { 
+                    status: user.contract_status
+                };
+                await createNotification(user.id, 'CONTRACT_STATUS', msg, templateKey, templateData);
+            }
         } catch (notifErr) {
-            console.warn('Failed to send account status notification:', notifErr.message);
+            console.warn('Failed to send notifications:', notifErr.message);
         }
 
         // Build select query based on available columns for response

@@ -590,6 +590,21 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         </span>
                     </div>
 
+                    {status === 'Rejected' && (release.rejectionReason || rejectionReason) && (
+                        <div className="mb-6 flex items-start gap-3 text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-2xl w-fit max-w-full shadow-sm animate-fade-in-down">
+                            <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                            <div className="flex flex-col">
+                                <span className="text-[10px] uppercase font-extrabold tracking-wider opacity-60 mb-0.5">Alasan Penolakan</span>
+                                <span className="text-sm font-bold leading-relaxed">{release.rejectionReason || rejectionReason}</span>
+                                {release.rejectionDescription && (
+                                    <p className="text-[11px] font-medium mt-1.5 text-red-500/80 leading-normal line-clamp-2 italic">
+                                        {release.rejectionDescription}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
                         <div>
                             <table className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg overflow-hidden">
