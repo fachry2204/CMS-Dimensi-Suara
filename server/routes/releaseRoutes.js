@@ -1409,14 +1409,37 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
             if (typeof status === 'string' && status && status !== release.status) {
                 const [users] = await db.query('SELECT id FROM users WHERE id = ?', [release.user_id]);
                 if (users.length > 0) {
+                    // Pre-calculate ISRC block for both WhatsApp and Email
+                    let isrcBlock = '';
+                    try {
+                        const [trackRows] = await db.query('SELECT title, isrc FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [releaseId]);
+                        const tracksList = Array.isArray(trackRows) ? trackRows : [];
+                        const relTypeRaw = String(release.release_type || release.type || '').toUpperCase();
+                        const isSingle = relTypeRaw.includes('SINGLE') || tracksList.length === 1;
+                        if (isSingle) {
+                            const code = String(tracksList[0]?.isrc || '').trim();
+                            if (code) {
+                                isrcBlock = `*ISRC:* ${code}`;
+                            }
+                        } else {
+                            const items = tracksList.filter(t => t && String(t.isrc || '').trim().length > 0);
+                            if (items.length > 0) {
+                                isrcBlock = items.map(t => `*${t.title || 'Track'}:* ${t.isrc}`).join('\n');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error calculating ISRC block:', e);
+                    }
+
                     const msg = `Status Rilisan "${release.title}" berubah menjadi ${status}`;
                     const templateKey = `release_status.${status}`;
                     const templateData = { 
                         title: release.title, 
                         status: status,
-                        upc: release.upc || '',
-                        reason: rejectionReason || '',
-                        description: rejectionDescription || ''
+                        upc: upc || release.upc || '',
+                        reason: rejectionReason || release.rejection_reason || '',
+                        description: rejectionDescription || release.rejection_description || '',
+                        isrcBlock: isrcBlock
                     };
                     
                     await createNotification(release.user_id, 'RELEASE_STATUS', msg, templateKey, templateData);
@@ -1432,33 +1455,22 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                                     const fullName = ownerRows[0].full_name || '';
                                     if (to) {
                                         let subject = `Update Status Rilisan: ${release.title} → ${status}`;
-                                        // Build ISRC block: Single shows single ISRC; EP/Album lists Track Title + ISRC
-                                        let isrcBlock = '';
-                                        try {
-                                            const [trackRows] = await db.query('SELECT title, isrc FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [release.id]);
-                                            const tracksList = Array.isArray(trackRows) ? trackRows : [];
+                                        
+                                        // Email version of ISRC block (with HTML)
+                                        let emailIsrcBlock = '';
+                                        if (isrcBlock) {
                                             const relTypeRaw = String(release.release_type || release.type || '').toUpperCase();
-                                            const isSingle = relTypeRaw.includes('SINGLE') || tracksList.length === 1;
+                                            const isSingle = relTypeRaw.includes('SINGLE');
                                             if (isSingle) {
-                                                const code = String(tracksList[0]?.isrc || '').trim();
-                                                if (code) {
-                                                    isrcBlock = `<div style="font-size:14px;color:#0f172a"><strong>ISRC:</strong> ${code}</div>`;
-                                                }
+                                                emailIsrcBlock = `<div style="font-size:14px;color:#0f172a"><strong>ISRC:</strong> ${isrcBlock.replace('*ISRC:* ', '')}</div>`;
                                             } else {
-                                                const items = tracksList.filter(t => t && String(t.isrc || '').trim().length > 0);
-                                                if (items.length > 0) {
-                                                    const listHtml = items.map(t => {
-                                                        const title = String(t.title || '').trim() || 'Track';
-                                                        const code = String(t.isrc || '').trim();
-                                                        return `<div style="font-size:14px;color:#0f172a"><strong>${title}:</strong> ${code}</div>`;
-                                                    }).join('');
-                                                    isrcBlock = `
+                                                emailIsrcBlock = `
           <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin:16px 0 8px">Daftar Track &amp; ISRC</div>
-          ${listHtml}
+          ${isrcBlock.split('\n').map(line => `<div style="font-size:14px;color:#0f172a">${line.replace(/\*(.*?)\*/g, '<strong>$1</strong>')}</div>`).join('')}
         `;
-                                                }
                                             }
-                                        } catch {}
+                                        }
+
                                         let html = `
 <div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:24px">
   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
@@ -1479,7 +1491,7 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
           <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> ${release.title}</div>
           <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> ${status}</div>
           ${release.upc ? `<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> ${release.upc}</div>` : ''}
-          ${isrcBlock}
+          ${emailIsrcBlock}
         </div>
         <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
       </td>
@@ -1495,10 +1507,10 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                                                     .replaceAll('{{fullName}}', fullName || 'User')
                                                     .replaceAll('{{title}}', release.title || '')
                                                     .replaceAll('{{status}}', status || '')
-                                                    .replaceAll('{{upc}}', release.upc || '')
-                                                    .replaceAll('{{isrcBlock}}', isrcBlock)
-                                                    .replaceAll('{{reason}}', String(rejectionReason || ''))
-                                                    .replaceAll('{{description}}', String(rejectionDescription || ''));
+                                                    .replaceAll('{{upc}}', upc || release.upc || '')
+                                                    .replaceAll('{{isrcBlock}}', emailIsrcBlock)
+                                                    .replaceAll('{{reason}}', String(rejectionReason || release.rejection_reason || ''))
+                                                    .replaceAll('{{description}}', String(rejectionDescription || release.rejection_description || ''));
                                                 subject = replace(t.subject_template);
                                                 html = replace(t.body_template);
                                             }

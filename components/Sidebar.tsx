@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { PlusCircle, ListMusic, Music4, Settings, LayoutDashboard, BarChart3, ClipboardList, DollarSign, Upload, UserPlus, FileText, Library, PieChart, Users, Shield, User, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface SidebarProps {
@@ -8,6 +8,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
+  const location = useLocation();
   const [logo, setLogo] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     dashboard: false,
@@ -24,13 +25,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
     reportList: false,
     revenue: false,
     importReports: false,
-    kontrak: false
+    kontrak: false,
+    kontrakUser: false
   });
 
   const toggleSection = (section: string) => {
     const TOP_SECTIONS = ['dashboard','aggregator','publishing','report','reportUser','system','dataSaya','bantuan', 'kontrak'];
     const REPORT_SUBS = ['statistics','reportList','importReports','payments','revenue'];
     const SYSTEM_SUBS = ['messaging'];
+    const USER_SUBS = ['kontrakUser'];
     setExpandedSections(prev => {
       const next = { ...prev };
       // Accordion for top-level sections
@@ -51,6 +54,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
       if (SYSTEM_SUBS.includes(section)) {
         next[section] = !prev[section];
         next.system = true;
+        return next;
+      }
+      // User sub-sections (nested inside Data Saya)
+      if (USER_SUBS.includes(section)) {
+        next[section] = !prev[section];
+        next.dataSaya = true;
         return next;
       }
       // Default toggle
@@ -546,25 +555,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, userRole }) => {
                     ? 'border-blue-500 bg-white/10 text-white' 
                     : 'border-transparent text-white/70 hover:bg-white/5 hover:text-white'
                 }`}
-                onClick={() => toggleSection('kontrak')}
+                onClick={() => toggleSection('kontrakUser')}
               >
                 <div className="flex items-center gap-2">
                   <FileText size={18} className={location.pathname.startsWith('/me/contracts') ? 'text-blue-400' : 'text-white/50'} />
                   <span className="font-medium text-[12px]">Kontrak</span>
                 </div>
-                {expandedSections.kontrak ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                {expandedSections.kontrakUser ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </div>
 
-              {expandedSections.kontrak && (
+              {expandedSections.kontrakUser && (
                 <ul className="mt-1 ml-4 space-y-1 border-l border-white/10 pl-2">
                   <li>
                     <NavLink to="/me/contracts/aggregator" className={({ isActive }) => getSubLinkClass(isActive)}>
-                      Aggregator
+                      Kontrak Aggregator
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/me/contracts/publishing" className={({ isActive }) => getSubLinkClass(isActive)}>
-                      Publishing
+                      Kontrak Publishing
                     </NavLink>
                   </li>
                 </ul>
