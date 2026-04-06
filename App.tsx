@@ -25,11 +25,17 @@ import { PaymentScreen } from './screens/PaymentScreen';
 import { PaymentDetailScreen } from './screens/PaymentDetailScreen';
 import { LoginScreen } from './screens/LoginScreen'; 
 import { RegisterScreen } from './screens/RegisterScreen';
+import { ResetPasswordScreen } from './screens/ResetPasswordScreen';
 import { UserStatusScreen } from './screens/UserStatusScreen';
 import { NewReleaseFlow } from './screens/NewReleaseFlow';
 import { UserAnalytics } from './screens/UserAnalytics';
 import { UserPayments } from './screens/UserPayments';
 import Tickets from './screens/Tickets';
+import SystemMonitoring from './screens/SystemMonitoring';
+import TemplateGateway from './screens/TemplateGateway';
+import Broadcast from './screens/Broadcast';
+import NoticeManagement from './screens/NoticeManagement';
+import MessagingGateway from './screens/MessagingGateway';
 import TicketDetail from './screens/TicketDetail';
 import { MyProfile } from './screens/MyProfile';
 import { MyContracts } from './screens/MyContracts';
@@ -52,6 +58,7 @@ import { ArtistDetail } from './screens/ArtistDetail';
 import { UserEditPage } from './screens/UserEditPage';
 import { Contracts } from './screens/Contracts';
 import { ContractDetail } from './screens/ContractDetail';
+import { ImportReleases } from './screens/ImportReleases';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -205,7 +212,7 @@ const App: React.FC = () => {
 
         const p1 = api.getReleases(token)
             .then(data => {
-                const mapped = data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }));
+                const mapped = data.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: r.ownerDisplayName || resolveOwnerName(r) }));
                 setAllReleases(mapped);
                 // Initialize status tracking ref
                 mapped.forEach((r: any) => {
@@ -299,9 +306,7 @@ const App: React.FC = () => {
                  );
 
                  let localNotifs: Notification[] = [];
-                 try {
-                     localNotifs = JSON.parse(localStorage.getItem('cms_local_notifs') || '[]');
-                 } catch {}
+                 const isStaff = userRole === 'Admin' || userRole === 'Operator';
 
                  // 1. Fetch Tickets & Count Replies
                  try {
@@ -315,40 +320,7 @@ const App: React.FC = () => {
                  }
 
                  // 2. Check Status Changes (Releases)
-                 let hasNewLocal = false;
-                 try {
-                     const all = await api.getReleases(token);
-                     const releases = Array.isArray(all)
-                        ? (userRole === 'Admin' || userRole === 'Operator' ? all : all.filter((r: any) => belongsToCurrentUser(r)))
-                        : [];
-                     if (releases.length > 0) {
-                         releases.forEach((r: any) => {
-                             const id = String(r.id);
-                             const newStatus = r.status;
-                             const oldStatus = prevReleaseStatusRef.current[id];
-                             
-                             if (oldStatus && oldStatus !== newStatus) {
-                                 const display = newStatus === 'Live' ? 'Released' : newStatus;
-                                 const msg = `Status Rilisan "${r.title}" berubah menjadi ${display}`;
-                                 prevReleaseStatusRef.current[id] = newStatus;
-                                 
-                                 localNotifs.unshift({
-                                     id: -Date.now() - Math.floor(Math.random() * 10000),
-                                     user_id: 0,
-                                     type: 'RELEASE_STATUS',
-                                     message: msg,
-                                     is_read: false,
-                                     created_at: new Date().toISOString()
-                                 });
-                                 hasNewLocal = true;
-                             } else if (!oldStatus) {
-                                 prevReleaseStatusRef.current[id] = newStatus;
-                             }
-                         });
-                     }
-                 } catch (e) {
-                     console.warn('Failed to check release status', e);
-                 }
+                 // Do not generate local notifications; backend stores notifications in DB
 
                  // 3. Check Status Changes (Songs)
                  if (userRole === 'Admin' || userRole === 'Operator') {
@@ -372,7 +344,6 @@ const App: React.FC = () => {
                                        is_read: false,
                                        created_at: new Date().toISOString()
                                    });
-                                   hasNewLocal = true;
                                } else if (!oldStatus) {
                                    prevSongStatusRef.current[id] = newStatus;
                                }
@@ -383,9 +354,7 @@ const App: React.FC = () => {
                    }
                  }
 
-                 if (hasNewLocal) {
-                     localStorage.setItem('cms_local_notifs', JSON.stringify(localNotifs));
-                 }
+                 // No localStorage writes for notifications
 
                 const userApiNotifs = (userRole === 'Admin' || userRole === 'Operator')
                     ? filteredApiNotifs
@@ -393,7 +362,8 @@ const App: React.FC = () => {
                         const curId = String((currentUserData as any)?.id || '');
                         return String(n.user_id || '') === curId;
                       });
-                const combined = [...userApiNotifs, ...localNotifs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                const combined = [...userApiNotifs];
+                combined.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                  setNotifications(combined);
                  setUnreadCount(combined.filter((n: any) => !n.is_read).length);
 
@@ -462,6 +432,34 @@ const App: React.FC = () => {
     }
   };
 
+  const markAllNotificationsRead = async () => {
+    try {
+      await api.markNotificationRead(token, undefined as any);
+    } catch (err) {
+      console.warn('Mark all read failed on server, updating UI anyway:', err);
+    }
+    try {
+      const localNotifs = JSON.parse(localStorage.getItem('cms_local_notifs') || '[]');
+      const updatedLocal = (Array.isArray(localNotifs) ? localNotifs : []).map((n: any) => ({ ...n, is_read: true }));
+      localStorage.setItem('cms_local_notifs', JSON.stringify(updatedLocal));
+    } catch {}
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await api.clearNotifications(token);
+    } catch (err) {
+      console.warn('Clear notifications failed on server, updating UI anyway:', err);
+    }
+    try {
+      localStorage.removeItem('cms_local_notifs');
+    } catch {}
+    setNotifications([]);
+    setUnreadCount(0);
+  };
+
   const handleUpdateUser = (updatedUser: any) => {
     setCurrentUserData(updatedUser);
     setCurrentUser(updatedUser.username); 
@@ -505,6 +503,7 @@ const App: React.FC = () => {
     localStorage.setItem('cms_user', user.username);
     localStorage.setItem('cms_token', token);
     localStorage.setItem('cms_role', user.role || 'User');
+    localStorage.removeItem('cms_impersonated_by');
     if (user.status) {
       localStorage.setItem('cms_status', user.status);
     } else {
@@ -540,6 +539,7 @@ const App: React.FC = () => {
     localStorage.removeItem('cms_token');
     localStorage.removeItem('cms_role');
     localStorage.removeItem('cms_status');
+    localStorage.removeItem('cms_impersonated_by');
     // Clear any wizard/draft remnants just in case
     try {
       sessionStorage.removeItem('cms_wizard_step');
@@ -612,7 +612,7 @@ const App: React.FC = () => {
            if (token) {
                api.getReleases(token).then(freshData => {
                    if (Array.isArray(freshData)) {
-                       const mapped = freshData.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: resolveOwnerName(r) }));
+                       const mapped = freshData.map((r: any) => ({ ...r, id: String(r.id), ownerDisplayName: r.ownerDisplayName || resolveOwnerName(r) }));
                        setAllReleases(mapped);
                    }
                }).catch(err => console.warn("Background refresh failed", err));
@@ -653,6 +653,23 @@ const App: React.FC = () => {
       if (token && release.id) {
           try {
               const raw: any = await api.getRelease(token, release.id);
+              const normDate = (v: any) => {
+                  if (!v) return '';
+                  if (typeof v === 'string') {
+                      const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
+                      if (m) return m[1];
+                      try {
+                          const d = new Date(v);
+                          if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+                      } catch {}
+                      return v.slice(0, 10);
+                  }
+                  try {
+                      const d = new Date(v);
+                      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+                  } catch {}
+                  return '';
+              };
               const mapArtists = (arr: any) => Array.isArray(arr) ? arr : (typeof arr === 'string' ? [arr] : []);
               const primaryArtists = mapArtists(raw.primaryArtists);
               
@@ -704,8 +721,8 @@ const App: React.FC = () => {
                   }),
 
                   isNewRelease: raw.original_release_date ? false : true,
-                  originalReleaseDate: raw.original_release_date || '',
-                  plannedReleaseDate: raw.planned_release_date || release.plannedReleaseDate || ''
+                  originalReleaseDate: normDate(raw.original_release_date),
+                  plannedReleaseDate: normDate(raw.planned_release_date) || release.plannedReleaseDate || ''
               };
 
               setViewingRelease(mapped);
@@ -849,6 +866,14 @@ const App: React.FC = () => {
             </Routes>
          );
     }
+    if (path === '/reset-password' || path.startsWith('/reset-password/')) {
+         return (
+            <Routes>
+                <Route path="/reset-password" element={<ResetPasswordScreen />} />
+                <Route path="*" element={<Navigate to="/reset-password" replace />} />
+            </Routes>
+         );
+    }
     
     // Fallback UI instead of null to identify if we are stuck here
     return (
@@ -867,6 +892,7 @@ const App: React.FC = () => {
         <Routes>
             <Route path="/login" element={<LoginScreen onLogin={handleLogin} initialMode="login" />} />
             <Route path="/register" element={<RegisterScreen onLogin={handleLogin} />} />
+            <Route path="/reset-password" element={<ResetPasswordScreen />} />
             <Route path="/user-status" element={<UserStatusScreen username={''} status={'Pending'} />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
@@ -983,9 +1009,25 @@ const App: React.FC = () => {
 
                     {/* Notification Dropdown */}
                     {showNotifications && (
-                        <div className="fixed right-6 top-[60px] w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="fixed right-6 top-[60px] w-96 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                                    <button 
+                                        onClick={markAllNotificationsRead}
+                                        className="px-2 py-1 text-[11px] font-bold rounded bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100"
+                                        title="Baca semuanya"
+                                    >
+                                        Baca Semua
+                                    </button>
+                                    <button 
+                                        onClick={clearAllNotifications}
+                                        className="px-2 py-1 text-[11px] font-bold rounded bg-red-50 text-red-600 hover:bg-red-100 border border-red-100"
+                                        title="Clear notif"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
                                 <button 
                                     onClick={() => setShowNotifications(false)}
                                     className="text-slate-400 hover:text-slate-600"
@@ -1078,15 +1120,52 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Logout Button */}
-                <button 
-                    onClick={handleLogoutClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium text-xs transition-colors ml-2"
-                    title="Sign Out"
-                >
-                    <LogOut size={16} />
-                    <span className="hidden sm:inline">Logout</span>
-                </button>
+                {/* Logout / Return to Admin */}
+                {(() => {
+                    const impersonatedBy = localStorage.getItem('cms_impersonated_by');
+                    const isImpersonating = !!impersonatedBy && userRole !== 'Admin';
+                    if (isImpersonating) {
+                        const handleReturnAdmin = async () => {
+                            try {
+                                const resp = await api.impersonateRevert(token);
+                                const { token: newToken, user } = resp || {};
+                                if (newToken && user) {
+                                    localStorage.setItem('cms_auth', 'true');
+                                    localStorage.setItem('cms_user', user.username || '');
+                                    localStorage.setItem('cms_token', newToken);
+                                    localStorage.setItem('cms_role', user.role || 'Admin');
+                                    if (user.status) localStorage.setItem('cms_status', user.status);
+                                    localStorage.removeItem('cms_impersonated_by');
+                                    navigate('/dashboard');
+                                    setTimeout(() => { try { window.location.reload(); } catch {} }, 150);
+                                }
+                            } catch (e) {
+                                console.warn('Failed to revert impersonation:', (e as any)?.message || e);
+                                alert('Gagal kembali ke Admin. Coba lagi atau refresh halaman.');
+                            }
+                        };
+                        return (
+                            <button 
+                                onClick={handleReturnAdmin}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-xl font-medium text-xs transition-colors ml-2"
+                                title="Return to Admin"
+                            >
+                                <LogOut size={16} />
+                                <span className="hidden sm:inline">Login To Admin</span>
+                            </button>
+                        );
+                    }
+                    return (
+                        <button 
+                            onClick={handleLogoutClick}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium text-xs transition-colors ml-2"
+                            title="Sign Out"
+                        >
+                            <LogOut size={16} />
+                            <span className="hidden sm:inline">Logout</span>
+                        </button>
+                    );
+                })()}
             </div>
         </header>
 
@@ -1118,10 +1197,30 @@ const App: React.FC = () => {
                 releases={allReleases}
                 onViewRelease={handleViewDetails}
                 onNavigateToAll={() => navigate('/releases')}
+                userRole={userRole}
             />
         } />
         <Route path="/aggregator/artists" element={<Artists releases={userRole === 'User' ? myReleases : allReleases} />} />
-        <Route path="/aggregator/artists/:name" element={<ArtistDetail releases={userRole === 'User' ? myReleases : allReleases} token={token} />} />
+        <Route path="/aggregator/artists/:name" element={
+            <ArtistDetail 
+                releases={userRole === 'User' ? myReleases : allReleases} 
+                token={token} 
+                onArtistUpdated={() => {
+                    if (token) {
+                        api.getReleases(token).then(freshData => {
+                            if (Array.isArray(freshData)) {
+                                const mapped = freshData.map((r: any) => ({ 
+                                    ...r, 
+                                    id: String(r.id), 
+                                    ownerDisplayName: r.ownerDisplayName || resolveOwnerName(r) 
+                                }));
+                                setAllReleases(mapped);
+                            }
+                        }).catch(err => console.warn("Artist refresh failed", err));
+                    }
+                }}
+            />
+        } />
 
             {/* Contracts Routes */}
             <Route path="/contracts/aggregator" element={<Contracts token={token} defaultTab="aggregator" />} />
@@ -1177,6 +1276,7 @@ const App: React.FC = () => {
                     userRole={userRole}
                 />
             } />
+            <Route path="/releases/import" element={<ImportReleases />} />
             <Route path="/my-releases" element={
                  <AllReleases 
                     releases={myReleases} 
@@ -1229,6 +1329,11 @@ const App: React.FC = () => {
                     onSaveAggregators={handleSaveAggregators} 
                 />
             } />
+            <Route path="/system/monitoring" element={<SystemMonitoring token={token} userRole={userRole} />} />
+            <Route path="/system/messaging/templates" element={<TemplateGateway token={token} />} />
+            <Route path="/system/messaging/broadcast" element={<Broadcast token={token} />} />
+            <Route path="/system/messaging/notice" element={<NoticeManagement token={token} />} />
+            <Route path="/system/messaging/gateway" element={<MessagingGateway token={token} />} />
             <Route path="/users" element={
                 <UserManagement 
                     currentUserRole={userRole} 

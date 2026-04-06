@@ -21,6 +21,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown');
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -222,6 +227,22 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
           </div>
         </div>
 
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setForgotEmail(username || '');
+              setForgotError(null);
+              setForgotSuccess(null);
+              setForgotModalOpen(true);
+            }}
+            className="text-[11px] font-semibold hover:underline"
+            style={{ color: branding.login_form_text_color || '#334155' }}
+          >
+            Lupa password?
+          </button>
+        </div>
+
         <button
           type="submit"
           disabled={isLoading}
@@ -384,6 +405,90 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
                 className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
               >
                 Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {forgotModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={22} className="text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Lupa Password</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Masukkan email yang terdaftar untuk menerima link reset.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForgotModalOpen(false)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-700"
+              >
+                Tutup
+              </button>
+            </div>
+
+            {forgotError && (
+              <div className="bg-red-50 text-red-700 text-xs p-3 rounded-lg border border-red-100">
+                {forgotError}
+              </div>
+            )}
+            {forgotSuccess && (
+              <div className="bg-green-50 text-green-700 text-xs p-3 rounded-lg border border-green-100">
+                {forgotSuccess}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold" style={{ color: '#334155' }}>Email</label>
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs"
+                placeholder="Masukkan email terdaftar"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                disabled={forgotLoading}
+                onClick={async () => {
+                  setForgotError(null);
+                  setForgotSuccess(null);
+                  const email = String(forgotEmail || '').trim().toLowerCase();
+                  if (!email) {
+                    setForgotError('Email wajib diisi.');
+                    return;
+                  }
+                  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                  if (!emailOk) {
+                    setForgotError('Format email tidak valid.');
+                    return;
+                  }
+                  try {
+                    setForgotLoading(true);
+                    await api.requestPasswordReset(email);
+                    setForgotSuccess('Link reset password sudah dikirim ke email Anda.');
+                  } catch (e: any) {
+                    if (e?.status === 404) {
+                      setForgotError('User tidak terdaftar.');
+                    } else {
+                      setForgotError(e?.message || 'Gagal mengirim link reset password.');
+                    }
+                  } finally {
+                    setForgotLoading(false);
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl text-white text-xs font-semibold ${
+                  forgotLoading ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {forgotLoading ? 'Mengirim...' : 'Kirim Link'}
               </button>
             </div>
           </div>

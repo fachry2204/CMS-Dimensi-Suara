@@ -8,6 +8,9 @@ import { Step3ReleaseDetail } from './wizard/Step3ReleaseDetail';
 import { Step4Review } from './wizard/Step4Review';
 import { ChevronLeft, ChevronRight, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { api } from '../utils/api';
+import socialLogo from '../assets/platforms/social.svg';
+import youtubeMusicLogo from '../assets/platforms/youtube-music.svg';
+import allDspLogo from '../assets/platforms/alldsp.svg';
 
 interface Props {
   type: ReleaseType;
@@ -20,6 +23,7 @@ interface Props {
 const INITIAL_DATA: ReleaseData = {
   coverArt: null,
   upc: "",
+  isrc: "",
   title: "",
   language: "",
   primaryArtists: [""], 
@@ -29,6 +33,11 @@ const INITIAL_DATA: ReleaseData = {
   cLine: "",
   version: "",
   tracks: [],
+  distributionTargets: [
+    { id: 'SOCIAL', label: 'Social Media', logo: socialLogo },
+    { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: youtubeMusicLogo },
+    { id: 'ALL_DSP', label: 'All DSP', logo: allDspLogo },
+  ],
   isNewRelease: true,
   originalReleaseDate: "",
   plannedReleaseDate: ""
@@ -141,7 +150,7 @@ export const ReleaseWizard: React.FC<Props> = ({ type, onBack, onSave, initialDa
     switch (currentStep) {
         case Step.INFO: return <Step1ReleaseInfo data={data} updateData={updateData} releaseType={type} isProcessingCover={isProcessingCover} setIsProcessingCover={setIsProcessingCover} />;
         case Step.TRACKS: return <Step2TrackInfo data={data} updateData={updateData} releaseType={type} />;
-        case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} releaseType={type} />;
+        case Step.DETAILS: return <Step3ReleaseDetail data={data} updateData={updateData} releaseType={type} userRole={userRole} />;
         case Step.REVIEW: return <Step4Review data={{...data, type}} onSave={onSave} onBack={handlePrev} userRole={userRole} />;
         default: return null;
     }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-    ArrowLeft, FileText, CreditCard, User, MapPin, Calendar, Briefcase, CheckCircle, AlertTriangle, XCircle, MessageCircle
+    ArrowLeft, FileText, CreditCard, User, MapPin, Calendar, Briefcase, CheckCircle, AlertTriangle, XCircle, MessageCircle, Clock, Save, Link, Upload
 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { assetUrl } from '../../utils/url';
@@ -13,9 +13,18 @@ interface WriterDetailProps {
 const PublishingWriterDetail: React.FC<WriterDetailProps> = ({ token }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const userRole = localStorage.getItem('cms_role') || '';
     const [creator, setCreator] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+
+    // Contract State
+    const [contractStatus, setContractStatus] = useState<string>('Not Generated');
+    const [contractFile, setContractFile] = useState<File | null>(null);
+    const [contractDocPath, setContractDocPath] = useState<string>('');
+    const [contractInputMethod, setContractInputMethod] = useState<'upload' | 'link'>('upload');
+    const [contractLink, setContractLink] = useState<string>('');
 
     useEffect(() => {
         const fetchCreator = async () => {
@@ -29,6 +38,18 @@ const PublishingWriterDetail: React.FC<WriterDetailProps> = ({ token }) => {
                 const response = await api.publishing.getCreatorById(token, id);
                 console.log('Fetch response:', response);
                 setCreator(response);
+                
+                // Initialize contract state
+                setContractStatus(response.contract_status || 'Not Generated');
+                if (response.contract_doc_path) {
+                    setContractDocPath(response.contract_doc_path);
+                    if (response.contract_doc_path.startsWith('http')) {
+                        setContractInputMethod('link');
+                        setContractLink(response.contract_doc_path);
+                    } else {
+                        setContractInputMethod('upload');
+                    }
+                }
             } catch (err: any) {
                 console.error('Fetch error:', err);
                 setError(err.message || 'Gagal memuat data pencipta');
@@ -41,6 +62,48 @@ const PublishingWriterDetail: React.FC<WriterDetailProps> = ({ token }) => {
             fetchCreator();
         }
     }, [id, token]);
+
+    const handleSaveContract = async () => {
+        if (!id) return;
+        setSaving(true);
+        try {
+            let finalDocPath = contractDocPath;
+
+            if (contractStatus === 'Done') {
+                if (contractInputMethod === 'upload') {
+                    if (!contractDocPath && !contractFile) {
+                        alert('Kontrak status Done wajib upload file PDF.');
+                        setSaving(false);
+                        return;
+                    }
+                    if (contractFile) {
+                        const res = await api.uploadUserDoc(token, 'CONTRACT', contractFile);
+                        finalDocPath = res.path;
+                    }
+                } else {
+                    if (!contractLink.trim()) {
+                        alert('Link kontrak wajib diisi.');
+                        setSaving(false);
+                        return;
+                    }
+                    finalDocPath = contractLink;
+                }
+            }
+
+            await api.publishing.updateCreatorStatus(token, id, {
+                contract_status: contractStatus,
+                contract_doc_path: contractStatus === 'Done' ? finalDocPath : undefined
+            });
+
+            alert('Status kontrak berhasil diperbarui!');
+            setContractDocPath(finalDocPath);
+        } catch (err: any) {
+            console.error('Failed to update contract:', err);
+            alert('Gagal memperbarui status kontrak: ' + err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -78,6 +141,19 @@ const PublishingWriterDetail: React.FC<WriterDetailProps> = ({ token }) => {
                     <p className="text-slate-500">Informasi lengkap data pencipta lagu</p>
                 </div>
             </div>
+
+            {creator.user_name && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                        <User size={24} />
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-0.5">Release Owner</p>
+                        <h3 className="text-lg font-bold text-slate-800">{creator.user_name}</h3>
+                        <p className="text-sm text-slate-500">{creator.user_email}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column: Personal Info */}
@@ -152,6 +228,143 @@ const PublishingWriterDetail: React.FC<WriterDetailProps> = ({ token }) => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Contract Management Section (Admin Only) */}
+                    {(userRole === 'Admin' || userRole === 'Operator') && (
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <FileText size={20} className="text-indigo-600" />
+                                Status Kontrak Publishing
+                            </h2>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-3">Pilih Status</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <button
+                                            onClick={() => setContractStatus('Not Generated')}
+                                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
+                                                contractStatus === 'Not Generated'
+                                                    ? 'border-red-400 bg-red-50 text-red-800 shadow-sm'
+                                                    : 'border-slate-100 text-slate-500 hover:border-slate-200'
+                                            }`}
+                                        >
+                                            <AlertTriangle size={18} />
+                                            <span className="font-medium">Not Generated</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setContractStatus('On Review')}
+                                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
+                                                contractStatus === 'On Review'
+                                                    ? 'border-yellow-400 bg-yellow-50 text-yellow-800 shadow-sm'
+                                                    : 'border-slate-100 text-slate-500 hover:border-slate-200'
+                                            }`}
+                                        >
+                                            <Clock size={18} />
+                                            <span className="font-medium">On Review</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setContractStatus('Done')}
+                                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
+                                                contractStatus === 'Done'
+                                                    ? 'border-green-500 bg-green-50 text-green-800 shadow-sm'
+                                                    : 'border-slate-100 text-slate-500 hover:border-slate-200'
+                                            }`}
+                                        >
+                                            <CheckCircle size={18} />
+                                            <span className="font-medium">Done</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {contractStatus === 'Done' && (
+                                    <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 animate-fade-in">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <label className="block text-sm font-bold text-slate-700">Metode Kontrak</label>
+                                            <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                                                <button
+                                                    onClick={() => setContractInputMethod('upload')}
+                                                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                                                        contractInputMethod === 'upload'
+                                                            ? 'bg-indigo-600 text-white shadow-md'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                    }`}
+                                                >
+                                                    <Upload size={12} />
+                                                    UPLOAD PDF
+                                                </button>
+                                                <button
+                                                    onClick={() => setContractInputMethod('link')}
+                                                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                                                        contractInputMethod === 'link'
+                                                            ? 'bg-indigo-600 text-white shadow-md'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                    }`}
+                                                >
+                                                    <Link size={12} />
+                                                    ADD LINK
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {contractInputMethod === 'upload' ? (
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">File Kontrak (PDF)</label>
+                                                <input
+                                                    type="file"
+                                                    accept="application/pdf"
+                                                    onChange={(e) => setContractFile(e.target.files?.[0] || null)}
+                                                    className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                                />
+                                                {contractDocPath && !contractDocPath.startsWith('http') && (
+                                                    <p className="text-[11px] text-green-600 mt-2 flex items-center gap-1 font-medium">
+                                                        <CheckCircle size={12} />
+                                                        Kontrak terunggah: {contractDocPath.split('/').pop()}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Link Kontrak</label>
+                                                <div className="relative">
+                                                    <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="url"
+                                                        placeholder="https://..."
+                                                        value={contractLink}
+                                                        onChange={(e) => setContractLink(e.target.value)}
+                                                        className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="pt-4 border-t border-slate-100 flex justify-end">
+                                    <button
+                                        onClick={handleSaveContract}
+                                        disabled={saving}
+                                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-70"
+                                    >
+                                        {saving ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                Menyimpan...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save size={18} />
+                                                Simpan Status Kontrak
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Column: Documents */}

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ReleaseData, Track } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp, Edit3, Trash2, Upload, Camera } from 'lucide-react';
+import { ArrowLeft, Play, Pause, FileAudio, CheckCircle, AlertTriangle, Globe, Disc, Save, Clipboard, Calendar, Tag, User, Mic2, FileText, Wand2, Loader2, Clock, Music2, Info, Download, Scissors, Users, ChevronDown, ChevronUp, Edit3, Trash2, Upload, Camera, Mail, X } from 'lucide-react';
 import { formatDMY } from '../utils/date';
 import { assetUrl } from '../utils/url';
 import { api, API_BASE_URL } from '../utils/api';
@@ -54,6 +54,10 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
   const [rejectionReason, setRejectionReason] = useState(release.rejectionReason || '');
   const [rejectionDesc, setRejectionDesc] = useState(release.rejectionDescription || '');
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+  // Email Preview State
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const upcDisplay = upcInput || release.upc || '';
   const primaryIsrc = release.tracks[0]?.isrc || '';
@@ -307,13 +311,13 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           return;
       }
 
-      // 2. Validation for LIVE/RELEASED (Strict)
-      if (status === 'Live') {
+      // 2. Validation for RELEASED (Strict)
+      if (status === 'Released') {
           if (!upcInput || upcInput.trim() === "") {
              setAlertState({
                  isOpen: true,
-                 title: 'CRITICAL ERROR',
-                 message: 'Album UPC is REQUIRED for Released status.',
+                 title: 'Validasi Gagal',
+                 message: 'UPC Album wajib diisi untuk status Released.',
                  type: 'error'
              });
              return;
@@ -327,8 +331,8 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           if (missingIsrcs) {
               setAlertState({
                   isOpen: true,
-                  title: 'CRITICAL ERROR',
-                  message: 'ISRC Codes are REQUIRED for ALL tracks when status is Released.',
+                  title: 'Validasi Gagal',
+                  message: 'Seluruh Track wajib memiliki ISRC untuk status Released.',
                   type: 'error'
               });
               return;
@@ -391,6 +395,16 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
           message: 'Copied to clipboard!',
           type: 'success'
       });
+  };
+
+  const toSpotifyUrl = (s: string) => {
+    const v = String(s || '').trim();
+    if (!v) return '';
+    if (v.startsWith('spotify:artist:')) {
+      const id = v.split(':').pop() || '';
+      return id ? `https://open.spotify.com/artist/${id}` : '';
+    }
+    return v;
   };
 
   const AudioPlayer = ({ track, type = 'full' }: { track: Track, type?: 'full' | 'clip' }) => {
@@ -555,16 +569,33 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                     <p className="text-slate-600 font-medium text-lg mb-3">
                         {release.primaryArtists.map(a => typeof a === 'string' ? a : a.name).join(", ")}
                     </p>
+
+                    {status === 'Rejected' && (
+                        <div className="mb-4 flex items-start gap-3 text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-2xl w-fit max-w-full shadow-sm animate-fade-in-down">
+                            <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                            <div className="flex flex-col">
+                                <span className="text-[10px] uppercase font-extrabold tracking-wider opacity-60 mb-0.5">Alasan Penolakan</span>
+                                <span className="text-sm font-bold leading-relaxed">
+                                    {release.rejectionReason || rejectionReason || 'Alasan belum ditentukan oleh admin'}
+                                </span>
+                                {(release.rejectionDescription || rejectionDesc) && (
+                                    <p className="text-[11px] font-medium mt-1.5 text-red-500/80 leading-normal line-clamp-3 italic">
+                                        {release.rejectionDescription || rejectionDesc}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                         <span className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
-                            status === 'Live' ? 'bg-green-100 text-green-700 border-green-200' :
+                            status === 'Released' ? 'bg-green-100 text-green-700 border-green-200' :
                             status === 'Processing' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                             status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200' :
                             'bg-yellow-100 text-yellow-700 border-yellow-200'
                         }`}>
                             {status === 'Rejected' && <AlertTriangle size={14} />}
-                            <span className="uppercase tracking-wider">{status === 'Live' ? 'Released' : status}</span>
+                            <span className="uppercase tracking-wider">{status}</span>
                         </span>
                         {userRole === 'Admin' && release.aggregator && (
                             <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1.5">
@@ -580,6 +611,12 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         <div>
                             <table className="w-full text-xs text-slate-700 border border-slate-200 rounded-lg overflow-hidden">
                                 <tbody>
+                                    {release.originalReleaseDate && (
+                                        <tr className="border-b border-slate-200">
+                                            <td className="w-40 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Original Release Date</td>
+                                            <td className="px-3 py-1.5 text-slate-700 align-top">{formatDMY(release.originalReleaseDate)}</td>
+                                        </tr>
+                                    )}
                                     <tr className="border-b border-slate-200">
                                         <td className="w-40 text-[11px] uppercase text-slate-500 px-3 py-1.5 align-top bg-slate-50">Planned Release Date</td>
                                         <td className="px-3 py-1.5 text-slate-700 align-top">{formatDMY(release.plannedReleaseDate)}</td>
@@ -619,12 +656,30 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                         </div>
                         <div>
                             <div className="text-[11px] uppercase text-slate-500 mb-1">Primary Artists</div>
-                            <ul className="text-sm text-slate-800 space-y-0.5">
-                                            {(release.primaryArtists || []).map((artist, idx) => (
-                                                <li key={idx} className="flex items-center gap-1">
-                                                    <span>{typeof artist === 'string' ? artist : artist.name}</span>
-                                                </li>
-                                            ))}
+                            <ul className="text-sm text-slate-800 space-y-1.5">
+                                            {(release.primaryArtists || []).map((artist, idx) => {
+                                                const artistName = typeof artist === 'string' ? artist : artist.name;
+                                                const spotifyLink = typeof artist === 'object' ? artist?.spotifyLink : '';
+                                                
+                                                return (
+                                                    <li key={idx} className="flex flex-col gap-1">
+                                                        <span className="font-medium">{artistName}</span>
+                                                        {spotifyLink && (spotifyLink.includes('spotify.com') || spotifyLink.startsWith('spotify:')) && (
+                                                            <a
+                                                                href={toSpotifyUrl(spotifyLink)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 text-[9px] w-fit"
+                                                            >
+                                                                <svg viewBox="0 0 168 168" className="w-3 h-3 fill-green-600">
+                                                                    <path d="M84,0a84,84,0,1,0,84,84A84,84,0,0,0,84,0Zm38.4,121.5a6.5,6.5,0,0,1-9,2.1c-24.6-15-55.6-18.4-92-10.2a6.5,6.5,0,1,1-2.8-12.7c39.1-8.7,73.1-4.8,100.7,11.6A6.5,6.5,0,0,1,122.4,121.5Zm12.8-28.7a8.1,8.1,0,0,1-11.2,2.6c-28.2-17.3-71.2-22.3-104.5-12.3a8.1,8.1,0,1,1-4.7-15.6c36.7-11,84.6-5.5,116,13.3A8.1,8.1,0,0,1,135.2,92.8Zm1.8-30.3c-33.8-20-89.8-21.8-121.8-12.1a9.7,9.7,0,0,1-5.5-18.6c36.3-10.8,98.3-8.6,135.7,13.5a9.7,9.7,0,1,1-8.4,17.2Z"/>
+                                                                </svg>
+                                                                <span className="font-bold">Spotify Artist Page</span>
+                                                            </a>
+                                                        )}
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                         </div>
                     </div>
@@ -843,9 +898,12 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
 
                                                         {/* ISRC Code (moved below Additional Contributors) */}
                                                         <div>
-                                                            <span className="text-[10px] uppercase font-bold text-slate-400">ISRC Code</span>
-                                                            <div className="font-mono text-sm font-medium text-slate-700 bg-white px-2 py-1 rounded border border-gray-200 mt-1">
-                                                                {isrcInputs[track.id] || track.isrc || "N/A"}
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                                                                ISRC Code {status === 'Released' && <span className="text-red-500">*</span>}
+                                                            </span>
+                                                            <div className={`font-mono text-sm font-medium px-2 py-1 rounded border mt-1
+                                                                ${status === 'Released' && (!isrcInputs[track.id] && !track.isrc) ? 'border-red-300 bg-red-50 text-red-700' : 'border-gray-200 bg-white text-slate-700'}`}>
+                                                                {isrcInputs[track.id] || track.isrc || (status === 'Released' ? "WAJIB DIISI" : "N/A")}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -884,8 +942,31 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                 {userRole === 'Admin' && activeTab === 'DISTRIBUTION' && (
                     <div className="max-w-4xl mx-auto">
                         <div className="bg-white border border-gray-200 p-8 rounded-2xl shadow-sm mb-8 animate-fade-in-up">
-                            <h3 className="font-bold text-xl text-slate-800 mb-2">Workflow Management</h3>
-                            <p className="text-sm text-slate-500 mb-8 pb-4 border-b border-gray-100">Update the status of this release to move it through the pipeline.</p>
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                                <div>
+                                    <h3 className="font-bold text-xl text-slate-800 mb-1">Workflow Management</h3>
+                                    <p className="text-sm text-slate-500">Update the status of this release to move it through the pipeline.</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const params = new URLSearchParams();
+                                        params.set('status', status);
+                                        if (selectedAggregator) params.set('aggregator', selectedAggregator);
+                                        if (upcInput) params.set('upc', upcInput);
+                                        if (status === 'Rejected') {
+                                            if (rejectionReason) params.set('reason', rejectionReason);
+                                            if (rejectionDesc) params.set('description', rejectionDesc);
+                                        }
+                                        const url = `${API_BASE_URL}/releases/${release.id}/email-preview?${params.toString()}`;
+                                        setPreviewUrl(url);
+                                        setShowEmailPreview(true);
+                                    }}
+                                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all flex items-center gap-2 shadow-sm"
+                                    title="Preview Email ke User"
+                                >
+                                    <FileText size={18} /> Preview Email
+                                </button>
+                            </div>
                             
                             <div className="space-y-8">
                                 {/* Status Selector */}
@@ -896,14 +977,14 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                         onChange={(e) => setStatus(e.target.value as any)}
                                         className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 font-bold text-slate-700
                                             ${status === 'Rejected' ? 'border-red-200 bg-red-50 focus:border-red-500 focus:ring-red-100' : 
-                                            status === 'Live' ? 'border-green-200 bg-green-50 focus:border-green-500 focus:ring-green-100' :
+                                            status === 'Released' ? 'border-green-200 bg-green-50 focus:border-green-500 focus:ring-green-100' :
                                             'border-blue-200 bg-white focus:border-blue-500 focus:ring-blue-100'}
                                         `}
                                     >
                                         <option value="Pending">Pending Review</option>
                                         <option value="Request Edit">Request Edit</option>
                                         <option value="Processing">Processing (Aggregator)</option>
-                                        <option value="Live">Released</option>
+                                        <option value="Released">Released</option>
                                         <option value="Rejected">Rejected</option>
                                     </select>
                                 </div>
@@ -954,18 +1035,18 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                 )}
 
                                 {/* --- PROCESSING WORKFLOW --- */}
-                                {(status === 'Processing' || status === 'Live') && (
+                                {(status === 'Processing' || status === 'Released') && (
                                     <div className="animate-fade-in-down">
                                         <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                                             <Globe size={16} className="text-purple-500" />
-                                            Select Aggregator
+                                            Pilih Aggregator <span className="text-red-500">*</span>
                                         </label>
                                         <select 
                                             value={selectedAggregator}
                                             onChange={(e) => setSelectedAggregator(e.target.value)}
                                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-purple-500 shadow-sm"
                                         >
-                                            <option value="">-- Choose Aggregator --</option>
+                                            <option value="">-- Pilih Aggregator --</option>
                                             {availableAggregators.map(agg => (
                                                 <option key={agg} value={agg}>{agg}</option>
                                             ))}
@@ -974,11 +1055,11 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                 )}
 
                                 {/* --- LIVE WORKFLOW (CODES) --- */}
-                                {status === 'Live' && (
+                                {status === 'Released' && (
                                     <div className="animate-fade-in-down bg-green-50 p-6 rounded-xl border border-green-100 space-y-6">
                                         <div className="flex items-center gap-2 border-b border-green-200 pb-3">
                                             <CheckCircle size={20} className="text-green-600" />
-                                            <span className="font-bold text-green-800 text-lg">Mandatory Release Codes</span>
+                                            <span className="font-bold text-green-800 text-lg">Input Kode Rilisan (Wajib diisi)</span>
                                         </div>
                                         
                                         <div>
@@ -988,11 +1069,11 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                             <input 
                                                 value={upcInput}
                                                 onChange={(e) => setUpcInput(e.target.value)}
-                                                placeholder="Enter UPC Code (Required)"
+                                                placeholder="Masukkan Kode UPC (Wajib)"
                                                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm shadow-sm
                                                     ${!upcInput ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-white' : 'border-green-200 focus:ring-green-500'}`}
                                             />
-                                            {!upcInput && <p className="text-[10px] text-red-500 mt-1 font-bold">UPC is required to set status to Released.</p>}
+                                            {!upcInput && <p className="text-[10px] text-red-500 mt-1 font-bold">UPC wajib diisi untuk status Released.</p>}
                                         </div>
 
                                         <div>
@@ -1009,7 +1090,7 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                                                             <input 
                                                                 value={isrcInputs[track.id] || ''}
                                                                 onChange={(e) => setIsrcInputs(prev => ({...prev, [track.id]: e.target.value}))}
-                                                                placeholder="ISRC (Required)"
+                                                                placeholder="ISRC (Wajib)"
                                                                 className={`flex-1 px-3 py-2 border rounded text-sm font-mono focus:outline-none
                                                                     ${!hasVal ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-green-500'}`}
                                                             />
@@ -1026,6 +1107,46 @@ export const ReleaseDetailModal: React.FC<Props> = ({ release, isOpen, onClose, 
                 )}
             </div>
         </div>
+
+        {/* Email Preview Modal */}
+        {showEmailPreview && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shadow-sm">
+                                <Mail size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800">Preview Email ke User</h3>
+                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tampilan yang akan diterima oleh user</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setShowEmailPreview(false)}
+                            className="p-2 hover:bg-gray-200 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="flex-1 bg-slate-200 p-4 overflow-hidden relative">
+                        <iframe 
+                            src={previewUrl} 
+                            className="w-full h-full border-0 rounded-lg bg-white shadow-lg"
+                            title="Email Preview"
+                        />
+                    </div>
+                    <div className="p-4 border-t border-gray-100 flex justify-end bg-white gap-3">
+                        <button 
+                            onClick={() => setShowEmailPreview(false)}
+                            className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-all"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };

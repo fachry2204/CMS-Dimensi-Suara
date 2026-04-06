@@ -231,7 +231,7 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                         {(category === 'Rilisan' || category === 'Takedown Rilisan') && (
                             <div className="mb-4 animate-fade-in">
                                 <label className="block text-xs text-gray-700 mb-1">
-                                    {category === 'Takedown Rilisan' ? 'Pilih Rilisan (Live Only)' : 'Pilih Rilisan'}
+                                    {category === 'Takedown Rilisan' ? 'Pilih Rilisan (Released Only)' : 'Pilih Rilisan'}
                                 </label>
                                 {loadingReleases ? (
                                     <div className="text-xs text-gray-500">Memuat rilisan...</div>
@@ -244,9 +244,9 @@ const Tickets: React.FC<TicketsProps> = ({ token, userRole }) => {
                                     >
                                         <option value="">-- Pilih Rilisan --</option>
                                         {releases
-                                            .filter(r => category === 'Takedown Rilisan' ? r.status === 'Live' : true)
+                                            .filter(r => category === 'Takedown Rilisan' ? r.status === 'Released' : true)
                                             .map(r => {
-                                                const label = r.status === 'Live' ? 'Released' : (r.status || 'Pending');
+                                                const label = r.status || 'Pending';
                                                 return (
                                                   <option key={r.id} value={r.id}>
                                                     {r.title} ({r.upc || 'No UPC'}) - {label}

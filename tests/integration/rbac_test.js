@@ -152,7 +152,7 @@ async function run() {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ status: 'Live' })
+            body: JSON.stringify({ status: 'Released' })
         });
         
         if (workflowRes.status === 403) {

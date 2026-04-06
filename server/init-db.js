@@ -120,7 +120,12 @@ const initDb = async () => {
             { name: 'kemenkumham_doc_path', type: "VARCHAR(255)" },
             { name: 'ktp_doc_path', type: "VARCHAR(255)" },
             { name: 'npwp_doc_path', type: "VARCHAR(255)" },
-            { name: 'signature_doc_path', type: "VARCHAR(255)" }
+            { name: 'signature_doc_path', type: "VARCHAR(255)" },
+            { name: 'bank_name', type: "VARCHAR(100)" },
+            { name: 'bank_account_number', type: "VARCHAR(50)" },
+            { name: 'bank_account_name', type: "VARCHAR(100)" },
+            { name: 'contract_doc_path', type: "VARCHAR(255)" },
+            { name: 'contract_status', type: "ENUM('Not Generated','On Review','Done') DEFAULT 'Not Generated'" }
         ];
 
         for (const col of userProfileColumns) {
@@ -255,7 +260,9 @@ const initDb = async () => {
             { name: 'language', type: "VARCHAR(50)" },
             { name: 'label', type: "VARCHAR(100)" },
             { name: 'upc', type: "VARCHAR(50)" },
-            { name: 'aggregator', type: "VARCHAR(50)" }
+            { name: 'aggregator', type: "VARCHAR(50)" },
+            { name: 'rejection_reason', type: "TEXT" },
+            { name: 'rejection_description', type: "TEXT" }
         ];
 
         for (const col of releaseColumns) {
@@ -280,7 +287,7 @@ const initDb = async () => {
                 const enumOk = !isEnum ? true : (
                     type.includes("'pending'") &&
                     type.includes("'processing'") &&
-                    type.includes("'live'") &&
+                    type.includes("'released'") &&
                     type.includes("'rejected'") &&
                     type.includes("'request edit'")
                 );
@@ -290,8 +297,14 @@ const initDb = async () => {
                     await connection.query("ALTER TABLE releases MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'");
                 }
             }
+
+            // Migration: Live -> Released
+            console.log('🔄 Migrating release status: Live -> Released');
+            await connection.query("UPDATE releases SET status = 'Released' WHERE status = 'Live'");
+            await connection.query("UPDATE email_templates SET template_key = 'release_status.Released' WHERE template_key = 'release_status.Live'");
+
         } catch (e) {
-            console.warn('status column alteration warning:', e.message);
+            console.warn('status column alteration/migration warning:', e.message);
         }
 
         try {
@@ -585,6 +598,379 @@ const initDb = async () => {
                     console.log(`⚠️ Adding missing column: ${col.name} to login_settings table`);
                     await connection.query(`ALTER TABLE login_settings ADD COLUMN \`${col.name}\` ${col.type}`);
                 }
+            }
+        }
+
+        // 13c. Ensure email_logs table exists (for monitoring email delivery)
+        try {
+            await connection.query('SELECT 1 FROM email_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: email_logs');
+                await connection.query(`
+                    CREATE TABLE email_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT NULL,
+                        related_type VARCHAR(50) NULL,
+                        related_id INT NULL,
+                        to_email VARCHAR(255) NOT NULL,
+                        subject VARCHAR(255) NOT NULL,
+                        status ENUM('PENDING','SENT','FAILED') DEFAULT 'PENDING',
+                        error_message TEXT NULL,
+                        server_response VARCHAR(500) NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        sent_at TIMESTAMP NULL,
+                        INDEX idx_email_logs_type (related_type),
+                        INDEX idx_email_logs_user (user_id),
+                        INDEX idx_email_logs_status (status)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+        // 13d. Ensure server_response column exists in email_logs
+        try {
+            await connection.query('SELECT server_response FROM email_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_BAD_FIELD_ERROR') {
+                console.log('⚠️ Adding missing column: server_response to email_logs');
+                await connection.query('ALTER TABLE email_logs ADD COLUMN server_response VARCHAR(500) NULL');
+            }
+        }
+        // 13e. Ensure email_templates table exists
+        try {
+            await connection.query('SELECT 1 FROM email_templates LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: email_templates');
+                await connection.query(`
+                    CREATE TABLE email_templates (
+                        template_key VARCHAR(100) PRIMARY KEY,
+                        subject_template VARCHAR(255) NOT NULL,
+                        body_template TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
+        // 13f. Ensure whatsapp_templates table exists
+        try {
+            await connection.query('SELECT 1 FROM whatsapp_templates LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: whatsapp_templates');
+                await connection.query(`
+                    CREATE TABLE whatsapp_templates (
+                        template_key VARCHAR(100) PRIMARY KEY,
+                        body_template TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
+        // 13g. Ensure broadcast_logs table exists
+        try {
+            await connection.query('SELECT 1 FROM broadcast_logs LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: broadcast_logs');
+                await connection.query(`
+                    CREATE TABLE broadcast_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        channel ENUM('email', 'wa', 'both') NOT NULL,
+                        recipient VARCHAR(255) NOT NULL,
+                        subject VARCHAR(255),
+                        message TEXT,
+                        status ENUM('PENDING', 'SENT', 'FAILED') DEFAULT 'PENDING',
+                        error_message TEXT,
+                        sent_at TIMESTAMP NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
+        try {
+            const defaults = [
+                {
+                    key: 'release_status.Pending',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr>
+    <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+      <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+      <div style="font-size:12px;opacity:.9">Music Distribution Update</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px">
+      <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+      <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+      <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+        {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+        {{isrcBlock}}
+      </div>
+      <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+    </td>
+  </tr>
+</table>
+</body></html>`
+                },
+                {
+                    key: 'release_status.Request Edit',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'release_status.Processing',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'release_status.Released',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'release_status.Rejected',
+                    subject: 'Update Status Rilisan: {{title}} → {{status}}',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Music Distribution Update</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}},</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+    <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> {{title}}</div>
+      <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> {{status}}</div>
+      {{upc ?}}<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> {{upc}}</div>{{/upc ?}}
+      {{isrcBlock}}
+    </div>
+    <div style="margin-top:12px;padding:16px;border:1px dashed #fecaca;border-radius:10px;background:#fff1f2">
+      <div style="font-size:12px;color:#b91c1c;text-transform:uppercase;font-weight:700;margin-bottom:8px">Alasan Penolakan</div>
+      <div style="font-size:14px;color:#7f1d1d"><strong>Ringkas:</strong> {{reason}}</div>
+      <div style="font-size:14px;color:#7f1d1d;white-space:pre-wrap;margin-top:8px"><strong>Detail:</strong> {{description}}</div>
+    </div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'user_register',
+                    subject: 'Registrasi Berhasil - Dimensi Suara',
+                    body: `<!doctype html><html lang="id"><meta charset="utf-8" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff"><div style="font-weight:700;font-size:18px">Dimensi Suara</div><div style="font-size:12px;opacity:.9">Registrasi Akun</div></td></tr>
+  <tr><td style="padding:24px">
+    <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo {{fullName}}</div>
+    <div style="font-size:14px;color:#334155;line-height:1.6">Terima kasih telah mendaftar. Akun Anda tercatat dan menunggu verifikasi.</div>
+    <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+  </td></tr>
+</table></body></html>`
+                },
+                {
+                    key: 'user_register_status.Pending',
+                    subject: 'Status Pendaftaran: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, status pendaftaran Anda: {{status}}.</div>`
+                },
+                {
+                    key: 'user_register_status.Approved',
+                    subject: 'Status Pendaftaran: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, pendaftaran Anda telah {{status}}. Selamat bergabung.</div>`
+                },
+                {
+                    key: 'user_register_status.Rejected',
+                    subject: 'Status Pendaftaran: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, pendaftaran Anda {{status}}. Alasan: {{reason}}</div>`
+                },
+                {
+                    key: 'user_contract_status.On Review',
+                    subject: 'Update Status Kontrak: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, kontrak Anda sedang dalam proses peninjauan ({{status}}). Terima kasih.</div>`
+                },
+                {
+                    key: 'user_contract_status.Done',
+                    subject: 'Update Status Kontrak: {{status}} - Dimensi Suara',
+                    body: `<div>Halo {{fullName}}, selamat! Kontrak Anda telah selesai ({{status}}). Silakan cek dashboard untuk detailnya.</div>`
+                }
+            ];
+            for (const t of defaults) {
+                await connection.query(
+                    'INSERT IGNORE INTO email_templates (template_key, subject_template, body_template) VALUES (?, ?, ?)',
+                    [t.key, t.subject, t.body]
+                );
+            }
+
+            // Seed WhatsApp Defaults
+            const waDefaults = [
+                {
+                    key: 'release_status.Pending',
+                    body: `Halo {{fullName}},\n\nStatus rilisan Anda "{{title}}" telah diperbarui menjadi: {{status}}.\n\nTerima kasih.`
+                },
+                {
+                    key: 'release_status.Request Edit',
+                    body: `Halo {{fullName}},\n\nStatus rilisan Anda "{{title}}" perlu diperbaiki. Status saat ini: {{status}}.\n\nMohon cek dashboard untuk detailnya.`
+                },
+                {
+                    key: 'release_status.Processing',
+                    body: `Halo {{fullName}},\n\nStatus rilisan Anda "{{title}}" sedang dalam proses distribusi (Processing).\n\nTerima kasih.`
+                },
+                {
+                    key: 'release_status.Released',
+                    body: `Halo {{fullName}},\n\nSelamat! Rilisan Anda "{{title}}" telah terbit (Released).\n\nCek dashboard untuk detail UPC/ISRC.`
+                },
+                {
+                    key: 'release_status.Rejected',
+                    body: `Halo {{fullName}},\n\nMaaf, rilisan Anda "{{title}}" ditolak.\nAlasan: {{reason}}\nDetail: {{description}}\n\nMohon cek email atau dashboard untuk instruksi perbaikan.`
+                },
+                {
+                    key: 'user_register',
+                    body: `Halo {{fullName}},\n\nTerima kasih telah mendaftar di Dimensi Suara. Akun Anda sedang menunggu verifikasi dari admin.`
+                },
+                {
+                    key: 'user_register_status.Pending',
+                    body: `Halo {{fullName}},\n\nStatus pendaftaran akun Anda saat ini: {{status}} (Menunggu Verifikasi).`
+                },
+                {
+                    key: 'user_register_status.Approved',
+                    body: `Halo {{fullName}},\n\nSelamat! Pendaftaran akun Anda telah DISETUJUI. Silakan login ke dashboard Dimensi Suara.`
+                },
+                {
+                    key: 'user_register_status.Rejected',
+                    body: `Halo {{fullName}},\n\nMaaf, pendaftaran akun Anda ditolak.\nAlasan: {{reason}}`
+                },
+                {
+                    key: 'user_contract_status.On Review',
+                    body: `Halo {{fullName}},\n\nKontrak Anda sedang dalam proses peninjauan (On Review).\n\nTerima kasih.`
+                },
+                {
+                    key: 'user_contract_status.Done',
+                    body: `Halo {{fullName}},\n\nSelamat! Kontrak Anda telah selesai (Done) dan ditandatangani.\n\nSilakan cek dashboard untuk detailnya.`
+                }
+            ];
+            for (const t of waDefaults) {
+                await connection.query(
+                    'INSERT IGNORE INTO whatsapp_templates (template_key, body_template) VALUES (?, ?)',
+                    [t.key, t.body]
+                );
+            }
+        } catch (err) {
+            console.warn('Template seed warning:', err.message);
+        }
+
+        try {
+            await connection.query('SELECT 1 FROM password_reset_tokens LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: password_reset_tokens');
+                await connection.query(`
+                    CREATE TABLE password_reset_tokens (
+                        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                        user_id INT NOT NULL,
+                        token_hash CHAR(64) NOT NULL,
+                        expires_at DATETIME NOT NULL,
+                        used_at DATETIME NULL DEFAULT NULL,
+                        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (id),
+                        UNIQUE KEY uq_password_reset_token_hash (token_hash),
+                        INDEX idx_password_reset_user (user_id),
+                        INDEX idx_password_reset_expires (expires_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+        }
+
+        // 14. Check missing columns in 'writers' (for contract management)
+        const writerContractCols = [
+            { name: 'contract_status', type: "ENUM('Not Generated','On Review','Done') DEFAULT 'Not Generated'" },
+            { name: 'contract_doc_path', type: "VARCHAR(255) DEFAULT NULL" }
+        ];
+
+        for (const col of writerContractCols) {
+            try {
+                await connection.query(`SELECT \`${col.name}\` FROM writers LIMIT 1`);
+            } catch (err) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.log(`⚠️ Adding missing column: ${col.name} to writers table`);
+                    await connection.query(`ALTER TABLE writers ADD COLUMN \`${col.name}\` ${col.type}`);
+                }
+            }
+        }
+
+        // 15. Ensure notices table exists
+        try {
+            await connection.query('SELECT 1 FROM notices LIMIT 1');
+        } catch (err) {
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                console.log('🔨 Creating table: notices');
+                await connection.query(`
+                    CREATE TABLE notices (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        title VARCHAR(255) NOT NULL,
+                        content TEXT NOT NULL,
+                        start_date DATE NOT NULL,
+                        end_date DATE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
             }
         }
 

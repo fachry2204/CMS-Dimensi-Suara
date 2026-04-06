@@ -17,23 +17,30 @@ import {
     Plus
 } from 'lucide-react';
 import { assetUrl } from '../utils/url';
+import { api, API_BASE_URL } from '../utils/api';
 
 interface Props {
   releases: ReleaseData[];
   onViewRelease: (release: ReleaseData) => void;
   onNavigateToAll: () => void;
+  userRole?: string;
 }
 
-export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigateToAll }) => {
+export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, onNavigateToAll, userRole }) => {
   const navigate = useNavigate();
   const { getButtonColor } = useBranding();
+  const showAggregator = userRole !== 'User';
+  const [showImportModal, setShowImportModal] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
+  const [importResult, setImportResult] = React.useState<{inserted:number; errors:string[]}|null>(null);
+  const token = React.useMemo(() => localStorage.getItem('cms_token') || '', []);
   
   // Calculate Stats
   const stats = {
     total: releases.length,
     pending: releases.filter(r => (r.status || 'Pending') === 'Pending').length,
     processing: releases.filter(r => r.status === 'Processing').length,
-    live: releases.filter(r => r.status === 'Live').length,
+    released: releases.filter(r => r.status === 'Released').length,
     rejected: releases.filter(r => r.status === 'Rejected').length,
   };
 
@@ -69,14 +76,6 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                 <h1 className="text-lg text-slate-800 tracking-tight font-bold">Dashboard</h1>
                 <p className="text-slate-500 mt-0.5 text-[12px]">Welcome back, here is your catalog overview.</p>
            </div>
-           <button 
-                onClick={() => navigate('/new-release')}
-                className="flex items-center gap-2 px-4 py-2 text-white rounded-lg shadow-sm hover:opacity-90 transition-all text-xs font-bold"
-                style={{ backgroundColor: getButtonColor() }}
-            >
-                <Plus size={16} />
-                New Release
-            </button>
        </div>
 
        {/* STATS CARDS */}
@@ -101,7 +100,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
             />
             <StatCard 
                 title="Released" 
-                count={stats.live} 
+                count={stats.released} 
                 icon={<CheckCircle size={20} />} 
                 colorClass="text-green-600" 
                 bgClass="bg-green-50"
@@ -182,7 +181,9 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Cover</th>
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Title</th>
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Artist</th>
-                            <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Aggregator</th>
+                            {showAggregator && (
+                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Aggregator</th>
+                            )}
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Status</th>
                             <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase">Date</th>
                         </tr>
@@ -235,16 +236,18 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                                             return typeof first === 'string' ? first : first.name;
                                         })()}
                                     </td>
-                                    <td className="px-6 py-2.5 text-xs">
-                                        {release.aggregator ? (
-                                            <div className="flex items-center gap-2 text-slate-700 font-medium">
-                                                <Globe size={12} className="text-purple-500" />
-                                                {release.aggregator}
-                                            </div>
-                                        ) : (
-                                            <span className="text-slate-400 italic text-[10px]">-</span>
-                                        )}
-                                    </td>
+                                    {showAggregator && (
+                                        <td className="px-6 py-2.5 text-xs">
+                                            {release.aggregator ? (
+                                                <div className="flex items-center gap-2 text-slate-700 font-medium">
+                                                    <Globe size={12} className="text-purple-500" />
+                                                    {release.aggregator}
+                                                </div>
+                                            ) : (
+                                                <span className="text-slate-400 italic text-[10px]">-</span>
+                                            )}
+                                        </td>
+                                    )}
                                     <td className="px-6 py-2.5">
                                         <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusClass}`}>
                                             {release.status}
@@ -258,7 +261,7 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                         })}
                         {recentActivity.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="p-6 text-center text-slate-400 text-xs">
+                                <td colSpan={showAggregator ? 6 : 5} className="p-6 text-center text-slate-400 text-xs">
                                     No pending or processing releases found.
                                 </td>
                             </tr>
@@ -267,6 +270,75 @@ export const AggregatorDashboard: React.FC<Props> = ({ releases, onViewRelease, 
                 </table>
             </div>
        </div>
+       
+       {showImportModal && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+               <h3 className="text-lg font-bold text-slate-800">Import Release</h3>
+               <button onClick={() => { setShowImportModal(false); setImportResult(null); }} className="text-slate-400 hover:text-slate-600">
+                 <ArrowRight size={20} className="rotate-180" />
+               </button>
+             </div>
+             <div className="p-6 space-y-4">
+               <p className="text-sm text-slate-600">Upload file Excel sesuai template. Template mengikuti metadata di New Release.</p>
+               <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    try {
+                      const url = `${API_BASE_URL}/releases/import/template`;
+                      window.open(url, '_blank');
+                    } catch {}
+                  }}
+                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                 >
+                   Download Contoh File
+                 </button>
+                 <label className="px-4 py-2 bg-slate-100 rounded-lg text-xs font-medium cursor-pointer hover:bg-slate-200">
+                   <input 
+                     type="file" 
+                     accept=".xlsx,.xls" 
+                     className="hidden" 
+                     onChange={async (e) => {
+                       const file = e.target.files?.[0];
+                       if (!file) return;
+                       setImporting(true);
+                       try {
+                         const res = await api.releasesImportExcel(token, file);
+                         setImportResult(res);
+                       } catch (err) {
+                         setImportResult({ inserted: 0, errors: [(err as any)?.message || 'Import gagal'] });
+                       } finally {
+                         setImporting(false);
+                       }
+                     }}
+                   />
+                   Upload File Excel
+                 </label>
+               </div>
+               {importing && <div className="text-xs text-slate-500">Mengimpor...</div>}
+               {importResult && (
+                 <div className="text-xs text-slate-700">
+                   <div className="mb-2">Berhasil ditambahkan: {importResult.inserted}</div>
+                   {importResult.errors && importResult.errors.length > 0 && (
+                     <div className="max-h-40 overflow-y-auto border rounded p-2 text-red-600">
+                       {importResult.errors.map((e, i) => <div key={i}>{e}</div>)}
+                     </div>
+                   )}
+                 </div>
+               )}
+             </div>
+             <div className="p-6 border-t border-gray-100 flex justify-end">
+               <button 
+                 onClick={() => { setShowImportModal(false); setImportResult(null); }}
+                 className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-200"
+               >
+                 Tutup
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   );
 };

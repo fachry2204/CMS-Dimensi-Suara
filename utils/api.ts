@@ -51,6 +51,29 @@ export const api = {
         });
         return parseResponse(res);
     },
+    impersonateRevert: async (_token) => {
+        // Try multiple routes/methods for maximum hosting compatibility (no logout fallback here)
+        const tryFetch = async (method: 'POST' | 'GET', path: string) => {
+            const res = await fetch(`${API_BASE_URL}${path}`, {
+                method,
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        };
+        try {
+            return await tryFetch('POST', '/users/impersonate/revert');
+        } catch {
+            try {
+                return await tryFetch('GET', '/users/impersonate/revert');
+            } catch {
+                try {
+                    return await tryFetch('POST', '/auth/impersonate/revert');
+                } catch {
+                    return await tryFetch('GET', '/auth/impersonate/revert');
+                }
+            }
+        }
+    },
     post: async (endpoint: string, data: any, config?: any) => {
         const token = config?.headers?.Authorization?.replace('Bearer ', '');
         const isFormData = data instanceof FormData;
@@ -139,6 +162,26 @@ export const api = {
         }
         return json;
     },
+
+    requestPasswordReset: async (email: string) => {
+        const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
+    resetPassword: async (payload: { email: string; token: string; password: string }) => {
+        const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
     
     logout: async () => {
         const res = await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -147,6 +190,23 @@ export const api = {
         });
         if (!res.ok) throw new Error('Logout failed');
         return res.json();
+    },
+    impersonateUser: async (_token, userId) => {
+        // Prefer alias under /users (more likely whitelisted by proxy)
+        try {
+            const resUsers = await fetch(`${API_BASE_URL}/users/${userId}/impersonate`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            return parseResponse(resUsers);
+        } catch (e: any) {
+            // Fallback to /auth
+            const resAuth = await fetch(`${API_BASE_URL}/auth/impersonate/${userId}`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            return parseResponse(resAuth);
+        }
     },
 
     register: async (payload) => {
@@ -256,6 +316,18 @@ export const api = {
             });
             return parseResponse(res);
         },
+        updateCreatorStatus: async (token: string, id: string, payload: { contract_status?: string; contract_doc_path?: string }) => {
+            const res = await fetch(`${API_BASE_URL}/publishing/creators/${id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            return parseResponse(res);
+        },
         updateSongStatus: async (token, id: string, status: string, songId?: string, reason?: string) => {
             const res = await fetch(`${API_BASE_URL}/publishing/songs/${id}/status`, {
                 method: 'PUT',
@@ -352,6 +424,19 @@ export const api = {
             method: 'POST',
             headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
             body: formData,
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+
+    updateArtistSpotify: async (token: string, artistName: string, spotifyLink: string) => {
+        const res = await fetch(`${API_BASE_URL}/releases/artist/update-spotify`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ artistName, spotifyLink }),
             credentials: 'include'
         });
         return parseResponse(res);
@@ -527,6 +612,18 @@ export const api = {
         });
         return parseResponse(res);
     },
+    validateTmpAudio: async (token: string, tmpPath: string) => {
+        const res = await fetch(`${API_BASE_URL}/releases/tmp/validate-audio`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            credentials: 'include',
+            body: JSON.stringify({ tmpPath })
+        });
+        return parseResponse(res);
+    },
     generateClipPreview: async (token: string, tmpPath: string, startSec: number, durationSec = 60) => {
         const res = await fetch(`${API_BASE_URL}/releases/tmp/preview-clip`, {
             method: 'POST',
@@ -583,6 +680,14 @@ export const api = {
         });
         return parseResponse(res);
     },
+    clearNotifications: async (token) => {
+        const res = await fetch(`${API_BASE_URL}/notifications`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
 
     // Contracts
     getAggregatorContracts: async (token: string) => {
@@ -613,6 +718,82 @@ export const api = {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             credentials: 'include'
         });
+        return parseResponse(res);
+    },
+
+    releasesImportTemplate: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/releases/import/template`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to get template');
+        return res.blob();
+    },
+    releasesImportExcel: async (token: string, file: File) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`${API_BASE_URL}/releases/import`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: fd,
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    releasesImportPreview: async (token: string, file: File) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        const tryEndpoints = [
+            '/releases/import/preview',
+            '/releases/import-preview',
+            '/releases/excel/preview',
+            '/import/preview',
+            '/import-preview'
+        ];
+        let res = await fetch(`${API_BASE_URL}${tryEndpoints[0]}`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: fd,
+            credentials: 'include'
+        });
+        for (let i = 1; i < tryEndpoints.length && !res.ok; i++) {
+            res = await fetch(`${API_BASE_URL}${tryEndpoints[i]}`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                body: fd,
+                credentials: 'include'
+            });
+        }
+        return parseResponse(res);
+    },
+    releasesImportRows: async (token: string, rows: any[]) => {
+        const tryEndpoints = [
+            '/releases/import/rows',
+            '/releases/import-rows',
+            '/releases/excel/rows',
+            '/import/rows',
+            '/import-rows'
+        ];
+        let res = await fetch(`${API_BASE_URL}${tryEndpoints[0]}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ rows }),
+            credentials: 'include'
+        });
+        for (let i = 1; i < tryEndpoints.length && !res.ok; i++) {
+            res = await fetch(`${API_BASE_URL}${tryEndpoints[i]}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ rows }),
+                credentials: 'include'
+            });
+        }
         return parseResponse(res);
     },
 
@@ -726,6 +907,68 @@ export const api = {
         });
         return parseResponse(res);
     },
+    getEmailLogs: async (token: string, params?: { status?: string; type?: string; page?: number; limit?: number }) => {
+        const qs = new URLSearchParams();
+        if (params?.status) qs.append('status', params.status);
+        if (params?.type) qs.append('type', params.type);
+        if (params?.page) qs.append('page', String(params.page));
+        if (params?.limit) qs.append('limit', String(params.limit));
+        const res = await fetch(`${API_BASE_URL}/settings/email/logs?${qs.toString()}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    getEmailTemplates: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/templates`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    saveEmailTemplate: async (token: string, payload: { key: string; subject: string; body: string }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/template`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    getWhatsAppTemplates: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/templates/wa`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    saveWhatsAppTemplate: async (token: string, payload: { key: string; body: string }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/template/wa`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    broadcastMessage: async (token: string, payload: { channel: 'email'|'wa'|'both'; subject?: string; html?: string; message?: string; recipients?: string[]; delayMs?: number }) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/broadcast`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
     testGatewayEmail: async (token: string, payload: { to: string; subject?: string; body?: string }) => {
         const res = await fetch(`${API_BASE_URL}/settings/gateway/test-email`, {
             method: 'POST',
@@ -746,6 +989,29 @@ export const api = {
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
             body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    getBroadcastLogs: async (token: string) => {
+        const res = await fetch(`${API_BASE_URL}/settings/messaging/broadcast/logs`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    resendEmailLog: async (token: string, id: number) => {
+        const res = await fetch(`${API_BASE_URL}/settings/email/resend/${id}`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+        });
+        return parseResponse(res);
+    },
+    resendBroadcastLog: async (token: string, id: number) => {
+        const res = await fetch(`${API_BASE_URL}/settings/broadcast/resend/${id}`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             credentials: 'include'
         });
         return parseResponse(res);
@@ -815,7 +1081,7 @@ export const api = {
         return res.json();
     },
     
-    updateUserStatus: async (token, userId, status, reason?: string, aggregatorPercentage?: number, publishingPercentage?: number, contractStatus?: string) => {
+    updateUserStatus: async (token, userId, status, reason?: string, aggregatorPercentage?: number, publishingPercentage?: number, contractStatus?: string, contractDocPath?: string) => {
         const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
             method: 'PUT',
             headers: { 
@@ -827,7 +1093,8 @@ export const api = {
                 reason, 
                 aggregator_percentage: aggregatorPercentage, 
                 publishing_percentage: publishingPercentage,
-                contract_status: contractStatus 
+                contract_status: contractStatus,
+                contract_doc_path: contractDocPath
             }),
             credentials: 'include'
         });

@@ -50,4 +50,14 @@ router.post('/mark-read', authenticateToken, async (req, res) => {
     }
 });
 
+// CLEAR ALL NOTIFICATIONS FOR CURRENT USER
+router.delete('/', authenticateToken, async (req, res) => {
+    try {
+        await db.query('DELETE FROM notifications WHERE user_id = ?', [req.user.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;

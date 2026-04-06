@@ -90,6 +90,55 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     setStableAudioUrl(null);
   }, [trimmerState.rawFile]);
 
+  const clipDurationSeconds = 60;
+  const clipDurationToleranceSeconds = 0.5;
+  const clampPercent = (p: number) => Math.max(0, Math.min(100, p));
+
+  const [waveform, setWaveform] = useState<{ isLoading: boolean; peaks: number[]; error: string | null }>({
+    isLoading: false,
+    peaks: [],
+    error: null
+  });
+
+  const formatTime = (seconds: number, digits = 1) => {
+    const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    const m = Math.floor(s / 60);
+    const r = s - m * 60;
+    const ss = r.toFixed(digits).padStart(2 + (digits > 0 ? digits + 1 : 0), '0');
+    return `${m}:${ss}`;
+  };
+
+  const decodeAudioFile = async (file: File) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    try { await audioContext.close(); } catch {}
+    return audioBuffer;
+  };
+
+  const buildWaveformPeaks = (audioBuffer: AudioBuffer, bars = 220) => {
+    const length = audioBuffer.length || 0;
+    if (!length || bars <= 0) return [];
+    const channels = audioBuffer.numberOfChannels || 1;
+    const step = Math.max(1, Math.floor(length / bars));
+    const peaks = new Array(bars).fill(0);
+    for (let i = 0; i < bars; i++) {
+      const start = i * step;
+      const end = Math.min(length, start + step);
+      let max = 0;
+      for (let ch = 0; ch < channels; ch++) {
+        const data = audioBuffer.getChannelData(ch);
+        for (let j = start; j < end; j++) {
+          const v = Math.abs(data[j] || 0);
+          if (v > max) max = v;
+        }
+      }
+      peaks[i] = max;
+    }
+    const maxPeak = peaks.reduce((a, b) => Math.max(a, b), 0) || 1;
+    return peaks.map(p => p / maxPeak);
+  };
+
   // Initialize first track if empty
   useEffect(() => {
     if (!initializedRef.current && data.tracks.length === 0) {
@@ -119,19 +168,26 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       }
 
       // 2. Sync Artists (Primary Artists -> MainArtist) with mixed types support
-      const normalizedPrimaryNames = (data.primaryArtists || [])
-        .map((p: any) => (typeof p === 'string' ? p : p?.name || ''))
-        .map((s: string) => String(s).trim())
-        .filter((s: string) => s.length > 0);
-      const expectedArtists = normalizedPrimaryNames.map((name: string) => ({ name, role: "MainArtist" }));
+      const normalizedPrimary = (data.primaryArtists || [])
+        .map((p: any) => {
+          if (typeof p === 'string') return { name: p, spotifyLink: '' };
+          return { name: p?.name || '', spotifyLink: p?.spotifyLink || '' };
+        })
+        .map((p: any) => ({ name: String(p.name || '').trim(), spotifyLink: String(p.spotifyLink || '').trim() }))
+        .filter((p: any) => p.name.length > 0);
+      const expectedArtists = normalizedPrimary.map((p: any) => ({
+        name: p.name,
+        role: "MainArtist",
+        ...(p.spotifyLink ? { spotifyLink: p.spotifyLink } : {})
+      }));
       
       const artistsToUse = expectedArtists.length > 0 ? expectedArtists : [{ name: "", role: "MainArtist" }];
 
       // Compare current vs expected
-      const currentNames = (track.artists || []).map(a => a.name).join('|');
-      const expectedNames = artistsToUse.map(a => a.name).join('|');
+      const currentKey = (track.artists || []).map(a => `${a.name}::${(a as any).spotifyLink || ''}`).join('|');
+      const expectedKey = artistsToUse.map(a => `${a.name}::${(a as any).spotifyLink || ''}`).join('|');
 
-      if (currentNames !== expectedNames) {
+      if (currentKey !== expectedKey) {
           updates.artists = artistsToUse;
           hasUpdates = true;
       }
@@ -141,6 +197,43 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
       }
     }
   }, [data.title, data.primaryArtists, releaseType]); // Only sync when Step 1 data changes
+
+  // Fill missing spotifyLink in track artists from Step 1 primaryArtists (all release types)
+  useEffect(() => {
+    const pairs = (data.primaryArtists || [])
+      .map((p: any) => {
+        if (typeof p === 'string') return null;
+        const name = String(p?.name || '').trim();
+        const link = String(p?.spotifyLink || '').trim();
+        if (!name || !link) return null;
+        return { name: name.toLowerCase(), link };
+      })
+      .filter(Boolean) as { name: string; link: string }[];
+    if (pairs.length === 0) return;
+    const linkByName = new Map<string, string>();
+    pairs.forEach(p => linkByName.set(p.name, p.link));
+
+    updateData(prev => {
+      let changed = false;
+      const nextTracks = (prev.tracks || []).map(t => {
+        if (!Array.isArray(t.artists) || t.artists.length === 0) return t;
+        let artistsChanged = false;
+        const nextArtists = t.artists.map(a => {
+          const nm = String(a?.name || '').trim();
+          const key = nm.toLowerCase();
+          const link = linkByName.get(key);
+          if (!link) return a;
+          if (a.spotifyLink && String(a.spotifyLink).trim().length > 0) return a;
+          artistsChanged = true;
+          return { ...a, spotifyLink: link };
+        });
+        if (!artistsChanged) return t;
+        changed = true;
+        return { ...t, artists: nextArtists };
+      });
+      return changed ? { tracks: nextTracks } : {};
+    });
+  }, [data.primaryArtists]);
 
   // --- Trimmer Helpers ---
   const handleTrimmerPlayToggle = () => {
@@ -183,6 +276,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     if (previewAudioRef.current) {
         previewAudioRef.current.pause();
     }
+    setWaveform({ isLoading: false, peaks: [], error: null });
     setTrimmerState({
         isOpen: false,
         trackId: null,
@@ -193,11 +287,95 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     });
   };
 
+  const ensureFileFromTrackAudio = async (source: any): Promise<File> => {
+    if (source instanceof File) return source;
+    if (typeof source !== 'string' || !source.trim()) {
+      throw new Error('NO_AUDIO_SOURCE');
+    }
+    const res = await fetch(source, { credentials: 'include' });
+    if (!res.ok) throw new Error('FETCH_AUDIO_FAILED');
+    const blob = await res.blob();
+    const url = source.split('?')[0];
+    const nameFromUrl = url.split('/').pop() || `track_audio_${Date.now()}`;
+    const name = nameFromUrl.includes('.') ? nameFromUrl : `${nameFromUrl}.wav`;
+    return new File([blob], name, { type: blob.type || 'audio/wav' });
+  };
+
+  const openTrimmerFromTrackAudio = async (trackId: string) => {
+    const key = `${trackId}-openTrimmer`;
+    if (processingState[key]) return;
+
+    const track: any = data.tracks.find(t => t.id === trackId);
+    const source = track?.audioFile;
+    if (!source) {
+      setAlertState({
+        isOpen: true,
+        title: 'Audio belum ada',
+        message: 'Upload Full Audio dulu sebelum melakukan Trim.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    setTrimmerState({
+      isOpen: true,
+      trackId,
+      rawFile: null,
+      duration: 0,
+      startTime: 0,
+      isPlaying: false
+    });
+    setWaveform({ isLoading: true, peaks: [], error: null });
+
+    setProcessingState(prev => ({ ...prev, [key]: true }));
+    try {
+      const file = await ensureFileFromTrackAudio(source);
+      const audioBuffer = await decodeAudioFile(file);
+      const duration = audioBuffer.duration;
+      if (!Number.isFinite(duration) || duration < clipDurationSeconds) {
+        setAlertState({
+          isOpen: true,
+          title: 'Durasi tidak cukup',
+          message: 'Full Audio harus minimal 60 detik untuk membuat Audio Clip.',
+          type: 'error'
+        });
+        closeTrimmer();
+        return;
+      }
+      const peaks = buildWaveformPeaks(audioBuffer, 220);
+      setWaveform({ isLoading: false, peaks, error: null });
+      setTrimmerState({
+        isOpen: true,
+        trackId,
+        rawFile: file,
+        duration,
+        startTime: 0,
+        isPlaying: false
+      });
+    } catch (e) {
+      setWaveform({ isLoading: false, peaks: [], error: 'Gagal memuat waveform.' });
+      setAlertState({
+        isOpen: true,
+        title: 'Gagal membuka trimmer',
+        message: 'Tidak bisa memuat audio untuk Trim. Coba upload ulang file audio.',
+        type: 'error'
+      });
+      closeTrimmer();
+    } finally {
+      setProcessingState(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
   const saveTrimmedAudio = async () => {
       if (!trimmerState.rawFile || !trimmerState.trackId) return;
       
       const track = data.tracks.find(t => t.id === trimmerState.trackId);
       const processKey = `${trimmerState.trackId}-audioClip`;
+      setClipProgress(trimmerState.trackId, 0);
 
       setProcessingState(prev => ({ ...prev, [processKey]: true }));
       updateTrack(trimmerState.trackId, { processingClip: true });
@@ -212,11 +390,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 const croppedFile = await cropAndConvertAudio(
                     trimmerState.rawFile,
                     trimmerState.startTime,
-                    60, // duration
+                    clipDurationSeconds,
                     trimmerState.rawFile.name,
-                    (p) => {
-                         // Update progress if needed
-                    }
+                    (p) => setClipProgress(trimmerState.trackId as string, clampPercent(p))
                 );
 
                 const fieldName = `track_${trackIndex}_clip`;
@@ -228,7 +404,8 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                         { title: data.title, primaryArtists: normalizedArtists },
                         fieldName,
                         croppedFile,
-                        10 * 1024 * 1024 // 10MB chunk
+                        10 * 1024 * 1024,
+                        (p: number) => setClipProgress(trimmerState.trackId as string, clampPercent(p))
                     );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
@@ -266,6 +443,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
               type: 'error'
           });
       } finally {
+        setClipProgress(trimmerState.trackId, 100);
         setProcessingState(prev => {
             const newState = { ...prev };
             delete newState[processKey];
@@ -349,11 +527,66 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
   };
 
   const [convertProgress, setConvertProgress] = useState<Record<string, { audio?: number; clip?: number }>>({});
+  const progressTargetsRef = useRef<Record<string, { audio?: number; clip?: number }>>({});
+  const progressRafRef = useRef<number | null>(null);
+  const [displayProgress, setDisplayProgress] = useState<Record<string, { audio?: number; clip?: number }>>({});
+
+  const startProgressAnimation = () => {
+    if (progressRafRef.current) return;
+    const tick = () => {
+      let active = false;
+      setDisplayProgress(prev => {
+        const next: Record<string, { audio?: number; clip?: number }> = { ...prev };
+        const targets = progressTargetsRef.current || {};
+        for (const trackId of Object.keys(targets)) {
+          const t = targets[trackId] || {};
+          const cur = next[trackId] || {};
+          const updateKey = (k: 'audio' | 'clip') => {
+            const target = typeof t[k] === 'number' ? clampPercent(t[k] as number) : undefined;
+            if (typeof target !== 'number') return;
+            const current = typeof cur[k] === 'number' ? (cur[k] as number) : 0;
+            const diff = target - current;
+            if (Math.abs(diff) < 0.2) {
+              cur[k] = target;
+              return;
+            }
+            const step = Math.max(0.4, Math.abs(diff) * 0.18);
+            cur[k] = clampPercent(current + Math.sign(diff) * step);
+            active = true;
+          };
+          updateKey('audio');
+          updateKey('clip');
+          next[trackId] = cur;
+        }
+        return next;
+      });
+      if (active) {
+        progressRafRef.current = requestAnimationFrame(tick);
+      } else {
+        progressRafRef.current = null;
+      }
+    };
+    progressRafRef.current = requestAnimationFrame(tick);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (progressRafRef.current) cancelAnimationFrame(progressRafRef.current);
+      progressRafRef.current = null;
+    };
+  }, []);
+
   const setAudioProgress = (trackId: string, p: number) => {
-    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), audio: p } }));
+    const v = clampPercent(p);
+    progressTargetsRef.current = { ...progressTargetsRef.current, [trackId]: { ...(progressTargetsRef.current[trackId] || {}), audio: v } };
+    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), audio: v } }));
+    startProgressAnimation();
   };
   const setClipProgress = (trackId: string, p: number) => {
-    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), clip: p } }));
+    const v = clampPercent(p);
+    progressTargetsRef.current = { ...progressTargetsRef.current, [trackId]: { ...(progressTargetsRef.current[trackId] || {}), clip: v } };
+    setConvertProgress(prev => ({ ...prev, [trackId]: { ...(prev[trackId] || {}), clip: v } }));
+    startProgressAnimation();
   };
 
   // --- File Handlers ---
@@ -376,8 +609,9 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
     // 1. Handle Full Audio (WAV Force Convert & Rename)
     if (field === 'audioFile') {
         if (file) {
-            updateTrack(trackId, { audioFile: file });
+            updateTrack(trackId, { audioFile: file, tempAudioPath: '' });
         }
+        setAudioProgress(trackId, 0);
         setProcessingState(prev => ({ ...prev, [processKey]: true }));
         updateTrack(trackId, { processingAudio: true });
             try {
@@ -387,24 +621,15 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 if (trackIndex >= 0) {
                     const fieldName = `track_${trackIndex}_audio`;
                     try {
-                        // Use chunked upload for files > 20MB
-                        const useChunk = (file?.size || 0) > (20 * 1024 * 1024);
                         const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
-                        const resp = useChunk
-                          ? await api.uploadTmpReleaseFileChunked(
-                              token,
-                              { title: data.title, primaryArtists: normalizedArtists },
-                              fieldName,
-                              file,
-                              10 * 1024 * 1024,
-                              (p: number) => setAudioProgress(trackId, p)
-                            )
-                          : await api.uploadTmpReleaseFile(
-                              token,
-                              { title: data.title, primaryArtists: normalizedArtists },
-                              fieldName,
-                              file
-                            );
+                        const resp = await api.uploadTmpReleaseFileChunked(
+                          token,
+                          { title: data.title, primaryArtists: normalizedArtists },
+                          fieldName,
+                          file,
+                          10 * 1024 * 1024,
+                          (p: number) => setAudioProgress(trackId, p)
+                        );
                     const candidate =
                       (resp && resp.paths && resp.paths[fieldName]) ||
                       (resp && resp.paths && resp.paths['file']) ||
@@ -413,7 +638,18 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                       (resp && resp[fieldName]) ||
                       '';
                     if (candidate) {
-                        updateTrack(trackId, { tempAudioPath: candidate, audioFile: candidate });
+                        updateTrack(trackId, { tempAudioPath: candidate, audioFormatChecking: true, audioFormatOk: undefined, audioSampleRate: null, audioBitDepth: null, audioFormatSkipped: undefined });
+                        api.validateTmpAudio(token, candidate)
+                          .then((r: any) => {
+                            const ok = Boolean(r?.ok);
+                            const skipped = Boolean(r?.skipped);
+                            const sampleRate = (typeof r?.sampleRate === 'number' ? r.sampleRate : null);
+                            const bitDepth = (typeof r?.bitDepth === 'number' ? r.bitDepth : null);
+                            updateTrack(trackId, { audioFormatChecking: false, audioFormatOk: ok, audioFormatSkipped: skipped, audioSampleRate: sampleRate, audioBitDepth: bitDepth });
+                          })
+                          .catch(() => {
+                            updateTrack(trackId, { audioFormatChecking: false, audioFormatSkipped: true });
+                          });
                     }
                     } catch (e) {
                         console.error('Upload tmp audio failed:', e);
@@ -430,6 +666,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                 type: 'error'
             });
         } finally {
+            setAudioProgress(trackId, 100);
             setProcessingState(prev => {
                 const newState = { ...prev };
                 delete newState[processKey];
@@ -446,68 +683,77 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         }
         try {
             const duration = await getAudioDuration(file);
-            // If user uploads a ready 60s clip, accept it directly and upload to TMP
-            if (duration >= 58 && duration <= 62) {
-                const token = localStorage.getItem('cms_token') || '';
-                if (token) {
-                    const trackIndex = data.tracks.findIndex(t => t.id === trackId);
-                    if (trackIndex >= 0) {
-                        const fieldName = `track_${trackIndex}_clip`;
-                        try {
-                            setProcessingState(prev => ({ ...prev, [`${trackId}-audioClip`]: true }));
-                            updateTrack(trackId, { processingClip: true });
-                            // Same for clip, lower threshold to 1MB
-                            const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
-                            const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
-                            const resp = useChunk
-                              ? await api.uploadTmpReleaseFileChunked(
-                                  token,
-                                  { title: data.title, primaryArtists: normalizedArtists },
-                                  fieldName,
-                                  file,
-                                  10 * 1024 * 1024,
-                                  (p: number) => setClipProgress(trackId, p)
-                                )
-                              : await api.uploadTmpReleaseFile(
-                                  token,
-                                  { title: data.title, primaryArtists: normalizedArtists },
-                                  fieldName,
-                                  file
-                                );
-                            const candidate =
-                              (resp && resp.paths && resp.paths[fieldName]) ||
-                              (resp && resp.paths && resp.paths['file']) ||
-                              (resp && resp.path) ||
-                              (resp && resp.url) ||
-                              (resp && resp[fieldName]) ||
-                              '';
-                            if (candidate) {
-                                updateTrack(trackId, { tempClipPath: candidate, audioClip: candidate, previewStart: 0 });
-                                return;
-                            }
-                        } catch (e) {
-                            console.error('Upload tmp 60s clip failed:', e);
-                            // Fallback to trimmer UI below
-                        } finally {
-                            setProcessingState(prev => {
-                                const p = { ...prev };
-                                delete p[`${trackId}-audioClip`];
-                                return p;
-                            });
-                            updateTrack(trackId, { processingClip: false });
-                        }
-                    }
-                }
-            }
-            // Otherwise, open trimmer to produce a 60s clip
-            setTrimmerState({
+            if (!Number.isFinite(duration) || duration <= 0) {
+              updateTrack(trackId, { audioClip: null });
+              setAlertState({
                 isOpen: true,
-                trackId: trackId,
-                rawFile: file,
-                duration: duration,
-                startTime: 0,
-                isPlaying: false
-            });
+                title: 'Gagal membaca durasi',
+                message: 'Tidak bisa membaca durasi audio clip. Coba upload file lain.',
+                type: 'error'
+              });
+              return;
+            }
+            if (duration > clipDurationSeconds + clipDurationToleranceSeconds) {
+              updateTrack(trackId, { audioClip: null });
+              setAlertState({
+                isOpen: true,
+                title: 'Audio Clip maksimal 60 detik',
+                message: 'Durasi audio clip lebih dari 60 detik. Audio clip harus 60 detik atau bisa menggunakan Trim File.',
+                type: 'warning'
+              });
+              return;
+            }
+
+            const token = localStorage.getItem('cms_token') || '';
+            if (token) {
+              const trackIndex = data.tracks.findIndex(t => t.id === trackId);
+              if (trackIndex >= 0) {
+                const fieldName = `track_${trackIndex}_clip`;
+                try {
+                  setClipProgress(trackId, 0);
+                  setProcessingState(prev => ({ ...prev, [`${trackId}-audioClip`]: true }));
+                  updateTrack(trackId, { processingClip: true });
+                  const useChunk = (file?.size || 0) > (1 * 1024 * 1024);
+                  const normalizedArtists = (data.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).filter(a => a && a.trim() !== '');
+                  const resp = useChunk
+                    ? await api.uploadTmpReleaseFileChunked(
+                        token,
+                        { title: data.title, primaryArtists: normalizedArtists },
+                        fieldName,
+                        file,
+                        10 * 1024 * 1024,
+                        (p: number) => setClipProgress(trackId, clampPercent(p))
+                      )
+                    : await api.uploadTmpReleaseFile(
+                        token,
+                        { title: data.title, primaryArtists: normalizedArtists },
+                        fieldName,
+                        file
+                      );
+                  const candidate =
+                    (resp && resp.paths && resp.paths[fieldName]) ||
+                    (resp && resp.paths && resp.paths['file']) ||
+                    (resp && resp.path) ||
+                    (resp && resp.url) ||
+                    (resp && resp[fieldName]) ||
+                    '';
+                  if (candidate) {
+                    updateTrack(trackId, { tempClipPath: candidate, audioClip: candidate, previewStart: 0 });
+                    return;
+                  }
+                } catch (e) {
+                  console.error('Upload tmp clip failed:', e);
+                } finally {
+                  setClipProgress(trackId, 100);
+                  setProcessingState(prev => {
+                    const p = { ...prev };
+                    delete p[`${trackId}-audioClip`];
+                    return p;
+                  });
+                  updateTrack(trackId, { processingClip: false });
+                }
+              }
+            }
         } catch (e) {
             setAlertState({
                 isOpen: true,
@@ -586,9 +832,16 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
             const isExpanded = releaseType === 'SINGLE' || expandedTrackId === track.id;
             const isProcessingAudio = processingState[`${track.id}-audioFile`];
             const isProcessingClip = processingState[`${track.id}-audioClip`];
+            const audioUploaded = Boolean((track as any).tempAudioPath) || typeof (track as any).audioFile === 'string';
+            const isOpeningTrimmer = Boolean(processingState[`${track.id}-openTrimmer`]);
+            const audioFmtChecking = Boolean((track as any).audioFormatChecking);
+            const audioFmtOk = typeof (track as any).audioFormatOk === 'boolean' ? (track as any).audioFormatOk : undefined;
+            const audioFmtSkipped = Boolean((track as any).audioFormatSkipped);
+            const audioSampleRate = (track as any).audioSampleRate as number | null | undefined;
+            const audioBitDepth = (track as any).audioBitDepth as number | null | undefined;
             
             // Check if Trimmer should be active for this specific track
-            const isTrimmerActive = trimmerState.isOpen && trimmerState.trackId === track.id && trimmerState.rawFile;
+            const isTrimmerActive = trimmerState.isOpen && trimmerState.trackId === track.id;
 
             return (
                 <div key={track.id} className={`bg-white rounded-xl border transition-all duration-300 ${isExpanded ? 'border-blue-200 shadow-sm ring-1 ring-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
@@ -611,7 +864,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             <Loader2 size={16} className="animate-spin" /> Uploading...
                                         </span>
                                     ) : track.audioFile ? (
-                                        typeof track.audioFile === 'string' ? (
+                                        audioUploaded ? (
                                             <span className="flex items-center gap-1 text-green-600 font-medium">
                                                 <FileAudio size={16} /> Uploaded
                                             </span>
@@ -657,7 +910,7 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                             {isProcessingAudio && (
                                               <span className="text-xs text-blue-500 flex items-center gap-2">
                                                 <Loader2 size={14} className="animate-spin"/>
-                                                <span>Uploading {Math.round(convertProgress[track.id]?.audio || 0)}%</span>
+                                                <span>Uploading {Math.round((displayProgress[track.id]?.audio ?? convertProgress[track.id]?.audio) ?? 0)}%</span>
                                               </span>
                                             )}
                                         </label>
@@ -678,8 +931,26 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                             <p className="text-sm font-medium text-blue-900 truncate">
                                                                 {typeof track.audioFile === 'string' ? 'Existing Audio' : track.audioFile.name}
                                                             </p>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-xs text-blue-500">Uploaded</span>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-xs text-blue-500">{audioUploaded ? 'Uploaded' : 'Local'}</span>
+                                                                {audioUploaded && (
+                                                                  audioFmtChecking ? (
+                                                                    <span className="text-xs text-slate-500 flex items-center gap-2">
+                                                                      <Loader2 size={12} className="animate-spin" />
+                                                                      Validating...
+                                                                    </span>
+                                                                  ) : audioFmtOk === true ? (
+                                                                    <span className="text-xs text-green-600 flex items-center gap-1">
+                                                                      <Check size={12} />
+                                                                      48kHz / 24-bit OK
+                                                                    </span>
+                                                                  ) : audioFmtOk === false ? (
+                                                                    <span className="text-xs text-orange-600 flex items-center gap-1">
+                                                                      <Info size={12} />
+                                                                      {audioFmtSkipped ? 'Format check skipped' : `Format: ${audioSampleRate || '?'}Hz / ${audioBitDepth || '?'}-bit`}
+                                                                    </span>
+                                                                  ) : null
+                                                                )}
                                                                 <div className="scale-75 origin-left w-32">
                                                                     <AudioPreview file={track.audioFile} />
                                                                 </div>
@@ -699,11 +970,11 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                 )}
                                             </div>
                                             
-                                            {!track.audioFile && (
-                                                <div className="hidden sm:block">
-                                                    <span className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded text-xs font-medium border border-gray-200">Select File</span>
-                                                </div>
-                                            )}
+                                            <div className="hidden sm:block flex-shrink-0">
+                                                <span className={`px-3 py-1.5 rounded text-xs font-medium border ${track.audioFile ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                  {track.audioFile ? 'Change File' : 'Upload File'}
+                                                </span>
+                                            </div>
 
                                             <input 
                                                 type="file" 
@@ -713,16 +984,26 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
                                                 onChange={(e) => handleFileChange(track.id, 'audioFile', e.target.files?.[0] || null)}
                                             />
                                         </label>
+                                        {isProcessingAudio && (
+                                          <div className="w-full">
+                                            <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-2 bg-blue-600 rounded-full transition-all"
+                                                style={{ width: `${clampPercent(Math.round((displayProgress[track.id]?.audio ?? convertProgress[track.id]?.audio) ?? 0))}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                        )}
                                     </div>
                                     
                                     {/* AUDIO CLIP */}
                                     <div className="md:col-span-2 space-y-3">
                                         <label className="block text-xs font-medium text-slate-700 mb-2 flex items-center justify-between">
-                                            <span>Audio Clip (60s, 24-bit / 48kHz) <span className="text-red-500">*</span></span>
+                                            <span>Audio Clip (maks 60s, 24-bit / 48kHz) <span className="text-red-500">*</span></span>
                                             {isProcessingClip && (
                                               <span className="text-xs text-orange-500 flex items-center gap-2">
                                                 <Loader2 size={14} className="animate-spin"/>
-                                                <span>Processing {Math.round(convertProgress[track.id]?.clip || 0)}%</span>
+                                                <span>Uploading {Math.round((displayProgress[track.id]?.clip ?? convertProgress[track.id]?.clip) ?? 0)}%</span>
                                               </span>
                                             )}
                                         </label>
@@ -766,89 +1047,64 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
 
                                             {!track.audioClip && (
                                                 <div className="hidden sm:block">
-                                                    <span className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded text-xs font-medium border border-gray-200">Select File</span>
+                                                    <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded text-xs font-medium border border-gray-200">Upload File</span>
                                                 </div>
                                             )}
 
                                             <input 
                                                 type="file" 
                                                 accept="audio/*"
-                                                className="hidden" 
+                                                id={`clip-input-${track.id}`}
+                                                className="hidden"
                                                 disabled={isProcessingClip}
                                                 onChange={(e) => handleFileChange(track.id, 'audioClip', e.target.files?.[0] || null)}
                                             />
                                         </label>
-
-                                        {/* INLINE TRIMMER UI */}
-                                        {isTrimmerActive && (
-                                            <div className="mt-6 p-6 bg-white rounded-xl border-2 border-blue-100 shadow-sm animate-fade-in">
-                                                <div className="flex justify-between items-center mb-6">
-                                                    <h3 className="text-xs font-medium text-slate-800 flex items-center gap-2">
-                                                        <Scissors size={20} className="text-blue-500" />
-                                                        Trim Audio Clip
-                                                    </h3>
-                                                    <button onClick={closeTrimmer} className="text-slate-400 hover:text-slate-600">
-                                                        <X size={20} />
-                                                    </button>
-                                                </div>
-
-                                                <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200">
-                                                    <div className="text-center mb-4">
-                                                        <div className="text-xs font-mono font-medium text-blue-600">
-                                                            {new Date(trimmerState.startTime * 1000).toISOString().substr(14, 5)} - {new Date((trimmerState.startTime + 60) * 1000).toISOString().substr(14, 5)}
-                                                        </div>
-                                                        <p className="text-xs text-slate-400 mt-1">Duration: 60 Seconds</p>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-4">
-                                                         <button 
-                                                            onClick={handleTrimmerPlayToggle}
-                                                            className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors flex-shrink-0"
-                                                         >
-                                                            {trimmerState.isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
-                                                         </button>
-                                                         <div className="flex-1 relative">
-                                                             <input 
-                                                                type="range" 
-                                                                min="0" 
-                                                                max={Math.max(0, trimmerState.duration - 60)} 
-                                                                step="1" 
-                                                                value={trimmerState.startTime}
-                                                                onChange={handleTrimmerSliderChange}
-                                                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                                                             />
-                                                         </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Hidden Audio for preview logic */}
-                                                <audio 
-                                                    ref={previewAudioRef} 
-                                                    src={stableAudioUrl || undefined} 
-                                                    onTimeUpdate={(e) => {
-                                                        if (e.currentTarget.currentTime >= trimmerState.startTime + 60) {
-                                                            e.currentTarget.currentTime = trimmerState.startTime;
-                                                        }
-                                                    }}
-                                                />
-
-                                                <div className="flex gap-4 justify-end">
-                                                    <button 
-                                                        onClick={closeTrimmer}
-                                                        className="px-6 py-2.5 text-slate-500 font-medium text-xs hover:bg-slate-100 rounded-lg transition-colors"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                    <button 
-                                                        onClick={saveTrimmedAudio}
-                                                        className="px-6 py-2.5 bg-blue-600 text-white font-medium text-xs rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                                                    >
-                                                        <Check size={20} />
-                                                        Crop 60s Clip
-                                                    </button>
-                                                </div>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const el = document.getElementById(`clip-input-${track.id}`) as HTMLInputElement | null;
+                                              el?.click();
+                                            }}
+                                            disabled={isProcessingClip}
+                                            className={`flex-1 px-4 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                                              isProcessingClip ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-slate-700 border-gray-200 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            Upload File
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => openTrimmerFromTrackAudio(track.id)}
+                                            disabled={isProcessingAudio || isProcessingClip || isOpeningTrimmer || !audioUploaded}
+                                            className={`flex-1 px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                                              (isProcessingAudio || isProcessingClip || isOpeningTrimmer || !audioUploaded)
+                                                ? 'bg-orange-100/40 text-orange-300 cursor-not-allowed'
+                                                : 'bg-orange-600 text-white hover:bg-orange-700'
+                                            }`}
+                                          >
+                                            {isOpeningTrimmer ? (
+                                              <span className="inline-flex items-center justify-center gap-2">
+                                                <Loader2 size={14} className="animate-spin" />
+                                                Memuat...
+                                              </span>
+                                            ) : (
+                                              'Trim File'
+                                            )}
+                                          </button>
+                                        </div>
+                                        {isProcessingClip && (
+                                          <div className="w-full">
+                                            <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-2 bg-orange-600 rounded-full transition-all"
+                                                style={{ width: `${clampPercent(Math.round((displayProgress[track.id]?.clip ?? convertProgress[track.id]?.clip) ?? 0))}%` }}
+                                              />
                                             </div>
+                                          </div>
                                         )}
+
                                     </div>
                                     
                                     {/* IPL Document (if required by version) */}
@@ -1185,6 +1441,153 @@ export const Step2TrackInfo: React.FC<Props> = ({ data, updateData, releaseType 
         type={alertState.type}
         onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {trimmerState.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 pt-8 overflow-y-auto">
+          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-4rem)]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="text-sm font-semibold text-slate-800">Trim online</div>
+              <button
+                type="button"
+                onClick={closeTrimmer}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 overflow-y-auto">
+              <div className="relative w-full rounded-xl border border-slate-200 bg-white overflow-hidden">
+                {waveform.isLoading ? (
+                  <div className="h-44 flex flex-col items-center justify-center gap-3 text-slate-500">
+                    <Loader2 size={22} className="animate-spin" />
+                    <div className="text-xs font-medium">Memuat waveform...</div>
+                  </div>
+                ) : waveform.error ? (
+                  <div className="h-44 flex items-center justify-center text-xs text-slate-500">
+                    {waveform.error}
+                  </div>
+                ) : (
+                  <div
+                    className="relative h-44 px-4 py-6 select-none"
+                    onClick={(e) => {
+                      if (!trimmerState.duration || trimmerState.duration <= clipDurationSeconds) return;
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+                      const p = rect.width ? x / rect.width : 0;
+                      const raw = p * trimmerState.duration;
+                      const maxStart = Math.max(0, trimmerState.duration - clipDurationSeconds);
+                      const nextStart = Math.max(0, Math.min(maxStart, raw));
+                      setTrimmerState(prev => ({ ...prev, startTime: nextStart, isPlaying: false }));
+                      if (previewAudioRef.current) {
+                        previewAudioRef.current.pause();
+                        previewAudioRef.current.currentTime = nextStart;
+                      }
+                    }}
+                  >
+                    <div className="absolute left-0 right-0 bottom-10 h-1 bg-slate-300 rounded-full mx-4" />
+
+                    <div className="absolute inset-x-4 top-6 bottom-12 flex items-center gap-[2px]">
+                      {waveform.peaks.map((p, idx) => (
+                        <div
+                          key={idx}
+                          className="flex-1 bg-slate-200 rounded"
+                          style={{ height: `${Math.max(6, Math.round(p * 100))}%`, opacity: 0.9 }}
+                        />
+                      ))}
+                    </div>
+
+                    {trimmerState.duration > 0 && (
+                      (() => {
+                        const maxStart = Math.max(0, trimmerState.duration - clipDurationSeconds);
+                        const start = Math.max(0, Math.min(maxStart, trimmerState.startTime));
+                        const leftPct = trimmerState.duration ? (start / trimmerState.duration) * 100 : 0;
+                        const widthPct = trimmerState.duration ? (clipDurationSeconds / trimmerState.duration) * 100 : 0;
+                        const left = Math.max(0, Math.min(100, leftPct));
+                        const width = Math.max(0, Math.min(100 - left, widthPct));
+                        return (
+                          <div
+                            className="absolute inset-y-6 pointer-events-none"
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                          >
+                            <div className="absolute inset-0 bg-rose-500/15 border-x-2 border-rose-500" />
+                            <div className="absolute -bottom-6 left-0 w-4 h-4 rounded-full bg-white border-2 border-rose-500" />
+                            <div className="absolute -bottom-6 right-0 w-4 h-4 rounded-full bg-white border-2 border-rose-500" />
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-6 text-xs text-slate-700">
+                  <div>
+                    <span className="text-slate-500">From</span>{' '}
+                    <span className="font-medium">{formatTime(trimmerState.startTime, 1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">To</span>{' '}
+                    <span className="font-medium">{formatTime(trimmerState.startTime + clipDurationSeconds, 1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Length</span>{' '}
+                    <span className="font-medium">{Math.round(trimmerState.duration || 0)}s</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(0, (trimmerState.duration || 0) - clipDurationSeconds)}
+                    step={0.1}
+                    value={Math.min(Math.max(0, trimmerState.startTime), Math.max(0, (trimmerState.duration || 0) - clipDurationSeconds))}
+                    onChange={handleTrimmerSliderChange}
+                    disabled={waveform.isLoading || !trimmerState.rawFile || (trimmerState.duration || 0) <= clipDurationSeconds}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTrimmerPlayToggle}
+                    disabled={waveform.isLoading || !trimmerState.rawFile}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+                      waveform.isLoading || !trimmerState.rawFile ? 'bg-slate-50 text-slate-300 border-slate-200' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {trimmerState.isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveTrimmedAudio}
+                    disabled={waveform.isLoading || !trimmerState.rawFile || (trimmerState.duration || 0) < clipDurationSeconds}
+                    className={`px-5 h-11 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 ${
+                      waveform.isLoading || !trimmerState.rawFile || (trimmerState.duration || 0) < clipDurationSeconds
+                        ? 'bg-rose-200 text-white cursor-not-allowed'
+                        : 'bg-rose-500 hover:bg-rose-600 text-white'
+                    }`}
+                  >
+                    <Check size={16} />
+                    Confirm
+                  </button>
+                </div>
+              </div>
+
+              <audio
+                ref={previewAudioRef}
+                src={stableAudioUrl || undefined}
+                onTimeUpdate={(e) => {
+                  if (!Number.isFinite(trimmerState.startTime) || !Number.isFinite(clipDurationSeconds)) return;
+                  if (e.currentTarget.currentTime >= trimmerState.startTime + clipDurationSeconds) {
+                    e.currentTarget.currentTime = trimmerState.startTime;
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -361,8 +361,13 @@ const smtpSendTest = ({ host, port, secure, user, pass, from_email, to, subject,
                     `From: <${from_email}>`,
                     `To: <${to}>`,
                     `Subject: ${subject}`,
+                    `Date: ${new Date().toUTCString()}`,
+                    `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@${String(from_email).split('@')[1] || 'localhost'}>`,
+                    `Reply-To: ${from_email}`,
+                    'X-Mailer: DimensiSuaraCMS/1.0',
                     'MIME-Version: 1.0',
                     'Content-Type: text/plain; charset=utf-8',
+                    'Content-Transfer-Encoding: 8bit',
                     '',
                     body || 'Test email dari CMS Dimensi Suara.',
                     ''
@@ -411,36 +416,512 @@ router.post('/gateway/test-email', authenticateToken, async (req, res) => {
 
 router.post('/gateway/test-wa', authenticateToken, async (req, res) => {
     try {
-        const { phone, message, endpoint } = req.body || {};
-        if (!phone) return res.status(400).json({ error: 'Phone number is required' });
-        const [mpwaRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
-        if (mpwaRows.length === 0 || !mpwaRows[0].setting_value) {
-            return res.status(400).json({ error: 'MPWA settings not configured' });
+        const { phone, message, endpoint, token, device_id } = req.body || {};
+        if (!phone) return res.status(400).json({ error: 'Phone is required' });
+        
+        const [rows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
+        const cfg = (rows.length > 0 && rows[0].setting_value) ? JSON.parse(rows[0].setting_value) : {};
+        
+        // Use provided values or fallback to DB
+        let url = (endpoint && endpoint.trim()) ? endpoint : (cfg.base_url || cfg.endpoint || '');
+        const apiKey = (token && token.trim()) ? token : cfg.token;
+        const sender = (device_id && device_id.trim()) ? device_id : cfg.device_id;
+
+        if (!url) return res.status(400).json({ error: 'MPWA base URL not configured' });
+        if (!apiKey) return res.status(400).json({ error: 'API Token is required' });
+        if (!sender) return res.status(400).json({ error: 'Device ID (Sender) is required' });
+        
+        if (!url.includes('/send-message')) {
+            if (!url.endsWith('/')) url += '/';
+            url += 'send-message';
         }
-        const mpwa = JSON.parse(mpwaRows[0].setting_value);
-        if (!mpwa.base_url || !mpwa.token || !mpwa.device_id) {
-            return res.status(400).json({ error: 'Incomplete MPWA settings' });
-        }
-        const url = new URL(endpoint || '/api/send_message', mpwa.base_url).toString();
-        // Common MPWA payload (may vary; adjust as per your provider)
-        const payload = {
-            token: mpwa.token,
-            device_id: mpwa.device_id,
-            to: phone,
-            message: message || 'Test WA dari CMS Dimensi Suara'
+
+        // Clean phone number: digits only
+        const cleanPhone = String(phone).replace(/\D/g, '');
+        const finalPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+
+        // Payload based on MPWA documentation
+        const body = { 
+            api_key: apiKey,
+            sender: sender,
+            number: finalPhone, 
+            message: message || 'Test message from CMS Dimensi Suara.' 
         };
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+
+        console.log(`Sending MPWA test to ${url}...`);
+        
+        const r = await fetch(url, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(body)
         });
-        const json = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
-            return res.status(resp.status).json({ error: json?.error || 'Failed to send WA message' });
+        
+        const responseText = await r.text().catch(()=>'');
+        let responseJson = {};
+        try { responseJson = JSON.parse(responseText); } catch {}
+
+        if (!r.ok) {
+            console.error(`MPWA Error ${r.status}:`, responseText);
+            throw new Error(`MPWA request failed (${r.status}): ${responseJson.msg || responseJson.error || responseText || r.statusText}`);
         }
-        res.json({ message: 'WA test sent successfully', response: json });
+
+        // Check if response has status: false despite 200 OK
+        if (responseJson.status === false || responseJson.status === 'false') {
+            throw new Error(`MPWA Gateway Error: ${responseJson.msg || 'Unknown error'}`);
+        }
+
+        res.json({ message: 'WA test sent successfully', detail: responseJson });
     } catch (err) {
-        res.status(500).json({ error: err.message || 'Failed to send test WA' });
+        console.error('Test WA Exception:', err);
+        res.status(500).json({ error: err.message || 'Failed to send WA' });
+    }
+});
+
+// Email Logs Monitoring (Admin/Operator)
+router.get('/email/logs', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { status, type, page = '1', limit = '50' } = req.query || {};
+        const p = Math.max(parseInt(String(page), 10) || 1, 1);
+        const l = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 200);
+        const offset = (p - 1) * l;
+        const conds = [];
+        const params = [];
+        if (typeof status === 'string' && status.length > 0) {
+            conds.push('status = ?');
+            params.push(status.toUpperCase());
+        }
+        if (typeof type === 'string' && type.length > 0) {
+            conds.push('related_type = ?');
+            params.push(type);
+        }
+        const where = conds.length > 0 ? `WHERE ${conds.join(' AND ')}` : '';
+        const [rows] = await db.query(
+            `SELECT id, user_id, related_type, related_id, to_email, subject, status, error_message, created_at, sent_at
+             FROM email_logs
+             ${where}
+             ORDER BY created_at DESC
+             LIMIT ? OFFSET ?`,
+            [...params, l, offset]
+        );
+        const [[{ total }]] = await db.query(
+            `SELECT COUNT(*) as total FROM email_logs ${where}`,
+            params
+        );
+        res.json({ data: rows, total, page: p, limit: l });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Messaging Templates (Email)
+router.get('/messaging/templates', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM email_templates');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/messaging/template', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { key, subject, body } = req.body || {};
+        if (!key) return res.status(400).json({ error: 'Key is required' });
+        await db.query(
+            'INSERT INTO email_templates (template_key, subject_template, body_template) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE subject_template = VALUES(subject_template), body_template = VALUES(body_template)',
+            [key, subject || '', body || '']
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Messaging Templates (WhatsApp)
+router.get('/messaging/templates/wa', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM whatsapp_templates');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/messaging/template/wa', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { key, body } = req.body || {};
+        if (!key) return res.status(400).json({ error: 'Key is required' });
+        await db.query(
+            'INSERT INTO whatsapp_templates (template_key, body_template) VALUES (?, ?) ON DUPLICATE KEY UPDATE body_template = VALUES(body_template)',
+            [key, body || '']
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Broadcast Messaging
+router.post('/messaging/broadcast', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const { channel = 'email', subject, html, message, recipients, delayMs = 1500 } = req.body || {};
+        
+        // Resolve targets: if recipients provided, use them; otherwise all users
+        let targets = [];
+        if (Array.isArray(recipients) && recipients.length > 0) {
+            targets = recipients;
+        } else {
+            const [userRows] = await db.query('SELECT email, phone FROM users WHERE (email IS NOT NULL AND email != "") OR (phone IS NOT NULL AND phone != "")');
+            targets = userRows.map(u => ({ email: u.email, phone: u.phone }));
+        }
+
+        if (targets.length === 0) return res.status(400).json({ error: 'No recipients found' });
+
+        const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+        const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
+        
+        const [waRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
+        const wa = (waRows.length > 0 && waRows[0].setting_value) ? JSON.parse(waRows[0].setting_value) : null;
+
+        // Helper for SMTP
+        const sendSmtp = ({ to }) => new Promise((resolve, reject) => {
+            try {
+                if (!smtp || !smtp.host || !smtp.port || !smtp.user || !smtp.pass || !smtp.from_email) return reject(new Error('SMTP not configured'));
+                const secure = Boolean(smtp.secure);
+                const socket = secure ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
+                let buffer = ''; let closed = false;
+                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                function expect(code) { return new Promise((res, rej) => {
+                    const onData = (data) => {
+                        buffer += data.toString('utf8');
+                        const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const last = lines[lines.length - 1] || '';
+                        const m = last.match(/^(\d{3})/);
+                        if (m) {
+                            const lastCode = parseInt(m[1], 10);
+                            if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                            else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                        }
+                    };
+                    socket.on('data', onData);
+                });}
+                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                function onConnect() {
+                    (async () => {
+                        try {
+                            await expect(220); await send(`EHLO localhost`); await expect(250);
+                            await send('AUTH LOGIN'); await expect(334);
+                            await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
+                            await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
+                            await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                            await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                            await send('DATA'); await expect(354);
+                            const now = new Date();
+                            const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${String(smtp.from_email).split('@')[1] || 'localhost'}>`;
+                            const msg = [
+                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                `To: <${to}>`,
+                                `Subject: ${subject || 'Broadcast'}`,
+                                `Date: ${now.toUTCString()}`,
+                                `Message-ID: ${messageId}`,
+                                `Reply-To: ${smtp.from_email}`,
+                                'X-Mailer: DimensiSuaraCMS/1.0',
+                                'MIME-Version: 1.0',
+                                'Content-Type: text/html; charset=utf-8',
+                                'Content-Transfer-Encoding: 8bit',
+                                '',
+                                html || message || 'Broadcast',
+                                ''
+                            ].join('\r\n');
+                            await send(msg + '\r\n.'); const accepted = await expect(250); await send('QUIT'); cleanup();
+                        } catch (err) { cleanup(err); }
+                    })();
+                }
+                socket.once('error', (e) => cleanup(e));
+                socket.once('close', () => cleanup(new Error('SMTP connection closed')));
+            } catch (e) { reject(e); }
+        });
+
+        // Helper for WA
+        const sendWa = async ({ to }) => {
+            if (!wa || (!wa.base_url && !wa.endpoint)) throw new Error('WA not configured');
+            let url = wa.base_url || wa.endpoint || '';
+            if (!url.includes('/send-message')) {
+                if (!url.endsWith('/')) url += '/';
+                url += 'send-message';
+            }
+            // Clean phone number
+            const cleanPhone = String(to).replace(/\D/g, '');
+            const finalPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+
+            const body = { 
+                api_key: wa.token,
+                sender: wa.device_id,
+                number: finalPhone, 
+                message: message || subject || '' 
+            };
+
+            const r = await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(body)
+            });
+            
+            const responseText = await r.text().catch(()=>'');
+            let responseJson = {};
+            try { responseJson = JSON.parse(responseText); } catch {}
+
+            if (!r.ok) {
+                throw new Error(`WA Gateway error (${r.status}): ${responseJson.msg || responseJson.error || responseText || r.statusText}`);
+            }
+            if (responseJson.status === false || responseJson.status === 'false') {
+                throw new Error(`WA Gateway logic error: ${responseJson.msg || 'Unknown'}`);
+            }
+            return { ok: true };
+        };
+
+        // Async Background Broadcast
+        (async () => {
+            for (const target of targets) {
+                const recipientEmail = typeof target === 'string' ? target : target.email;
+                const recipientPhone = typeof target === 'string' ? target : target.phone;
+
+                // Handle Email Channel
+                if ((channel === 'email' || channel === 'both') && recipientEmail && recipientEmail.includes('@')) {
+                    const [logRes] = await db.query('INSERT INTO broadcast_logs (channel, recipient, subject, message, status) VALUES (?, ?, ?, ?, ?)', 
+                        ['email', recipientEmail, subject || 'Broadcast', html || message, 'PENDING']);
+                    const logId = logRes?.insertId;
+                    try {
+                        await sendSmtp({ to: recipientEmail });
+                        await db.query('UPDATE broadcast_logs SET status = ?, sent_at = NOW() WHERE id = ?', ['SENT', logId]);
+                    } catch (err) {
+                        const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
+                    }
+                    await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1500, 200)));
+                }
+
+                // Handle WA Channel
+                if ((channel === 'wa' || channel === 'both') && recipientPhone) {
+                    const [logRes] = await db.query('INSERT INTO broadcast_logs (channel, recipient, subject, message, status) VALUES (?, ?, ?, ?, ?)', 
+                        ['wa', recipientPhone, subject || 'Broadcast', message || html, 'PENDING']);
+                    const logId = logRes?.insertId;
+                    try {
+                        await sendWa({ to: recipientPhone });
+                        await db.query('UPDATE broadcast_logs SET status = ?, sent_at = NOW() WHERE id = ?', ['SENT', logId]);
+                    } catch (err) {
+                        const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                        await db.query('UPDATE broadcast_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
+                    }
+                    await new Promise(r => setTimeout(r, Math.max(Number(delayMs) || 1500, 200)));
+                }
+            }
+        })();
+
+        res.json({ message: 'Broadcast started', total: targets.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET Broadcast Logs
+router.get('/messaging/broadcast/logs', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM broadcast_logs ORDER BY created_at DESC LIMIT 100');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Resend Email Log (Limited support as body is not stored)
+router.post('/email/resend/:id', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM email_logs WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Log not found' });
+        const log = rows[0];
+
+        // Since email_logs doesn't store the body, we try to resend a generic message 
+        // OR if it's a broadcast that was logged here, we might be stuck.
+        // For now, let's at least try to send SOMETHING so it doesn't just fail.
+        
+        const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+        const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
+        if (!smtp) return res.status(400).json({ error: 'SMTP not configured' });
+
+        const sendSmtp = ({ to, subject, html }) => new Promise((resolve, reject) => {
+            try {
+                const secure = Boolean(smtp.secure);
+                const socket = secure ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
+                let buffer = ''; let closed = false;
+                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                function expect(code) { return new Promise((res, rej) => {
+                    const onData = (data) => {
+                        buffer += data.toString('utf8');
+                        const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const last = lines[lines.length - 1] || '';
+                        const m = last.match(/^(\d{3})/);
+                        if (m) {
+                            const lastCode = parseInt(m[1], 10);
+                            if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                            else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                        }
+                    };
+                    socket.on('data', onData);
+                });}
+                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                function onConnect() {
+                    (async () => {
+                        try {
+                            await expect(220); await send(`EHLO localhost`); await expect(250);
+                            await send('AUTH LOGIN'); await expect(334);
+                            await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
+                            await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
+                            await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                            await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                            await send('DATA'); await expect(354);
+                            const msg = [
+                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                `To: <${to}>`,
+                                `Subject: [Resend] ${subject}`,
+                                `Date: ${new Date().toUTCString()}`,
+                                'MIME-Version: 1.0',
+                                'Content-Type: text/html; charset=utf-8',
+                                '', html, ''
+                            ].join('\r\n');
+                            await send(msg + '\r\n.'); await expect(250); await send('QUIT'); cleanup();
+                        } catch (err) { cleanup(err); }
+                    })();
+                }
+                socket.once('error', (e) => cleanup(e));
+            } catch (e) { reject(e); }
+        });
+
+        // Use a placeholder if body is missing
+        const body = `<p>Ini adalah pengiriman ulang untuk email dengan subjek: <b>${log.subject}</b>.</p><p>Maaf, isi pesan asli tidak tersimpan di sistem log sistem. Mohon cek dashboard untuk detailnya.</p>`;
+        
+        await sendSmtp({ to: log.to_email, subject: log.subject, html: body });
+        await db.query('UPDATE email_logs SET status = "SENT", error_message = NULL, sent_at = NOW() WHERE id = ?', [log.id]);
+        
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Resend Broadcast Log
+router.post('/broadcast/resend/:id', authenticateToken, async (req, res) => {
+    try {
+        if (!req.user || !['Admin', 'Operator'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const [rows] = await db.query('SELECT * FROM broadcast_logs WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Log not found' });
+        const log = rows[0];
+
+        if (log.channel === 'email') {
+            const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+            const smtp = (smtpRows.length > 0 && smtpRows[0].setting_value) ? JSON.parse(smtpRows[0].setting_value) : null;
+            if (!smtp) throw new Error('SMTP not configured');
+            
+            // Re-use SMTP helper
+            const sendSmtp = ({ to, subject, html }) => new Promise((resolve, reject) => {
+                const socket = Boolean(smtp.secure) ? tls.connect(Number(smtp.port || 587), smtp.host, { servername: smtp.host }, onConnect) : net.connect(Number(smtp.port || 587), smtp.host, onConnect);
+                let buffer = ''; let closed = false;
+                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                function expect(code) { return new Promise((res, rej) => {
+                    const onData = (data) => {
+                        buffer += data.toString('utf8');
+                        const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const last = lines[lines.length - 1] || '';
+                        const m = last.match(/^(\d{3})/);
+                        if (m) {
+                            const lastCode = parseInt(m[1], 10);
+                            if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) { socket.removeListener('data', onData); buffer = ''; res(last); }
+                            else if (lastCode >= 400) { socket.removeListener('data', onData); rej(new Error(`SMTP error ${lastCode}: ${last}`)); }
+                        }
+                    };
+                    socket.on('data', onData);
+                });}
+                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                function onConnect() {
+                    (async () => {
+                        try {
+                            await expect(220); await send(`EHLO localhost`); await expect(250);
+                            await send('AUTH LOGIN'); await expect(334);
+                            await send(Buffer.from(String(smtp.user)).toString('base64')); await expect(334);
+                            await send(Buffer.from(String(smtp.pass)).toString('base64')); await expect(235);
+                            await send(`MAIL FROM:<${smtp.from_email}>`); await expect(250);
+                            await send(`RCPT TO:<${to}>`); await expect([250, 251]);
+                            await send('DATA'); await expect(354);
+                            const msg = [
+                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                `To: <${to}>`,
+                                `Subject: ${subject}`,
+                                `Date: ${new Date().toUTCString()}`,
+                                'MIME-Version: 1.0',
+                                'Content-Type: text/html; charset=utf-8',
+                                '', log.message || '', ''
+                            ].join('\r\n');
+                            await send(msg + '\r\n.'); await expect(250); await send('QUIT'); cleanup();
+                        } catch (err) { cleanup(err); }
+                    })();
+                }
+                socket.once('error', (e) => cleanup(e));
+            });
+            
+            await sendSmtp({ to: log.recipient, subject: log.subject, html: log.message });
+        } else if (log.channel === 'wa') {
+            const [waRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['mpwa_settings']);
+            const wa = (waRows.length > 0 && waRows[0].setting_value) ? JSON.parse(waRows[0].setting_value) : null;
+            if (!wa) throw new Error('WA not configured');
+            
+            let url = wa.base_url || wa.endpoint || '';
+            if (!url.includes('/send-message')) {
+                if (!url.endsWith('/')) url += '/';
+                url += 'send-message';
+            }
+            const cleanPhone = String(log.recipient).replace(/\D/g, '');
+            const finalPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+
+            const r = await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ api_key: wa.token, sender: wa.device_id, number: finalPhone, message: log.message })
+            });
+            if (!r.ok) throw new Error(`WA Gateway error ${r.status}`);
+            const resJson = await r.json();
+            if (resJson.status === false || resJson.status === 'false') throw new Error(resJson.msg || 'WA Failed');
+        }
+
+        await db.query('UPDATE broadcast_logs SET status = "SENT", error_message = NULL, sent_at = NOW() WHERE id = ?', [log.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

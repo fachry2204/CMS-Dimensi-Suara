@@ -49,6 +49,7 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
         type: 'error'
     });
     const [songs, setSongs] = useState<Song[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
@@ -86,7 +87,8 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
         region: '',
         iswc: '',
         isrc: '',
-        note: ''
+        note: '',
+        user_id: ''
     });
     
     const [writers, setWriters] = useState<Writer[]>([
@@ -101,8 +103,21 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
         if (token) {
             fetchSongs();
             fetchWriters();
+            if (userRole === 'Admin' || userRole === 'Operator') {
+                fetchUsers();
+            }
         }
-    }, [token]);
+    }, [token, userRole]);
+
+    const fetchUsers = async () => {
+        try {
+            const data = await api.getUsers(token || '');
+            const filteredUsers = (Array.isArray(data) ? data : []).filter(u => u.role !== 'Admin');
+            setUsers(filteredUsers);
+        } catch (error) {
+            console.error('Failed to fetch users', error);
+        }
+    };
 
     const fetchWriters = async () => {
         if (!token) return;
@@ -205,7 +220,8 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
             region: song.region || 'Indonesia',
             iswc: song.iswc || '',
             isrc: song.isrc || '',
-            note: song.note || ''
+            note: song.note || '',
+            user_id: (song as any).user_id || ''
         });
 
         if (Array.isArray(song.writers)) {
@@ -399,7 +415,7 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
         setFormData({
             song_id: '', title: '', other_title: '', authorized_rights: '100', performer: '',
             duration: '', genre: '', language: 'Indonesia', region: '',
-            iswc: '', isrc: '', note: ''
+            iswc: '', isrc: '', note: '', user_id: ''
         });
         setWriters([{ name: '', role: 'Composer', share_percent: 100 }]);
         setLyricsFile(null);
@@ -457,6 +473,7 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
                             <tr>
                                 <th className="px-6 py-3 font-bold">Song ID</th>
                                 <th className="px-6 py-3 font-bold">Judul Lagu</th>
+                                {(userRole === 'Admin' || userRole === 'Operator') && <th className="px-6 py-3 font-bold">Owner</th>}
                                 <th className="px-6 py-3 font-bold">Artis & Genre</th>
                                 <th className="px-6 py-3 font-bold">Writers (Share)</th>
                                 <th className="px-6 py-3 text-center font-bold">Status</th>
@@ -465,9 +482,9 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                             {isLoading ? (
-                                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Loading...</td></tr>
+                                <tr><td colSpan={(userRole === 'Admin' || userRole === 'Operator') ? 7 : 6} className="px-6 py-8 text-center text-slate-500">Loading...</td></tr>
                             ) : currentItems.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Tidak ada data lagu</td></tr>
+                                <tr><td colSpan={(userRole === 'Admin' || userRole === 'Operator') ? 7 : 6} className="px-6 py-8 text-center text-slate-500">Tidak ada data lagu</td></tr>
                             ) : (
                                 currentItems.map((song) => (
                                     <tr key={song.id} className="hover:bg-slate-50">
@@ -478,6 +495,12 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
                                             <div className="text-slate-900 font-bold">{song.title}</div>
                                             {song.other_title && <div className="text-xs text-slate-500 font-bold">Alt: {song.other_title}</div>}
                                         </td>
+                                        {(userRole === 'Admin' || userRole === 'Operator') && (
+                                            <td className="px-6 py-4">
+                                                <div className="text-slate-700 font-medium">{(song as any).user_name || '-'}</div>
+                                                <div className="text-slate-400 text-[10px]">{song.user_email || ''}</div>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-1 text-slate-900 font-bold">
                                                 <User size={14} className="text-slate-400" />
@@ -590,6 +613,34 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
                         </div>
                         
                         <form onSubmit={handleSubmit} className="p-6 space-y-6" noValidate>
+                            {/* Release Owner for Admin/Operator */}
+                            {(userRole === 'Admin' || userRole === 'Operator') && (
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="h-px flex-1 bg-slate-200"></div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Admin Controls</span>
+                                        <div className="h-px flex-1 bg-slate-200"></div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Release Owner (Admin Only)</label>
+                                        <select 
+                                            name="user_id"
+                                            value={formData.user_id}
+                                            onChange={handleInputChange}
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm"
+                                            required={userRole === 'Admin' || userRole === 'Operator'}
+                                        >
+                                            <option value="">Select an option...</option>
+                                            {users.map(user => (
+                                                <option key={user.id} value={user.id}>
+                                                    {user.full_name || user.name || user.username} ({user.email})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* General Info */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
@@ -860,6 +911,19 @@ export const PublishingSongs: React.FC<Props> = ({ token, userRole }) => {
                         </div>
                         
                         <div className="p-6 space-y-6">
+                            {(userRole === 'Admin' || userRole === 'Operator') && (previewSong as any).user_name && (
+                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                                        <User size={24} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-0.5">Release Owner</p>
+                                        <h3 className="text-lg font-bold text-slate-800">{(previewSong as any).user_name}</h3>
+                                        <p className="text-sm text-slate-500">{previewSong.user_email}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs text-slate-500 block mb-1">Judul Lagu</label>

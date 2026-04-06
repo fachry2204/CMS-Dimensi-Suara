@@ -48,6 +48,11 @@ export interface Track {
   previewStart?: number;
   processingAudio?: boolean;
   processingClip?: boolean;
+  audioFormatChecking?: boolean;
+  audioFormatOk?: boolean;
+  audioSampleRate?: number | null;
+  audioBitDepth?: number | null;
+  audioFormatSkipped?: boolean;
   
   // Metadata
   trackNumber: string;
@@ -83,7 +88,7 @@ export interface PrimaryArtist {
 export interface ReleaseData {
   id?: string; // Unique ID for the list
   userId?: string | number; // Owner ID
-  status?: 'Pending' | 'Request Edit' | 'Processing' | 'Live' | 'Rejected' | 'Draft';
+  status?: 'Pending' | 'Request Edit' | 'Processing' | 'Released' | 'Rejected' | 'Draft';
   submissionDate?: string;
   aggregator?: string; // New Field
   distributionTargets?: { id: string; label: string; logo: string }[];
@@ -165,6 +170,11 @@ export interface User {
   ktp_doc_path?: string;
   npwp_doc_path?: string;
   signature_doc_path?: string;
+  contract_doc_path?: string;
+  contract_status?: 'Not Generated' | 'On Review' | 'Done';
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_account_name?: string;
 }
 
 export interface Notification {

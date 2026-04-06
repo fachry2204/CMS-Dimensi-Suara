@@ -9,6 +9,7 @@ import { useBranding } from '../../contexts/BrandingContext';
 
 interface Creator {
     id: number;
+    user_id?: number | string;
     name: string;
     nik: string;
     birth_place: string;
@@ -32,6 +33,7 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
     const navigate = useNavigate();
     const { getButtonColor } = useBranding();
     const [creators, setCreators] = useState<Creator[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
@@ -49,13 +51,19 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
     const [formData, setFormData] = useState<any>({
         name: '', nik: '', birth_place: '', birth_date: '', address: '',
         nationality: 'Indonesia',
-        bank_name: '', bank_account_name: '', bank_account_number: '', whatsapp_number: ''
+        bank_name: '', bank_account_name: '', bank_account_number: '', whatsapp_number: '',
+        user_id: ''
     });
     const [files, setFiles] = useState<{ ktp: File | null, npwp: File | null }>({ ktp: null, npwp: null });
 
     useEffect(() => {
-        if (token) fetchCreators();
-    }, [token]);
+        if (token) {
+            fetchCreators();
+            if (userRole === 'Admin' || userRole === 'Operator') {
+                fetchUsers();
+            }
+        }
+    }, [token, userRole]);
 
     const fetchCreators = async () => {
         if (!token) return;
@@ -67,6 +75,16 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
             console.error('Failed to fetch creators', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const data = await api.getUsers(token || '');
+            const filteredUsers = (Array.isArray(data) ? data : []).filter(u => u.role !== 'Admin');
+            setUsers(filteredUsers);
+        } catch (error) {
+            console.error('Failed to fetch users', error);
         }
     };
 
@@ -149,7 +167,8 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
             bank_name: creator.bank_name,
             bank_account_name: creator.bank_account_name,
             bank_account_number: creator.bank_account_number,
-            whatsapp_number: creator.whatsapp_number
+            whatsapp_number: creator.whatsapp_number,
+            user_id: creator.user_id || ''
         });
         setFiles({ ktp: null, npwp: null });
         setShowModal(true);
@@ -159,7 +178,8 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
         setFormData({
             name: '', nik: '', birth_place: '', birth_date: '', address: '',
             nationality: 'Indonesia',
-            bank_name: '', bank_account_name: '', bank_account_number: '', whatsapp_number: ''
+            bank_name: '', bank_account_name: '', bank_account_number: '', whatsapp_number: '',
+            user_id: ''
         });
         setFiles({ ktp: null, npwp: null });
         setIsEditing(false);
@@ -175,16 +195,14 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-800">Data Pencipta (Songwriters)</h1>
-                {userRole !== 'User' && (
-                    <button 
-                        onClick={() => { resetForm(); setShowModal(true); }}
-                        className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors hover:opacity-90"
-                        style={{ backgroundColor: getButtonColor() }}
-                    >
-                        <Plus size={20} />
-                        Tambah Pencipta
-                    </button>
-                )}
+                <button 
+                    onClick={() => { resetForm(); setShowModal(true); }}
+                    className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors hover:opacity-90"
+                    style={{ backgroundColor: getButtonColor() }}
+                >
+                    <Plus size={20} />
+                    Tambahkan Pencipta
+                </button>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -206,6 +224,7 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
                         <thead className="bg-slate-50 text-slate-700">
                             <tr>
                                 <th className="px-6 py-3 font-bold">Nama</th>
+                                {(userRole === 'Admin' || userRole === 'Operator') && <th className="px-6 py-3 font-bold">Owner</th>}
                                 <th className="px-6 py-3 font-bold">NIK / NPWP</th>
                                 <th className="px-6 py-3 font-bold">Kontak & Alamat</th>
                                 <th className="px-6 py-3 font-bold">Bank</th>
@@ -215,15 +234,21 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                             {isLoading ? (
-                                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Loading...</td></tr>
+                                <tr><td colSpan={(userRole === 'Admin' || userRole === 'Operator') ? 7 : 6} className="px-6 py-8 text-center text-slate-500">Loading...</td></tr>
                             ) : filteredCreators.length === 0 ? (
-                                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Tidak ada data pencipta</td></tr>
+                                <tr><td colSpan={(userRole === 'Admin' || userRole === 'Operator') ? 7 : 6} className="px-6 py-8 text-center text-slate-500">Tidak ada data pencipta</td></tr>
                             ) : (
                                 filteredCreators.map((creator) => (
                                     <tr key={creator.id} className="hover:bg-slate-50">
                                         <td className="px-6 py-4">
                                             <div className="text-slate-900 font-bold">{creator.name}</div>
                                         </td>
+                                        {(userRole === 'Admin' || userRole === 'Operator') && (
+                                            <td className="px-6 py-4">
+                                                <div className="text-slate-700 font-medium">{(creator as any).user_name || '-'}</div>
+                                                <div className="text-slate-400 text-[10px]">{(creator as any).user_email || ''}</div>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded w-fit">NIK: {creator.nik || '-'}</span>
@@ -292,6 +317,16 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
                 </div>
             </div>
 
+            {!showModal && (
+                <button
+                    onClick={() => { resetForm(); setShowModal(true); }}
+                    className="fixed bottom-6 right-6 z-50 rounded-full p-3 shadow-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors md:hidden"
+                    title="Tambahkan Pencipta"
+                >
+                    <Plus size={22} />
+                </button>
+            )}
+
             {/* Modal Form */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -304,6 +339,32 @@ export const PublishingWriter: React.FC<Props> = ({ token, userRole }) => {
                         </div>
                         
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            {(userRole === 'Admin' || userRole === 'Operator') && (
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 mb-6">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="h-px flex-1 bg-slate-200"></div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Admin Controls</span>
+                                        <div className="h-px flex-1 bg-slate-200"></div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Release Owner (Admin Only)</label>
+                                        <select 
+                                            name="user_id"
+                                            value={formData.user_id}
+                                            onChange={handleInputChange}
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm"
+                                            required={userRole === 'Admin' || userRole === 'Operator'}
+                                        >
+                                            <option value="">Select an option...</option>
+                                            {users.map(user => (
+                                                <option key={user.id} value={user.id}>
+                                                    {user.full_name || user.name || user.username} ({user.email})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>

@@ -30,9 +30,11 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   const { getButtonColor } = useBranding();
   const [activeStatusTab, setActiveStatusTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddMenu, setShowAddMenu] = useState(false);
   
   // Sorting State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
+  const [typeFilter, setTypeFilter] = useState<'Single' | 'Album' | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,7 +44,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   // Reset pagination when filter/search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeStatusTab, searchQuery, isViewAll]);
+  }, [activeStatusTab, searchQuery, isViewAll, typeFilter]);
 
   // Define Tabs
   const tabs = [
@@ -50,7 +52,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
     { id: 'PENDING', label: 'Pending', statusMap: 'Pending' },
     { id: 'REQUEST_EDIT', label: 'Request Edit', statusMap: 'Request Edit' },
     { id: 'PROCESSING', label: 'Proses', statusMap: 'Processing' },
-    { id: 'RELEASED', label: 'Released', statusMap: 'Live' },
+    { id: 'RELEASED', label: 'Released', statusMap: 'Released' },
     { id: 'REJECTED', label: 'Reject', statusMap: 'Rejected' },
   ];
 
@@ -80,7 +82,10 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
         upc.includes(searchLower) ||
         aggregator.toLowerCase().includes(searchLower);
 
-    return statusMatch && searchMatch;
+    const normalizedType = (release.tracks || []).length > 1 ? 'Album' : 'Single';
+    const typeMatch = typeFilter ? normalizedType === typeFilter : true;
+
+    return statusMatch && searchMatch && typeMatch;
   });
 
   // 2. Sorting Logic
@@ -148,8 +153,11 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
   );
 
   // Stat card UI
-  const StatCard = ({ title, count, icon, colorClass, bgClass, subtext, cardClass }: any) => (
-    <div className={`p-5 rounded-2xl shadow-sm border flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md ${cardClass || 'bg-white border-gray-100'}`}>
+  const StatCard = ({ title, count, icon, colorClass, bgClass, subtext, cardClass, onClick }: any) => (
+    <div
+      className={`p-5 rounded-2xl shadow-sm border flex items-center justify-between transition-transform hover:-translate-y-1 hover:shadow-md ${onClick ? 'cursor-pointer' : ''} ${cardClass || 'bg-white border-gray-100'}`}
+      onClick={onClick}
+    >
         <div>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
             <h3 className="text-2xl font-bold text-slate-800">{count}</h3>
@@ -200,6 +208,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                 bgClass="bg-indigo-100"
                 subtext="Total single releases"
                 cardClass="bg-indigo-50 border-indigo-100"
+                onClick={() => setTypeFilter('Single')}
             />
             <StatCard 
                 title="Jumlah Album" 
@@ -209,6 +218,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                 bgClass="bg-purple-100"
                 subtext="Total album releases"
                 cardClass="bg-purple-50 border-purple-100"
+                onClick={() => setTypeFilter('Album')}
             />
             <StatCard 
                 title="Jumlah Track" 
@@ -227,6 +237,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                 bgClass="bg-emerald-100"
                 subtext="Total unique artists"
                 cardClass="bg-emerald-50 border-emerald-100"
+                onClick={() => navigate('/aggregator/artists')}
             />
             
         </div>
@@ -240,8 +251,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
             </div>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar w-full md:w-auto">
+        <div className="flex overflow-x-auto pb-4 gap-2 no-scrollbar w-full mb-2">
             {tabs.map((tab) => {
                 const isActive = activeStatusTab === tab.id;
                 const count = getCount(tab.statusMap);
@@ -307,47 +317,74 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                     </button>
                 );
             })}
-            </div>
+        </div>
 
-            <div className="w-full md:w-auto flex items-center gap-3">
-                <div className="relative w-full md:w-80">
-                    <input 
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search Title, Artist, UPC, Aggregator..." 
-                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all text-[13px]"
-                    />
-                    <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+        <div className="w-full flex flex-col md:flex-row items-center justify-start gap-3 mb-6">
+            <div className="relative w-full md:w-80">
+                <input 
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search Title, Artist, UPC, Aggregator..." 
+                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white shadow-sm transition-all text-[13px]"
+                />
+                <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+            </div>
+            {userRole === 'Admin' || userRole === 'Operator' ? (
+                <div className="relative w-full md:w-auto">
+                <button
+                    onClick={() => setShowAddMenu(prev => !prev)}
+                    className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 text-white rounded hover:opacity-90 transition-colors text-[14px] font-bold shadow-sm"
+                    style={{ backgroundColor: getButtonColor() }}
+                    title="Add Release"
+                >
+                    <Plus size={14} />
+                    Add Release
+                </button>
+                {showAddMenu && (
+                    <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                    <button
+                        onClick={() => { setShowAddMenu(false); navigate('/new-release'); }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                    >
+                        New Release
+                    </button>
+                    <button
+                        onClick={() => { setShowAddMenu(false); navigate('/releases/import'); }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                    >
+                        Import Release
+                    </button>
+                    </div>
+                )}
                 </div>
+            ) : (
                 <button
                     onClick={() => navigate('/new-release')}
-                    className="flex items-center gap-2 px-3 py-1.5 text-white rounded hover:opacity-90 transition-colors text-[14px] font-bold shadow-sm"
+                    className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 text-white rounded hover:opacity-90 transition-colors text-[14px] font-bold shadow-sm"
                     style={{ backgroundColor: getButtonColor() }}
-                    title="Create New Release"
+                    title="New Release"
                 >
                     <Plus size={14} />
                     New Release
                 </button>
-            </div>
+            )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-md border border-gray-300 overflow-hidden flex flex-col min-h-[500px]">
             <div className="overflow-x-auto flex-1">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b-2 border-gray-300">
+                    <thead className="bg-slate-50 border-b-2 border-gray-300 text-[12px]">
                         <tr>
                             <ThSortable label="Release" sortKey="title" />
-                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider">User</th>
+                            <th className="px-4 py-2 text-[12px] text-slate-500 tracking-wider">User</th>
                             <ThSortable label="Type" sortKey="type" />
-                            <ThSortable label="Release Date" sortKey="date" />
-                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider">Submit Date</th>
+                            <ThSortable label="Tanggal" sortKey="date" />
                             {userRole === 'Admin' && <ThSortable label="Aggregator" sortKey="aggregator" />}
                             <ThSortable label="Status" sortKey="status" />
-                            <th className="px-4 py-2 text-[13px] text-slate-500 tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-300">
+                    <tbody className="divide-y divide-gray-300 text-[12px]">
                         {displayedReleases.map((release) => {
                             // Determine type
                             const type = (release.tracks || []).length > 1 ? "Album/EP" : "Single";
@@ -359,7 +396,7 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
 
                             // Determine color based on status
                             let statusClass = "bg-gray-100 text-gray-600 border-gray-200";
-                            if (status === 'Live') statusClass = "bg-green-100 text-green-700 border-green-200";
+                            if (status === 'Released') statusClass = "bg-green-100 text-green-700 border-green-200";
                             if (status === 'Processing') statusClass = "bg-blue-100 text-blue-700 border-blue-200";
                             if (status === 'Pending') statusClass = "bg-yellow-100 text-yellow-700 border-yellow-200";
                             if (status === 'Request Edit') statusClass = "bg-orange-100 text-orange-700 border-orange-200";
@@ -377,10 +414,14 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                 : undefined;
 
                             return (
-                                <tr key={release.id || Math.random()} className="even:bg-slate-50 hover:bg-blue-50 transition-colors group text-[13px]">
+                                <tr 
+                                    key={release.id || Math.random()} 
+                                    className="even:bg-slate-50 hover:bg-blue-50 transition-colors group cursor-pointer"
+                                    onClick={() => onViewDetails(release)}
+                                >
                                     <td className="px-4 py-2">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-lg bg-blue-50 overflow-hidden flex items-center justify-center text-slate-400 relative shrink-0 border border-blue-100`}>
                                                 {release.coverArt ? (
                                                     <img 
                                                         src={(typeof release.coverArt === 'string')
@@ -396,54 +437,54 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                                         }}
                                                     />
                                                 ) : (
-                                                    <Disc size={20} />
+                                                    <Disc size={16} />
                                                 )}
                                             </div>
                                             <div className="min-w-[150px]">
-                                                <div className="font-bold text-slate-800 truncate max-w-[200px] text-[13px]" title={release.title}>{release.title || "Untitled Release"}</div>
-                                                <div className="text-[13px] text-slate-500 truncate max-w-[200px] font-bold" title={(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ')}>
+                                                <div className="font-semibold text-slate-800 truncate max-w-[200px]" title={release.title}>{release.title || "Untitled Release"}</div>
+                                                <div className="text-[12px] text-slate-500 truncate max-w-[200px] font-medium" title={(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ')}>
                                                     {(release.primaryArtists || []).map(a => typeof a === 'string' ? a : a.name).join(', ') || "Unknown Artist"}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
+                                    <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
                                         <div className="flex items-center gap-1.5">
-                                            <Users size={12} className="text-slate-400" />
+                                            <Users size={11} className="text-slate-400" />
                                             {ownerName || "-"}
                                         </div>
                                     </td>
                                     <td className="px-4 py-2">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[13px] font-bold whitespace-nowrap shadow-sm border ${
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap shadow-sm border ${
                                             type === "Single" 
                                                 ? "bg-blue-100 text-blue-700 border-blue-200" 
                                                 : "bg-green-100 text-green-700 border-green-200"
                                         }`}>
-                                            <Music size={10} />
+                                            <Music size={9} />
                                             {type}
                                         </span>
                                     </td>
-                                <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
-                                        <div className="flex items-center gap-1.5">
-                                            <Calendar size={12} className="text-slate-400" />
-                                            {formatDMY(displayDateRaw)}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-2 text-[13px] text-slate-600 whitespace-nowrap">
-                                        <div className="flex items-center gap-1.5">
-                                            <Calendar size={12} className="text-slate-400" />
-                                            {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
+                                    <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
+                                        <div className="flex flex-col gap-0.5">
+                                            <div className="flex items-center gap-1.5 font-bold">
+                                                <Calendar size={11} className="text-slate-400" />
+                                                {formatDMY(displayDateRaw)}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                                                <Calendar size={10} className="text-slate-300" />
+                                                {release.submissionDate ? formatDMY(release.submissionDate) : 'N/A'}
+                                            </div>
                                         </div>
                                     </td>
                                     {userRole === 'Admin' && (
-                                    <td className="px-4 py-2 text-[13px]">
+                                    <td className="px-4 py-2">
                                         {release.aggregator ? (
-                                            <div className="flex items-center gap-1 text-[13px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
-                                                <Globe size={10} />
+                                            <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit">
+                                                <Globe size={9} />
                                                 {release.aggregator}
                                             </div>
                                         ) : (
-                                            <span className="text-[13px] text-slate-300 italic">Not set</span>
+                                            <span className="text-[12px] text-slate-300 italic">Not set</span>
                                         )}
                                     </td>
                                     )}
@@ -451,25 +492,13 @@ export const AllReleases: React.FC<Props> = ({ releases, onViewDetails, availabl
                                         <div className="flex flex-col items-start gap-1">
                                             <span 
                                                 title={rejectionTooltip}
-                                                className={`inline-block px-2 py-0.5 rounded-full text-[13px] font-bold whitespace-nowrap border ${statusClass}`}
+                                                className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap border ${statusClass}`}
                                             >
-                                                {status === 'Live' ? 'Released' : status}
+                                                {status}
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button 
-                                                onClick={() => {
-                                                    onViewDetails(release);
-                                                }}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-lg transition-all text-[14px] font-bold shadow-sm whitespace-nowrap"
-                                                title="View & Manage"
-                                            >
-                                                <Eye size={12} /> View
-                                            </button>
-                                        </div>
-                                    </td>
+                                    
                                 </tr>
                             );
                         })}

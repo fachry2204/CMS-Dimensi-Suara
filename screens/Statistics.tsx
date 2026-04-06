@@ -300,28 +300,7 @@ export const Statistics: React.FC<Props> = ({ releases, reportData, token, defau
                              <button className="text-[10px] font-medium text-slate-500 hover:text-slate-800">Lihat Semua</button>
                          </div>
                          <div className="space-y-2">
-                             {[
-                                 { title: 'Love Song', artist: 'MVP Band', streams: 12500, trend: '+12%', image: 'https://picsum.photos/seed/1/100' },
-                                 { title: 'Bundaku Tercinta', artist: 'Nandita', streams: 8400, trend: '+5%', image: 'https://picsum.photos/seed/2/100' },
-                                 { title: 'Song for Love', artist: 'Shena Ariyandi', streams: 6200, trend: '+22%', image: 'https://picsum.photos/seed/3/100' },
-                                 { title: 'Guitarstik', artist: 'MVP Band', streams: 4100, trend: '-2%', image: 'https://picsum.photos/seed/4/100' },
-                                 { title: 'Green Country', artist: 'Shena Ariyandi', streams: 3800, trend: '+8%', image: 'https://picsum.photos/seed/5/100' },
-                             ].map((item, idx) => (
-                                 <div key={idx} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
-                                     <div className="flex items-center gap-3">
-                                         <span className={`text-xs font-bold w-4 text-center ${idx < 3 ? 'text-blue-600' : 'text-slate-400'}`}>#{idx + 1}</span>
-                                         <div className="w-8 h-8 rounded-lg bg-slate-200 bg-cover bg-center shadow-sm" style={{ backgroundImage: `url(${item.image})` }}></div>
-                                         <div>
-                                             <h4 className="font-bold text-slate-800 text-xs">{item.title}</h4>
-                                             <p className="text-[10px] text-slate-500">{item.artist}</p>
-                                         </div>
-                                     </div>
-                                     <div className="text-right">
-                                         <p className="font-bold text-slate-800 text-xs">{formatNumber(item.streams)}</p>
-                                         <p className={`text-[9px] font-medium ${item.trend.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>{item.trend}</p>
-                                     </div>
-                                 </div>
-                             ))}
+                            <div className="p-4 text-center text-slate-400 text-sm">Belum ada data.</div>
                          </div>
                     </div>
  
@@ -332,28 +311,7 @@ export const Statistics: React.FC<Props> = ({ releases, reportData, token, defau
                              <button className="text-[10px] font-medium text-slate-500 hover:text-slate-800">Lihat Semua</button>
                          </div>
                          <div className="space-y-2">
-                             {[
-                                 { artist: 'MVP Band', streams: 45200, trend: '+15%', image: 'https://picsum.photos/seed/10/100' },
-                                 { artist: 'Shena Ariyandi', streams: 32100, trend: '+8%', image: 'https://picsum.photos/seed/11/100' },
-                                 { artist: 'Nandita', streams: 28400, trend: '-3%', image: 'https://picsum.photos/seed/12/100' },
-                                 { artist: 'The Rockers', streams: 15600, trend: '+25%', image: 'https://picsum.photos/seed/13/100' },
-                                 { artist: 'Jazz Vibes', streams: 12000, trend: '+5%', image: 'https://picsum.photos/seed/14/100' },
-                             ].map((item, idx) => (
-                                 <div key={idx} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
-                                     <div className="flex items-center gap-3">
-                                         <span className={`text-xs font-bold w-4 text-center ${idx < 3 ? 'text-blue-600' : 'text-slate-400'}`}>#{idx + 1}</span>
-                                         <div className="w-8 h-8 rounded-full bg-slate-200 bg-cover bg-center shadow-sm" style={{ backgroundImage: `url(${item.image})` }}></div>
-                                         <div>
-                                             <h4 className="font-bold text-slate-800 text-xs">{item.artist}</h4>
-                                             <p className="text-[10px] text-slate-500">Artist</p>
-                                         </div>
-                                     </div>
-                                     <div className="text-right">
-                                         <p className="font-bold text-slate-800 text-xs">{formatNumber(item.streams)}</p>
-                                         <p className={`text-[9px] font-medium ${item.trend.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>{item.trend}</p>
-                                     </div>
-                                 </div>
-                             ))}
+                            <div className="p-4 text-center text-slate-400 text-sm">Belum ada data.</div>
                          </div>
                     </div>
                 </div>

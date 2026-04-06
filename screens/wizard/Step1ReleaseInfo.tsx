@@ -37,13 +37,16 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
                 setUserType(type);
                 setUserRole(profile.role);
                 
-                if (profile.role === 'Admin') {
+                if (profile.role === 'Admin' || profile.role === 'Operator') {
                     try {
                         const allUsers = await api.getUsers(token);
-                        setUsers(allUsers.map((u: any) => ({ 
-                            id: u.id, 
-                            username: u.full_name ? `${u.full_name} (${u.email})` : (u.name || u.username || u.email) 
-                        })));
+                        setUsers(allUsers
+                            .filter((u: any) => u.role !== 'Admin')
+                            .map((u: any) => ({ 
+                                id: u.id, 
+                                username: (u.full_name || u.name || u.username) + ` (${u.email})`
+                            }))
+                        );
                     } catch (error) {
                         console.error("Failed to fetch users list", error);
                     }
@@ -293,7 +296,7 @@ export const Step1ReleaseInfo: React.FC<Props> = ({ data, updateData, releaseTyp
       
       <div className="flex flex-col gap-6 items-start w-full">
           {/* Group 1: Main Info */}
-          {userRole === 'Admin' && (
+          {(userRole === 'Admin' || userRole === 'Operator') && (
               <div className="w-full bg-white border border-gray-200 rounded p-6 relative">
                   <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 absolute -top-2 left-4 bg-white px-2">Admin Controls</h3>
                   <div className="mb-3">

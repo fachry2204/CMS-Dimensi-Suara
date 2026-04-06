@@ -2,6 +2,10 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import db from '../config/db.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { syncUserToSheet } from '../utils/googleSheets.js';
+import { uploadLocalFileToDrive } from '../utils/googleDrive.js';
+import { createNotification, sendWhatsApp } from '../utils/notification.js';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -9,6 +13,8 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const SESSION_EXPIRES_IN = '24h';
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const router = express.Router();
 
@@ -37,7 +43,16 @@ router.post('/upload-doc', upload.single('file'), async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const filePath = `/uploads/profiles/${req.file.filename}`;
+        const baseType = req.body && req.body.type ? String(req.body.type).toLowerCase() : '';
+        const category = baseType.includes('contract') ? 'contract' : 'user-doc';
+        const uploaded = await uploadLocalFileToDrive({
+            absPath: req.file.path,
+            fileName: req.file.filename,
+            mimeType: req.file.mimetype,
+            category,
+            deleteLocalOnSuccess: true
+        });
+        const filePath = uploaded?.url || `/uploads/profiles/${req.file.filename}`;
         res.json({ path: filePath });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -83,7 +98,12 @@ router.get('/profile', authenticateToken, async (req, res) => {
             colNames.includes('aggregator_percentage') ? 'aggregator_percentage' : 'NULL as aggregator_percentage',
             colNames.includes('publishing_percentage') ? 'publishing_percentage' : 'NULL as publishing_percentage',
             colNames.includes('block_reason') ? 'block_reason' : 'NULL as block_reason',
-            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt'
+            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt',
+            colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
+            colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name',
+            colNames.includes('contract_doc_path') ? 'contract_doc_path' : 'NULL as contract_doc_path',
+            colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`
         ];
 
         const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`;
@@ -136,7 +156,12 @@ router.put('/profile', authenticateToken, upload.single('profilePicture'), async
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
         // Fetch updated user
-        const [rows] = await db.query('SELECT id, username, email, role, profile_picture FROM users WHERE id = ?', [userId]);
+        const [rows] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (rows[0].status === 'Approved') {
+            syncUserToSheet(rows[0]);
+        }
         
         res.json({ message: 'Profile updated successfully', user: rows[0] });
 
@@ -152,7 +177,8 @@ router.put('/profile', authenticateToken, upload.single('profilePicture'), async
 // GET USERS FOR AGGREGATOR CONTRACTS (Admin only)
 router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'operator') {
             return res.status(403).json({ error: 'Access denied' });
         }
 
@@ -163,17 +189,18 @@ router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
             'id',
             'username',
             'email',
-            'full_name',
+            colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
             'role',
             colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
             colNames.includes('joined_date') ? 'DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate' : 'NULL as joinedDate'
         ];
 
-        // Filter only users (not admins) for contracts usually
-        const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE role = 'User' ORDER BY id DESC`;
+        // Include all non-admin/operator accounts to avoid case/collation issues in hosting
+        const sql = `SELECT ${selectParts.join(', ')} FROM users WHERE UPPER(role) NOT IN ('ADMIN','OPERATOR') ORDER BY id DESC`;
         const [rows] = await db.query(sql);
         res.json(rows);
     } catch (err) {
+        console.error('Error fetching aggregator contracts:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -181,15 +208,16 @@ router.get('/contracts/aggregator', authenticateToken, async (req, res) => {
 // DELETE USER CONTRACT (Admin only) - Reset status to 'Not Generated'
 router.delete('/:id/contract', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'Admin') {
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'operator') {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
         
-        // Reset contract_status to 'Not Generated' instead of deleting user
-        await db.query(`UPDATE users SET contract_status = 'Not Generated' WHERE id = ?`, [userId]);
+        // Reset contract_status to 'Not Generated' and clear document path
+        await db.query(`UPDATE users SET contract_status = 'Not Generated', contract_doc_path = NULL WHERE id = ?`, [userId]);
         
-        res.json({ message: 'User contract status reset successfully' });
+        res.json({ message: 'User contract reset successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -238,6 +266,152 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
+// IMPERSONATE USER (Admin only) - alias route under /users for hosting compatibility
+router.post('/:id/impersonate', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const targetUserId = req.params.id;
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [targetUserId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const target = rows[0];
+        const payload = { id: target.id, role: target.role, impersonated_by: req.user.id };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: SESSION_MAX_AGE_MS
+        });
+        res.json({
+            token,
+            user: {
+                id: target.id,
+                username: target.username,
+                role: target.role,
+                status: target.status,
+                profile_picture: target.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Compatibility: support GET method for environments that block POST on custom paths
+router.get('/:id/impersonate', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const targetUserId = req.params.id;
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [targetUserId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const target = rows[0];
+        const payload = { id: target.id, role: target.role, impersonated_by: req.user.id };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: SESSION_MAX_AGE_MS
+        });
+        res.json({
+            token,
+            user: {
+                id: target.id,
+                username: target.username,
+                role: target.role,
+                status: target.status,
+                profile_picture: target.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Revert impersonation alias
+router.post('/impersonate/revert', authenticateToken, async (req, res) => {
+    try {
+        const adminId = req.user?.impersonated_by;
+        if (!adminId) {
+            return res.status(400).json({ error: 'Not currently impersonating' });
+        }
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [adminId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Admin user not found' });
+        }
+        const admin = rows[0];
+        const payload = { id: admin.id, role: admin.role };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: SESSION_MAX_AGE_MS
+        });
+        res.json({
+            token,
+            user: {
+                id: admin.id,
+                username: admin.username,
+                role: admin.role,
+                status: admin.status,
+                profile_picture: admin.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/impersonate/revert', authenticateToken, async (req, res) => {
+    try {
+        const adminId = req.user?.impersonated_by;
+        if (!adminId) {
+            return res.status(400).json({ error: 'Not currently impersonating' });
+        }
+        const [rows] = await db.query('SELECT id, username, role, status, profile_picture FROM users WHERE id = ?', [adminId]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Admin user not found' });
+        }
+        const admin = rows[0];
+        const payload = { id: admin.id, role: admin.role };
+        const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_EXPIRES_IN });
+        const secure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure,
+            maxAge: SESSION_MAX_AGE_MS
+        });
+        res.json({
+            token,
+            user: {
+                id: admin.id,
+                username: admin.username,
+                role: admin.role,
+                status: admin.status,
+                profile_picture: admin.profile_picture
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // CREATE USER (Admin/Operator)
 router.post('/', authenticateToken, async (req, res) => {
     try {
@@ -283,8 +457,16 @@ router.post('/', authenticateToken, async (req, res) => {
             await db.query('UPDATE users SET registered_at = COALESCE(registered_at, NOW()) WHERE id = ?', [result.insertId]);
         }
 
-        // Fetch created user with dates
-        const selectParts = [
+        // Fetch created user
+        const [fullUser] = await db.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (fullUser[0].status === 'Approved') {
+            syncUserToSheet(fullUser[0]);
+        }
+
+        // Fetch created user with formatted dates for response
+        const selectPartsResponse = [
             'id',
             'username as name',
             'email',
@@ -294,7 +476,7 @@ router.post('/', authenticateToken, async (req, res) => {
             hasRegisteredAt ? 'DATE_FORMAT(registered_at, "%Y-%m-%d") as registeredDate' : 'NULL as registeredDate',
             colNames.includes('rejected_date') ? 'DATE_FORMAT(rejected_date, "%Y-%m-%d") as rejectedDate' : 'NULL as rejectedDate'
         ];
-        const [rows] = await db.query(`SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`, [result.insertId]);
+        const [rows] = await db.query(`SELECT ${selectPartsResponse.join(', ')} FROM users WHERE id = ?`, [result.insertId]);
         res.status(201).json({ message: 'User created successfully', user: rows[0] });
     } catch (err) {
         if (err.code === 'ER_DUP_ENTRY') {
@@ -336,7 +518,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
             full_name, account_type, company_name, nik, phone, address,
             country, province, city, district, subdistrict, postal_code,
             pic_name, pic_position, pic_phone,
-            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path
+            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path,
+            bank_name, bank_account_number, bank_account_name
         } = req.body;
 
         const updates = [];
@@ -366,7 +549,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
             full_name, account_type, company_name, nik, phone, address,
             country, province, city, district, subdistrict, postal_code,
             pic_name, pic_position, pic_phone,
-            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path
+            ktp_doc_path, npwp_doc_path, signature_doc_path, nib_doc_path, kemenkumham_doc_path,
+            bank_name, bank_account_number, bank_account_name
         };
 
         const [cols] = await db.query('SHOW COLUMNS FROM users');
@@ -387,8 +571,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
         
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
-        // Fetch updated user
-        const selectParts = [
+        // Fetch updated user for sync
+        const [updatedUser] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (updatedUser[0].status === 'Approved') {
+            syncUserToSheet(updatedUser[0]);
+        }
+
+        // Fetch updated user for response
+        const selectPartsResponse = [
             'id', 'username as name', 'email', 'role', 'status',
             colNames.includes('full_name') ? 'full_name' : 'NULL as full_name',
             colNames.includes('account_type') ? 'account_type' : 'NULL as account_type',
@@ -396,9 +588,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
             colNames.includes('npwp_doc_path') ? 'npwp_doc_path' : 'NULL as npwp_doc_path',
             colNames.includes('signature_doc_path') ? 'signature_doc_path' : 'NULL as signature_doc_path',
             colNames.includes('nib_doc_path') ? 'nib_doc_path' : 'NULL as nib_doc_path',
-            colNames.includes('kemenkumham_doc_path') ? 'kemenkumham_doc_path' : 'NULL as kemenkumham_doc_path'
+            colNames.includes('kemenkumham_doc_path') ? 'kemenkumham_doc_path' : 'NULL as kemenkumham_doc_path',
+            colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
+            colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name'
         ];
-        const [rows] = await db.query(`SELECT ${selectParts.join(', ')} FROM users WHERE id = ?`, [userId]);
+        const [rows] = await db.query(`SELECT ${selectPartsResponse.join(', ')} FROM users WHERE id = ?`, [userId]);
         
         res.json({ message: 'User updated successfully', user: rows[0] });
     } catch (err) {
@@ -416,7 +611,13 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
         const userId = req.params.id;
-        const { status, reason, aggregator_percentage, publishing_percentage, contract_status } = req.body || {};
+        const [oldUserRows] = await db.query('SELECT status, contract_status FROM users WHERE id = ?', [userId]);
+        if (oldUserRows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const oldUser = oldUserRows[0];
+
+        const { status, reason, aggregator_percentage, publishing_percentage, contract_status, contract_doc_path } = req.body || {};
         const allowed = ['Pending', 'Review', 'Approved', 'Rejected', 'Active', 'Inactive', 'Blocked'];
         if (!allowed.includes(String(status))) {
             return res.status(400).json({ error: 'Invalid status value' });
@@ -452,6 +653,7 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         const hasAggregatorPercentage = colNames.includes('aggregator_percentage');
         const hasPublishingPercentage = colNames.includes('publishing_percentage');
         const hasContractStatus = colNames.includes('contract_status');
+        const hasContractDoc = colNames.includes('contract_doc_path');
 
         let updates = ['status = ?'];
         let params = [status];
@@ -459,6 +661,23 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         if (hasContractStatus && contract_status) {
             updates.push('contract_status = ?');
             params.push(contract_status);
+        }
+        if (hasContractDoc && contract_doc_path) {
+            updates.push('contract_doc_path = ?');
+            params.push(contract_doc_path);
+        }
+
+        if (hasContractStatus && contract_status === 'Done') {
+            if (!hasContractDoc) {
+                return res.status(400).json({ error: 'Contract document column not available' });
+            }
+            const rawDoc = String(contract_doc_path || '').trim();
+            const lowerDoc = rawDoc.toLowerCase();
+            const isPdf = lowerDoc.endsWith('.pdf');
+            const isUrl = /^https?:\/\//i.test(rawDoc);
+            if (!rawDoc || (!isPdf && !isUrl)) {
+                return res.status(400).json({ error: 'Kontrak wajib upload file PDF saat status Done' });
+            }
         }
 
         if (status === 'Approved') {
@@ -509,17 +728,54 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
         params.push(userId);
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
-        // Build select query based on available columns
-        const selectFields = ['id', 'username as name', 'email', 'role', 'status'];
-        if (hasJoinedDate) selectFields.push('DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate');
-        if (hasRejectionReason) selectFields.push('rejection_reason');
-        if (hasAggregatorPercentage) selectFields.push('aggregator_percentage');
-        if (hasPublishingPercentage) selectFields.push('publishing_percentage');
-        if (hasBlockReason) selectFields.push('block_reason');
-        if (hasBlockedAt) selectFields.push('DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt');
-        if (hasContractStatus) selectFields.push('contract_status');
+        // Fetch updated user for sync
+        const [updatedUser] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        
+        // Sync to Google Sheets only if status is Approved
+        if (updatedUser[0].status === 'Approved') {
+            syncUserToSheet(updatedUser[0]);
+        }
 
-        const [rows] = await db.query(`SELECT ${selectFields.join(', ')} FROM users WHERE id = ?`, [userId]);
+        // Send Notification (Notification table + WhatsApp)
+        try {
+            const user = updatedUser[0];
+            
+            // 1. Notification for Registration Status (if changed)
+            if (user.status !== oldUser.status) {
+                const msg = `Status Akun Anda telah diperbarui menjadi ${user.status}${user.rejection_reason ? ` (Alasan: ${user.rejection_reason})` : ''}`;
+                const templateKey = `user_register_status.${user.status}`;
+                const templateData = { 
+                    status: user.status, 
+                    reason: user.rejection_reason || user.block_reason || '' 
+                };
+                await createNotification(user.id, 'ACCOUNT_STATUS', msg, templateKey, templateData);
+            }
+
+            // 2. Notification for Contract Status (if changed)
+            if (hasContractStatus && user.contract_status !== oldUser.contract_status && user.contract_status !== 'Not Generated') {
+                const msg = `Status Kontrak Anda telah diperbarui menjadi ${user.contract_status}`;
+                const templateKey = `user_contract_status.${user.contract_status}`;
+                const templateData = { 
+                    status: user.contract_status
+                };
+                await createNotification(user.id, 'CONTRACT_STATUS', msg, templateKey, templateData);
+            }
+        } catch (notifErr) {
+            console.warn('Failed to send notifications:', notifErr.message);
+        }
+
+        // Build select query based on available columns for response
+        const selectFieldsResponse = ['id', 'username as name', 'email', 'role', 'status'];
+        if (hasJoinedDate) selectFieldsResponse.push('DATE_FORMAT(joined_date, "%Y-%m-%d") as joinedDate');
+        if (hasRejectionReason) selectFieldsResponse.push('rejection_reason');
+        if (hasAggregatorPercentage) selectFieldsResponse.push('aggregator_percentage');
+        if (hasPublishingPercentage) selectFieldsResponse.push('publishing_percentage');
+        if (hasBlockReason) selectFieldsResponse.push('block_reason');
+        if (hasBlockedAt) selectFieldsResponse.push('DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt');
+        if (hasContractStatus) selectFieldsResponse.push('contract_status');
+        if (hasContractDoc) selectFieldsResponse.push('contract_doc_path');
+
+        const [rows] = await db.query(`SELECT ${selectFieldsResponse.join(', ')} FROM users WHERE id = ?`, [userId]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -578,7 +834,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
             colNames.includes('publishing_percentage') ? 'publishing_percentage' : 'NULL as publishing_percentage',
             colNames.includes('contract_status') ? 'contract_status' : `'Not Generated' as contract_status`,
             colNames.includes('block_reason') ? 'block_reason' : 'NULL as block_reason',
-            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt'
+            colNames.includes('blocked_at') ? 'DATE_FORMAT(blocked_at, "%Y-%m-%d") as blockedAt' : 'NULL as blockedAt',
+            colNames.includes('bank_name') ? 'bank_name' : 'NULL as bank_name',
+            colNames.includes('bank_account_number') ? 'bank_account_number' : 'NULL as bank_account_number',
+            colNames.includes('bank_account_name') ? 'bank_account_name' : 'NULL as bank_account_name',
+            colNames.includes('contract_doc_path') ? 'contract_doc_path' : 'NULL as contract_doc_path'
         ];
         const sql = `SELECT ${parts.join(', ')} FROM users WHERE id = ?`;
         const [rows] = await db.query(sql, [userId]);

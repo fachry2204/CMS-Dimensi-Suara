@@ -10,16 +10,19 @@ interface Props {
   data: ReleaseData;
   updateData: (updates: Partial<ReleaseData> | ((prev: ReleaseData) => Partial<ReleaseData>)) => void;
   releaseType?: ReleaseType;
+  userRole?: string;
 }
 
-export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseType }) => {
+export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseType, userRole }) => {
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const originalDateInputRef = React.useRef<HTMLInputElement>(null);
   
   const minDate = new Date();
   minDate.setDate(minDate.getDate() + 14);
   const minDateStr = minDate.toISOString().split('T')[0];
-  const isDateInvalid = data.plannedReleaseDate && data.plannedReleaseDate < minDateStr;
+  const isAdmin = userRole === 'Admin';
+  const isDateInvalid = !isAdmin && data.plannedReleaseDate && data.plannedReleaseDate < minDateStr;
+  const isrcValue = (data as any).isrc || (Array.isArray((data as any).tracks) ? ((data as any).tracks[0]?.isrc || '') : '');
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -105,8 +108,15 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseT
                             </label>
                             <TextInput 
                                 label=""
-                                value={data.isrc}
-                                onChange={(e) => updateData({ isrc: e.target.value })}
+                                value={isrcValue}
+                                onChange={(e) => {
+                                  const next = e.target.value;
+                                  updateData((prev) => {
+                                    const prevTracks: any[] = Array.isArray((prev as any).tracks) ? (prev as any).tracks : [];
+                                    const nextTracks = prevTracks.length > 0 ? prevTracks.map((t, idx) => idx === 0 ? ({ ...t, isrc: next }) : t) : prevTracks;
+                                    return { isrc: next, tracks: nextTracks } as any;
+                                  });
+                                }}
                                 placeholder="Masukkan kode ISRC sebelumnya"
                                 className="w-full px-4 py-1.5 text-xs border border-gray-300 rounded bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all"
                             />
@@ -165,7 +175,7 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseT
                 <input 
                     ref={dateInputRef}
                     type="date" 
-                    min={minDateStr}
+                    min={isAdmin ? undefined : minDateStr}
                     value={data.plannedReleaseDate}
                     onChange={(e) => updateData({ plannedReleaseDate: e.target.value })}
                     className={`w-full px-4 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 transition-all pl-4 pr-10 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 ${
@@ -188,9 +198,11 @@ export const Step3ReleaseDetail: React.FC<Props> = ({ data, updateData, releaseT
                     Date must be at least 14 days from today.
                 </p>
             )}
-            <p className="text-xs text-blue-500 mt-2 font-medium">
-                Recommended: Set date at least 14 days from today
-            </p>
+            {!isAdmin && (
+              <p className="text-xs text-blue-500 mt-2 font-medium">
+                  Recommended: Set date at least 14 days from today
+              </p>
+            )}
         </div>
       </div>
     </div>

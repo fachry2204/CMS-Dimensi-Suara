@@ -1,4 +1,15 @@
 {
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "public",
+    "public_backup",
+    "uploads"
+  ],
   "compilerOptions": {
     "target": "ES2022",
     "experimentalDecorators": true,

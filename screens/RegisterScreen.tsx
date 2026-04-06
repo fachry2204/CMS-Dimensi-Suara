@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Building2, CheckCircle2, ChevronLeft } from 'lucide-react';
 import { api } from '../utils/api';
@@ -96,12 +96,20 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [picName, setPicName] = useState('');
   const [picPosition, setPicPosition] = useState('');
   const [picPhoneLocal, setPicPhoneLocal] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
 
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [npwpFile, setNpwpFile] = useState<File | null>(null);
   const [nibFile, setNibFile] = useState<File | null>(null);
   const [kemenkumhamFile, setKemenkumhamFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signatureMode, setSignatureMode] = useState<'DRAW' | 'UPLOAD'>('UPLOAD');
+  const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const signatureIsDrawingRef = useRef(false);
+  const signatureLastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const [signatureHasStroke, setSignatureHasStroke] = useState(false);
 
   const [docPaths, setDocPaths] = useState({
     ktpDocPath: '',
@@ -119,6 +127,8 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [cropField, setCropField] = useState<'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature' | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+  const [cropBaseScale, setCropBaseScale] = useState(1);
+  const [cropNaturalSize, setCropNaturalSize] = useState<{ w: number; h: number }>({ w: 1, h: 1 });
   const [cropScale, setCropScale] = useState(1);
   const [cropAngle, setCropAngle] = useState(0);
   const [cropTranslate, setCropTranslate] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -153,6 +163,80 @@ export const RegisterScreen: React.FC<Props> = () => {
   const [isPostalLoading, setIsPostalLoading] = useState(false);
 
   console.log('RegisterScreen rendering... checkingRegistration:', checkingRegistration, 'step:', step);
+
+  const clearSignatureData = () => {
+    setSignatureFile(null);
+    setSignatureHasStroke(false);
+    setDocPaths((prev) => ({ ...prev, signatureDocPath: '' }));
+    setDocPreviews((prev) => {
+      const { signature, ...rest } = prev;
+      return rest;
+    });
+
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+  };
+
+  const ensureSignatureCanvasReady = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const nextW = Math.max(1, Math.round(rect.width * dpr));
+    const nextH = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== nextW || canvas.height !== nextH) {
+      canvas.width = nextW;
+      canvas.height = nextH;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!signatureHasStroke) {
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    }
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+  };
+
+  const saveSignatureFromCanvas = async () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return false;
+    if (!signatureHasStroke) {
+      setDocError('Tanda tangan belum digambar.');
+      return false;
+    }
+    const dataUrl = canvas.toDataURL('image/png');
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) {
+      setDocError('Gagal menyimpan tanda tangan.');
+      return false;
+    }
+    setDocPreviews((prev) => ({ ...prev, signature: dataUrl }));
+    const file = new File([blob], `signature-${Date.now()}.png`, { type: 'image/png' });
+    await handleDocChange('signature', file);
+    return true;
+  };
+
+  useEffect(() => {
+    if (signatureMode !== 'DRAW') return;
+    ensureSignatureCanvasReady();
+    const onResize = () => ensureSignatureCanvasReady();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [signatureMode, signatureHasStroke]);
 
   useEffect(() => {
     if (country !== 'Indonesia') {
@@ -430,71 +514,159 @@ export const RegisterScreen: React.FC<Props> = () => {
     setDocError('');
     if (!file) return;
     if (file.type && file.type.startsWith('image/')) {
+      const CONTAINER_W = 720;
+      const CONTAINER_H = 480;
       const url = URL.createObjectURL(file);
       setCropField(field);
       setCropFile(file);
       setCropImageUrl(url);
+      setCropBaseScale(1);
+      setCropNaturalSize({ w: 1, h: 1 });
       setCropScale(1);
+      setCropAngle(0);
+      setCropTranslate({ x: 0, y: 0 });
+      setCropRect({ x: 0, y: 0, w: CONTAINER_W, h: CONTAINER_H });
+      (async () => {
+        try {
+          const bmp = await createImageBitmap(file);
+          const w = bmp.width;
+          const h = bmp.height;
+          bmp.close();
+          if (!w || !h) return;
+          const baseScale = Math.min(CONTAINER_W / w, CONTAINER_H / h);
+          setCropBaseScale(baseScale);
+          setCropNaturalSize({ w, h });
+          const dispW = w * baseScale;
+          const dispH = h * baseScale;
+          const x = Math.max(0, (CONTAINER_W - dispW) / 2);
+          const y = Math.max(0, (CONTAINER_H - dispH) / 2);
+          setCropRect({
+            x: Math.round(x),
+            y: Math.round(y),
+            w: Math.round(Math.min(CONTAINER_W - x, dispW)),
+            h: Math.round(Math.min(CONTAINER_H - y, dispH))
+          });
+        } catch {
+          const img = new Image();
+          img.onload = () => {
+            const w = img.width || img.naturalWidth;
+            const h = img.height || img.naturalHeight;
+            if (!w || !h) return;
+            const baseScale = Math.min(CONTAINER_W / w, CONTAINER_H / h);
+            setCropBaseScale(baseScale);
+            setCropNaturalSize({ w, h });
+            const dispW = w * baseScale;
+            const dispH = h * baseScale;
+            const x = Math.max(0, (CONTAINER_W - dispW) / 2);
+            const y = Math.max(0, (CONTAINER_H - dispH) / 2);
+            setCropRect({
+              x: Math.round(x),
+              y: Math.round(y),
+              w: Math.round(Math.min(CONTAINER_W - x, dispW)),
+              h: Math.round(Math.min(CONTAINER_H - y, dispH))
+            });
+          };
+          img.src = url;
+        }
+      })();
       return;
     }
     handleDocChange(field, file);
   };
 
-  const applyCrop = () => {
+  const applyCrop = async () => {
     if (!cropFile || !cropImageUrl || !cropField) return;
-    const img = new Image();
-    img.onload = () => {
-      const CONTAINER_W = 720;
-      const CONTAINER_H = 480;
-      const previewCanvas = document.createElement('canvas');
-      previewCanvas.width = CONTAINER_W;
-      previewCanvas.height = CONTAINER_H;
-      const pctx = previewCanvas.getContext('2d');
-      if (!pctx) return;
-      const baseScale = Math.min(CONTAINER_W / img.width, CONTAINER_H / img.height);
-      const scale = baseScale * cropScale;
-      pctx.clearRect(0, 0, CONTAINER_W, CONTAINER_H);
-      pctx.save();
-      pctx.translate(CONTAINER_W / 2 + cropTranslate.x, CONTAINER_H / 2 + cropTranslate.y);
-      pctx.rotate((cropAngle * Math.PI) / 180);
-      pctx.scale(scale, scale);
-      pctx.drawImage(img, -img.width / 2, -img.height / 2);
-      pctx.restore();
-      const sx = Math.max(0, Math.min(CONTAINER_W, cropRect.x));
-      const sy = Math.max(0, Math.min(CONTAINER_H, cropRect.y));
-      const sw = Math.max(1, Math.min(CONTAINER_W - sx, cropRect.w));
-      const sh = Math.max(1, Math.min(CONTAINER_H - sy, cropRect.h));
-      const imageData = pctx.getImageData(sx, sy, sw, sh);
-      const outCanvas = document.createElement('canvas');
-      const maxOut = 2048;
-      const scaleOut = Math.min(1, maxOut / Math.max(sw, sh));
-      outCanvas.width = Math.round(sw * scaleOut);
-      outCanvas.height = Math.round(sh * scaleOut);
-      const octx = outCanvas.getContext('2d');
-      if (!octx) return;
-      const tmp = document.createElement('canvas');
-      tmp.width = sw;
-      tmp.height = sh;
-      const tctx = tmp.getContext('2d');
-      if (!tctx) return;
-      tctx.putImageData(imageData, 0, 0);
-      octx.imageSmoothingQuality = 'high';
-      octx.drawImage(tmp, 0, 0, outCanvas.width, outCanvas.height);
-      const dataUrl = outCanvas.toDataURL('image/jpeg', 0.92);
-      outCanvas.toBlob((blob) => {
-        if (!blob) return;
-        const croppedFile = new File([blob], cropFile.name, { type: 'image/jpeg' });
-        setDocPreviews((prev) => ({ ...prev, [cropField]: dataUrl }));
-        handleDocChange(cropField, croppedFile);
-        URL.revokeObjectURL(cropImageUrl);
-        setCropField(null);
-        setCropFile(null);
-        setCropImageUrl(null);
-        setCropTranslate({ x: 0, y: 0 });
-        setCropAngle(0);
-      }, 'image/jpeg', 0.92);
-    };
-    img.src = cropImageUrl;
+    const CONTAINER_W = 720;
+    const CONTAINER_H = 480;
+    let srcW = 0;
+    let srcH = 0;
+    let src: ImageBitmap | HTMLImageElement | null = null;
+    let needsBitmapClose = false;
+
+    try {
+      const bmp = await createImageBitmap(cropFile);
+      src = bmp;
+      needsBitmapClose = true;
+      srcW = bmp.width;
+      srcH = bmp.height;
+    } catch {
+      const img = new Image();
+      img.src = cropImageUrl;
+      await img.decode();
+      src = img;
+      srcW = img.width || img.naturalWidth;
+      srcH = img.height || img.naturalHeight;
+    }
+
+    if (!src || !srcW || !srcH) {
+      if (needsBitmapClose && src && 'close' in src) (src as ImageBitmap).close();
+      return;
+    }
+
+    const previewCanvas = document.createElement('canvas');
+    previewCanvas.width = CONTAINER_W;
+    previewCanvas.height = CONTAINER_H;
+    const pctx = previewCanvas.getContext('2d');
+    if (!pctx) {
+      if (needsBitmapClose && src && 'close' in src) (src as ImageBitmap).close();
+      return;
+    }
+
+    const baseScale = cropBaseScale > 0 ? cropBaseScale : Math.min(CONTAINER_W / srcW, CONTAINER_H / srcH);
+    const scale = baseScale * cropScale;
+    pctx.clearRect(0, 0, CONTAINER_W, CONTAINER_H);
+    pctx.save();
+    pctx.translate(CONTAINER_W / 2 + cropTranslate.x, CONTAINER_H / 2 + cropTranslate.y);
+    pctx.rotate((cropAngle * Math.PI) / 180);
+    pctx.scale(scale, scale);
+    pctx.drawImage(src as any, -srcW / 2, -srcH / 2, srcW, srcH);
+    pctx.restore();
+
+    if (needsBitmapClose && src && 'close' in src) (src as ImageBitmap).close();
+
+    const sx = Math.round(Math.max(0, Math.min(CONTAINER_W, cropRect.x)));
+    const sy = Math.round(Math.max(0, Math.min(CONTAINER_H, cropRect.y)));
+    const sw = Math.round(Math.max(1, Math.min(CONTAINER_W - sx, cropRect.w)));
+    const sh = Math.round(Math.max(1, Math.min(CONTAINER_H - sy, cropRect.h)));
+    const imageData = pctx.getImageData(sx, sy, sw, sh);
+    const outCanvas = document.createElement('canvas');
+    const maxOut = 2048;
+    const scaleOut = Math.min(1, maxOut / Math.max(sw, sh));
+    outCanvas.width = Math.round(sw * scaleOut);
+    outCanvas.height = Math.round(sh * scaleOut);
+    const octx = outCanvas.getContext('2d');
+    if (!octx) return;
+    const tmp = document.createElement('canvas');
+    tmp.width = sw;
+    tmp.height = sh;
+    const tctx = tmp.getContext('2d');
+    if (!tctx) return;
+    tctx.putImageData(imageData, 0, 0);
+    octx.imageSmoothingQuality = 'high';
+    const isSignature = cropField === 'signature';
+    const outMime = isSignature ? 'image/png' : 'image/jpeg';
+    if (outMime === 'image/jpeg') {
+      octx.save();
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+      octx.restore();
+    }
+    octx.drawImage(tmp, 0, 0, outCanvas.width, outCanvas.height);
+    const dataUrl = outMime === 'image/png' ? outCanvas.toDataURL('image/png') : outCanvas.toDataURL('image/jpeg', 0.92);
+    outCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const baseName = (cropFile.name || 'upload').replace(/\.[^/.]+$/, '');
+      const fileName = outMime === 'image/png' ? `${baseName}.png` : `${baseName}.jpg`;
+      const croppedFile = new File([blob], fileName, { type: outMime });
+      setDocPreviews((prev) => ({ ...prev, [cropField]: dataUrl }));
+      handleDocChange(cropField, croppedFile);
+      URL.revokeObjectURL(cropImageUrl);
+      setCropField(null);
+      setCropFile(null);
+      setCropImageUrl(null);
+      setCropTranslate({ x: 0, y: 0 });
+      setCropAngle(0);
+    }, outMime, outMime === 'image/jpeg' ? 0.92 : undefined);
   };
 
   const cancelCrop = () => {
@@ -585,6 +757,14 @@ export const RegisterScreen: React.FC<Props> = () => {
 
   const goNextStep = async () => {
     setRegError('');
+    if (step === 3 && signatureMode === 'DRAW' && signatureHasStroke && !docPaths.signatureDocPath && !isUploadingDoc) {
+      setDocError('');
+      try {
+        await saveSignatureFromCanvas();
+      } catch (e: any) {
+        setDocError(e?.message || 'Gagal menyimpan tanda tangan.');
+      }
+    }
     if (!validateStep(step)) return;
     try {
       if (step === 1) {
@@ -696,7 +876,10 @@ export const RegisterScreen: React.FC<Props> = () => {
         npwpDocPath: docPaths.npwpDocPath,
         nibDocPath: docPaths.nibDocPath,
         kemenkumhamDocPath: docPaths.kemenkumhamDocPath,
-        signatureDocPath: docPaths.signatureDocPath
+        signatureDocPath: docPaths.signatureDocPath,
+        bank_name: bankName || null,
+        bank_account_number: bankAccountNumber || null,
+        bank_account_name: bankAccountName || null
       };
       await api.register(payload);
               navigate('/user-status', { state: { username: regEmail, status: 'Pending' } });
@@ -719,7 +902,7 @@ export const RegisterScreen: React.FC<Props> = () => {
   const renderDocUploadItem = (label: string, field: 'ktp' | 'npwp' | 'nib' | 'kemenkumham' | 'signature', file: File | null, required: boolean) => (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-semibold" style={{ color: branding.login_title_color }}>
+        <label className="text-[10px] font-semibold" style={{ color: '#000' }}>
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         {file && (
@@ -730,7 +913,143 @@ export const RegisterScreen: React.FC<Props> = () => {
         )}
       </div>
       <div className="space-y-3">
-        <label className="flex-1 px-3 py-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-[10px] text-slate-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50">
+        {field === 'signature' && (
+          <div className="flex items-center gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => {
+                if (signatureMode === 'DRAW') return;
+                setSignatureMode('DRAW');
+                clearSignatureData();
+                setTimeout(() => ensureSignatureCanvasReady(), 0);
+              }}
+              className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
+                signatureMode === 'DRAW'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              Draw
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (signatureMode === 'UPLOAD') return;
+                setSignatureMode('UPLOAD');
+                clearSignatureData();
+              }}
+              className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
+                signatureMode === 'UPLOAD'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              Upload
+            </button>
+          </div>
+        )}
+
+        {field === 'signature' && signatureMode === 'DRAW' && (
+          <div className="space-y-2">
+            <div className="rounded-xl border border-dashed border-green-300 bg-white p-2">
+              <canvas
+                ref={signatureCanvasRef}
+                className="w-full h-36 rounded-lg border border-slate-200 bg-white"
+                style={{ touchAction: 'none' }}
+                onPointerDown={(e) => {
+                  setDocError('');
+                  ensureSignatureCanvasReady();
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  const rect = canvas.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) return;
+                  signatureIsDrawingRef.current = true;
+                  signatureLastPointRef.current = { x, y };
+                  if (!signatureHasStroke) setSignatureHasStroke(true);
+                  try {
+                    canvas.setPointerCapture(e.pointerId);
+                  } catch {}
+                  ctx.fillStyle = '#0f172a';
+                  ctx.beginPath();
+                  ctx.arc(x, y, 1, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.moveTo(x, y);
+                }}
+                onPointerMove={(e) => {
+                  if (!signatureIsDrawingRef.current) return;
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  const last = signatureLastPointRef.current;
+                  const rect = canvas.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) return;
+                  if (!last) {
+                    signatureLastPointRef.current = { x, y };
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    return;
+                  }
+                  ctx.lineTo(x, y);
+                  ctx.stroke();
+                  signatureLastPointRef.current = { x, y };
+                  if (!signatureHasStroke) setSignatureHasStroke(true);
+                }}
+                onPointerUp={(e) => {
+                  signatureIsDrawingRef.current = false;
+                  signatureLastPointRef.current = null;
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  try {
+                    canvas.releasePointerCapture(e.pointerId);
+                  } catch {}
+                }}
+                onPointerCancel={(e) => {
+                  signatureIsDrawingRef.current = false;
+                  signatureLastPointRef.current = null;
+                  const canvas = signatureCanvasRef.current;
+                  if (!canvas) return;
+                  try {
+                    canvas.releasePointerCapture(e.pointerId);
+                  } catch {}
+                }}
+              />
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDocError('');
+                    clearSignatureData();
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-[10px] font-semibold border border-slate-200 text-slate-700 hover:border-slate-300"
+                >
+                  Hapus
+                </button>
+                <button
+                  type="button"
+                  disabled={isUploadingDoc || !signatureHasStroke}
+                  onClick={async () => {
+                    setDocError('');
+                    await saveSignatureFromCanvas();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold text-white ${
+                    isUploadingDoc || !signatureHasStroke ? 'bg-slate-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  Simpan Tanda Tangan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {field === 'signature' && signatureMode === 'DRAW' ? null : (
+        <label className="block w-full px-3 py-2 bg-green-50 border border-dashed border-green-300 rounded-xl text-[10px] text-green-700 cursor-pointer hover:border-green-400 hover:bg-green-100">
           <input
             type="file"
             accept={field === 'kemenkumham' ? 'application/pdf' : 'image/*,application/pdf'}
@@ -742,8 +1061,9 @@ export const RegisterScreen: React.FC<Props> = () => {
           />
           {file ? file.name : 'Pilih file'}
         </label>
+        )}
         {docPreviews[field] && (
-          <div className="w-24 h-24 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+          <div className="w-24 h-24 rounded-lg overflow-hidden border border-green-200 bg-green-50">
             <img
               src={docPreviews[field]}
               alt={label}
@@ -1137,24 +1457,58 @@ export const RegisterScreen: React.FC<Props> = () => {
 
   const renderStep3 = () => (
     <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold" style={{ color: '#000' }}>Nama Bank</label>
+            <input
+              type="text"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 text-[10px]"
+              placeholder="Contoh: BCA, Mandiri"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold" style={{ color: '#000' }}>No. Rekening</label>
+            <input
+              type="text"
+              value={bankAccountNumber}
+              onChange={(e) => setBankAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 text-[10px]"
+              placeholder="Masukkan nomor rekening"
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-[10px] font-semibold" style={{ color: '#000' }}>Nama Pemilik Rekening</label>
+            <input
+              type="text"
+              value={bankAccountName}
+              onChange={(e) => setBankAccountName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 text-[10px]"
+              placeholder="Sesuai buku tabungan"
+            />
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {accountType === 'COMPANY' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
             {renderDocUploadItem('Upload NIB', 'nib', nibFile, true)}
           </div>
         )}
         {accountType === 'COMPANY' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
             {renderDocUploadItem('Upload Dokumen Kemenkumham', 'kemenkumham', kemenkumhamFile, true)}
           </div>
         )}
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload KTP Direktur' : 'Upload KTP', 'ktp', ktpFile, true)}
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload NPWP Perusahaan' : 'Upload NPWP', 'npwp', npwpFile, true)}
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
           {renderDocUploadItem(accountType === 'COMPANY' ? 'Upload Tanda Tangan Direktur' : 'Upload Tanda Tangan', 'signature', signatureFile, true)}
         </div>
       </div>
@@ -1451,7 +1805,11 @@ export const RegisterScreen: React.FC<Props> = () => {
                   src={cropImageUrl || ''}
                   alt="Crop"
                   className="absolute left-1/2 top-1/2 select-none"
-                  style={{ transform: `translate(-50%, -50%) translate(${cropTranslate.x}px, ${cropTranslate.y}px) scale(${cropScale}) rotate(${cropAngle}deg)`, maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                  style={{
+                    width: cropNaturalSize.w,
+                    height: cropNaturalSize.h,
+                    transform: `translate(-50%, -50%) translate(${cropTranslate.x}px, ${cropTranslate.y}px) scale(${cropBaseScale * cropScale}) rotate(${cropAngle}deg)`
+                  }}
                   draggable={false}
                 />
                 <div

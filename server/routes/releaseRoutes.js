@@ -6,6 +6,11 @@ import { fileURLToPath } from 'url';
 import db from '../config/db.js';
 import { spawn } from 'child_process';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import xlsx from 'xlsx';
+import { ensureReleaseFolder, uploadLocalFileToDrive, deleteDriveFileByUrl } from '../utils/googleDrive.js';
+import { createNotification, sendWhatsApp } from '../utils/notification.js';
+import tls from 'tls';
+import net from 'net';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -162,6 +167,36 @@ const uploadTmpChunk = multer({
     storage: chunkStorage,
     limits: { fileSize: Math.min(MAX_BYTES, 16 * 1024 * 1024) }
 });
+
+const probeAudioFormat24_48 = (inPath) => {
+    return new Promise((resolve) => {
+        const args = [
+            '-v', 'error',
+            '-select_streams', 'a:0',
+            '-show_entries', 'stream=sample_rate,bits_per_raw_sample',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            inPath
+        ];
+        const proc = spawn('ffprobe', args);
+        let out = '';
+        let errOut = '';
+        proc.stdout.on('data', (d) => { out += d.toString(); });
+        proc.stderr.on('data', (d) => { errOut += d.toString(); });
+        proc.on('error', () => resolve({ ok: true, skipped: true, sampleRate: null, bitDepth: null }));
+        proc.on('exit', (code) => {
+            if (code !== 0) {
+                console.warn('ffprobe exited with code', code, errOut);
+                resolve({ ok: true, skipped: true, sampleRate: null, bitDepth: null });
+                return;
+            }
+            const parts = out.trim().split(/\s+/).filter(Boolean);
+            const sampleRate = parts[0] ? parseInt(parts[0], 10) : null;
+            const bitDepth = parts[1] ? parseInt(parts[1], 10) : null;
+            const ok = sampleRate === 48000 && bitDepth === 24;
+            resolve({ ok, skipped: false, sampleRate, bitDepth });
+        });
+    });
+};
 
 // Middleware wrapper to catch Multer errors with JSON response
 const handleUpload = (uploader) => (req, res, next) => {
@@ -399,6 +434,29 @@ router.post('/tmp/preview-clip', authenticateToken, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+router.post('/tmp/validate-audio', authenticateToken, async (req, res) => {
+    try {
+        const tmpPath = String(req.body?.tmpPath || '').trim();
+        if (!tmpPath) return res.status(400).json({ error: 'tmpPath required' });
+        const userId = String(req.user.id);
+        const normalized = tmpPath.replace(/^[\\/]+/, '');
+        const abs = path.join(__dirname, '../../', normalized);
+        const userBase = path.join(TMP_DIR, userId) + path.sep;
+        if (!abs.startsWith(userBase) || !fs.existsSync(abs)) {
+            return res.status(400).json({ error: 'Invalid tmpPath' });
+        }
+        const fmt = await probeAudioFormat24_48(abs);
+        res.json({
+            ok: Boolean(fmt.ok),
+            skipped: Boolean(fmt.skipped),
+            sampleRate: fmt.sampleRate ?? null,
+            bitDepth: fmt.bitDepth ?? null
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // CREATE NEW RELEASE
 // Expects: JSON data in 'data' field, and files in 'files'
 // But for simplicity in this MVP, we might accept JSON first, then files, OR multipart/form-data.
@@ -443,6 +501,8 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
             }
         }
 
+        const driveReleaseFolderId = await ensureReleaseFolder({ artistFolderName: artistDirName, releaseFolderName: releaseDirName });
+
         // Move uploaded files into targetDir and collect public paths
         const files = Array.isArray(req.files) ? req.files : [];
         const pathMap = {};
@@ -463,7 +523,15 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                 }
             }
             const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
-            pathMap[f.fieldname] = publicPath;
+            const uploaded = await uploadLocalFileToDrive({
+                absPath: destPath,
+                fileName: destName,
+                mimeType: f.mimetype,
+                parentFolderId: driveReleaseFolderId,
+                category: 'release',
+                deleteLocalOnSuccess: true
+            });
+            pathMap[f.fieldname] = uploaded?.url || publicPath;
         }
 
         // Helper: resolve absolute path from public tmp path (validates user scope)
@@ -523,7 +591,16 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                 try {
                     fs.copyFileSync(absTmp, outAbs);
                     try { fs.unlinkSync(absTmp); } catch {}
-                    pathMap['coverArt'] = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                    const mimeType = String(ext || '').toLowerCase() === '.png' ? 'image/png' : 'image/jpeg';
+                    const uploaded = await uploadLocalFileToDrive({
+                        absPath: outAbs,
+                        fileName: outName,
+                        mimeType,
+                        parentFolderId: driveReleaseFolderId,
+                        category: 'release',
+                        deleteLocalOnSuccess: true
+                    });
+                    pathMap['coverArt'] = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                 } catch (e) {
                     console.warn('Cover art move failed:', e);
                 }
@@ -641,7 +718,15 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                             try {
                                 fs.copyFileSync(absTmp, outAbs);
                                 try { fs.unlinkSync(absTmp); } catch {}
-                                audioPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                                const uploaded = await uploadLocalFileToDrive({
+                                    absPath: outAbs,
+                                    fileName: outName,
+                                    mimeType: 'audio/wav',
+                                    parentFolderId: driveReleaseFolderId,
+                                    category: 'release',
+                                    deleteLocalOnSuccess: true
+                                });
+                                audioPath = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                             } catch (copyErr) {
                                 console.warn('Audio copy failed:', copyErr.message || copyErr);
                             }
@@ -676,7 +761,15 @@ router.post('/', authenticateToken, handleUpload(upload.any()), async (req, res)
                             }
                             if (convertedClip) {
                                 try { fs.unlinkSync(absTmp); } catch {}
-                                clipPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
+                                const uploaded = await uploadLocalFileToDrive({
+                                    absPath: outAbs,
+                                    fileName: outName,
+                                    mimeType: 'audio/wav',
+                                    parentFolderId: driveReleaseFolderId,
+                                    category: 'release',
+                                    deleteLocalOnSuccess: true
+                                });
+                                clipPath = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${outName}`;
                             }
                         }
                     }
@@ -949,6 +1042,21 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
         const rel = rows[0];
         if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Access denied' });
+
+        try {
+            if (rel.cover_art && /^https?:\/\//i.test(String(rel.cover_art))) {
+                await deleteDriveFileByUrl(rel.cover_art);
+            }
+            const [trowsAll] = await db.query('SELECT audio_file, audio_clip, ipl_file FROM tracks WHERE release_id = ?', [releaseId]);
+            for (const t of trowsAll) {
+                const urls = [t.audio_file, t.audio_clip, t.ipl_file].filter(Boolean);
+                for (const u of urls) {
+                    if (/^https?:\/\//i.test(String(u))) {
+                        await deleteDriveFileByUrl(u);
+                    }
+                }
+            }
+        } catch {}
         const releasesBase = path.join(__dirname, '../../uploads/releases');
         const resolveDirFromPath = (p) => {
             if (!p || typeof p !== 'string') return null;
@@ -987,6 +1095,86 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// UPDATE ARTIST SPOTIFY LINK (Global)
+router.post('/artist/update-spotify', authenticateToken, async (req, res) => {
+    try {
+        const { artistName, spotifyLink } = req.body;
+        if (!artistName) return res.status(400).json({ error: 'Artist name is required' });
+
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const normTarget = String(artistName).trim().toLowerCase();
+
+        // 1. Update Releases
+        const [releases] = await db.query('SELECT id, primary_artists FROM releases');
+        for (const rel of releases) {
+            let artists = [];
+            try {
+                artists = typeof rel.primary_artists === 'string' ? JSON.parse(rel.primary_artists) : (rel.primary_artists || []);
+            } catch { continue; }
+
+            let changed = false;
+            const updated = artists.map(a => {
+                const name = typeof a === 'string' ? a : a.name;
+                if (name && name.trim().toLowerCase() === normTarget) {
+                    changed = true;
+                    return { name, spotifyLink };
+                }
+                return a;
+            });
+
+            if (changed) {
+                await db.query('UPDATE releases SET primary_artists = ? WHERE id = ?', [JSON.stringify(updated), rel.id]);
+            }
+        }
+
+        // 2. Update Tracks
+        const [tracks] = await db.query('SELECT id, primary_artists, featured_artists FROM tracks');
+        for (const track of tracks) {
+            let pArtists = [];
+            let fArtists = [];
+            try {
+                pArtists = typeof track.primary_artists === 'string' ? JSON.parse(track.primary_artists) : (track.primary_artists || []);
+                fArtists = typeof track.featured_artists === 'string' ? JSON.parse(track.featured_artists) : (track.featured_artists || []);
+            } catch { continue; }
+
+            let changed = false;
+            const updatedP = pArtists.map(a => {
+                const name = typeof a === 'string' ? a : a.name;
+                if (name && name.trim().toLowerCase() === normTarget) {
+                    changed = true;
+                    return { name, spotifyLink };
+                }
+                return a;
+            });
+
+            const updatedF = fArtists.map(a => {
+                const name = typeof a === 'string' ? a : a.name;
+                if (name && name.trim().toLowerCase() === normTarget) {
+                    changed = true;
+                    return { name, spotifyLink };
+                }
+                return a;
+            });
+
+            if (changed) {
+                await db.query('UPDATE tracks SET primary_artists = ?, featured_artists = ? WHERE id = ?', [
+                    JSON.stringify(updatedP),
+                    JSON.stringify(updatedF),
+                    track.id
+                ]);
+            }
+        }
+
+        res.json({ message: 'Artist Spotify link updated successfully' });
+    } catch (err) {
+        console.error('Update Artist Spotify Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cover_art')), async (req, res) => {
     const releaseId = req.params.id;
     try {
@@ -1007,9 +1195,10 @@ router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cov
         } catch {
             primaryArtists = [];
         }
-        const primaryArtist = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
-        const artistDirName = sanitizeName(primaryArtist).substring(0, 80) || 'Unknown_Artist';
-        const releaseDirName = sanitizeName(`${primaryArtist} - ${rel.title}`).substring(0, 80) || 'Untitled_Release';
+        const p0 = (Array.isArray(primaryArtists) && primaryArtists[0]) ? primaryArtists[0] : 'Unknown_Artist';
+        const primaryArtistName = (typeof p0 === 'object' && p0 !== null && p0.name) ? p0.name : p0;
+        const artistDirName = sanitizeName(primaryArtistName).substring(0, 80) || 'Unknown_Artist';
+        const releaseDirName = sanitizeName(`${primaryArtistName} - ${rel.title}`).substring(0, 80) || 'Untitled_Release';
         const targetDir = path.join(RELEASES_DIR, artistDirName, releaseDirName);
 
         if (!fs.existsSync(UPLOADS_ROOT)) fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
@@ -1031,7 +1220,16 @@ router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cov
             }
         }
 
-        const publicPath = `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
+        const driveReleaseFolderId = await ensureReleaseFolder({ artistFolderName: artistDirName, releaseFolderName: releaseDirName });
+        const uploaded = await uploadLocalFileToDrive({
+            absPath: destPath,
+            fileName: destName,
+            mimeType: file.mimetype,
+            parentFolderId: driveReleaseFolderId,
+            category: 'release',
+            deleteLocalOnSuccess: true
+        });
+        const publicPath = uploaded?.url || `/uploads/releases/${artistDirName}/${releaseDirName}/${destName}`;
         const nextStatus = req.user.role === 'Admin' ? rel.status : 'Request Edit';
         await db.query('UPDATE releases SET cover_art = ?, status = ? WHERE id = ?', [publicPath, nextStatus, releaseId]);
 
@@ -1045,15 +1243,27 @@ router.post('/:id/cover-art', authenticateToken, handleUpload(upload.single('cov
 // GET MY RELEASES
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        let query = 'SELECT * FROM releases';
+        const [userCols] = await db.query('SHOW COLUMNS FROM users');
+        const userColNames = (userCols || []).map(c => c.Field);
+        const userSelectParts = [
+            'u.id as owner_user_id',
+            userColNames.includes('account_type') ? 'u.account_type as owner_account_type' : 'NULL as owner_account_type',
+            userColNames.includes('company_name') ? 'u.company_name as owner_company_name' : 'NULL as owner_company_name',
+            userColNames.includes('full_name') ? 'u.full_name as owner_full_name' : 'NULL as owner_full_name',
+            userColNames.includes('name') ? 'u.name as owner_name_field' : 'NULL as owner_name_field',
+            userColNames.includes('username') ? 'u.username as owner_username' : 'NULL as owner_username',
+            userColNames.includes('email') ? 'u.email as owner_email' : 'NULL as owner_email'
+        ];
+
+        let query = `SELECT r.*, ${userSelectParts.join(', ')} FROM releases r LEFT JOIN users u ON u.id = r.user_id`;
         const params = [];
 
-        if (req.user.role !== 'Admin') {
-            query += ' WHERE user_id = ?';
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            query += ' WHERE r.user_id = ?';
             params.push(req.user.id);
         }
 
-        query += ' ORDER BY submission_date DESC';
+        query += ' ORDER BY r.submission_date DESC';
 
         const [releases] = await db.query(query, params);
 
@@ -1089,10 +1299,18 @@ router.get('/', authenticateToken, async (req, res) => {
             const submissionDate = r.submission_date;
             const plannedReleaseDate = r.planned_release_date;
             const originalReleaseDate = r.original_release_date;
+            const ownerDisplayName = (() => {
+                const accountType = String(r.owner_account_type || '').toUpperCase();
+                const company = r.owner_company_name;
+                if (accountType === 'COMPANY' && company) return company;
+                return r.owner_full_name || r.owner_name_field || r.owner_username || r.owner_email || '';
+            })();
 
             return {
                 id: r.id,
                 user_id: r.user_id,
+                ownerDisplayName,
+                ownerEmail: r.owner_email || null,
                 company_name: r.company_name,
                 user_full_name: r.user_full_name,
                 owner_name: r.owner_name,
@@ -1134,6 +1352,25 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
 
         if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Access denied' });
 
+        // --- VALIDATION FOR RELEASED STATUS ---
+        if (status === 'Released') {
+            if (!upc || String(upc).trim() === '') {
+                return res.status(400).json({ error: 'UPC wajib diisi untuk status Released' });
+            }
+            if (!Array.isArray(tracks) || tracks.length === 0) {
+                // If tracks not provided in body, check existing tracks in DB
+                const [existingTracks] = await db.query('SELECT id, isrc FROM tracks WHERE release_id = ?', [releaseId]);
+                if (existingTracks.some(t => !t.isrc || String(t.isrc).trim() === '')) {
+                    return res.status(400).json({ error: 'Seluruh Track wajib memiliki ISRC untuk status Released' });
+                }
+            } else {
+                // If tracks provided in body, validate them
+                if (tracks.some(t => !t.isrc || String(t.isrc).trim() === '')) {
+                    return res.status(400).json({ error: 'Seluruh Track wajib memiliki ISRC untuk status Released' });
+                }
+            }
+        }
+
         const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
         const releaseColNames = releaseCols.map(c => c.Field);
         const setParts = [];
@@ -1151,11 +1388,11 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
             setParts.push('upc = ?');
             vals.push(upc || null);
         }
-        if (releaseColNames.includes('rejection_reason')) {
+        if (releaseColNames.includes('rejection_reason') && Object.prototype.hasOwnProperty.call(req.body, 'rejectionReason')) {
             setParts.push('rejection_reason = ?');
             vals.push(rejectionReason || null);
         }
-        if (releaseColNames.includes('rejection_description')) {
+        if (releaseColNames.includes('rejection_description') && Object.prototype.hasOwnProperty.call(req.body, 'rejectionDescription')) {
             setParts.push('rejection_description = ?');
             vals.push(rejectionDescription || null);
         }
@@ -1165,6 +1402,236 @@ router.post('/:id/workflow', authenticateToken, async (req, res) => {
                 `UPDATE releases SET ${setParts.join(', ')} WHERE id = ?`,
                 [...vals, releaseId]
             );
+        }
+
+        // Create notification when status changes
+        try {
+            if (typeof status === 'string' && status && status !== release.status) {
+                const [users] = await db.query('SELECT id FROM users WHERE id = ?', [release.user_id]);
+                if (users.length > 0) {
+                    // Pre-calculate ISRC block for both WhatsApp and Email
+                    let isrcBlock = '';
+                    try {
+                        const [trackRows] = await db.query('SELECT title, isrc FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [releaseId]);
+                        const tracksList = Array.isArray(trackRows) ? trackRows : [];
+                        const relTypeRaw = String(release.release_type || release.type || '').toUpperCase();
+                        const isSingle = relTypeRaw.includes('SINGLE') || tracksList.length === 1;
+                        if (isSingle) {
+                            const code = String(tracksList[0]?.isrc || '').trim();
+                            if (code) {
+                                isrcBlock = `*ISRC:* ${code}`;
+                            }
+                        } else {
+                            const items = tracksList.filter(t => t && String(t.isrc || '').trim().length > 0);
+                            if (items.length > 0) {
+                                isrcBlock = items.map(t => `*${t.title || 'Track'}:* ${t.isrc}`).join('\n');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error calculating ISRC block:', e);
+                    }
+
+                    const msg = `Status Rilisan "${release.title}" berubah menjadi ${status}`;
+                    const templateKey = `release_status.${status}`;
+                    const templateData = { 
+                        title: release.title, 
+                        status: status,
+                        upc: upc || release.upc || '',
+                        reason: rejectionReason || release.rejection_reason || '',
+                        description: rejectionDescription || release.rejection_description || '',
+                        isrcBlock: isrcBlock
+                    };
+                    
+                    await createNotification(release.user_id, 'RELEASE_STATUS', msg, templateKey, templateData);
+
+                    try {
+                        const [smtpRows] = await db.query('SELECT setting_value FROM settings WHERE setting_key = ?', ['smtp_settings']);
+                        if (smtpRows.length > 0 && smtpRows[0].setting_value) {
+                            const smtp = JSON.parse(smtpRows[0].setting_value);
+                            if (smtp.host && smtp.port && smtp.from_email) {
+                                const [ownerRows] = await db.query('SELECT email, full_name FROM users WHERE id = ?', [release.user_id]);
+                                if (ownerRows.length > 0) {
+                                    const to = ownerRows[0].email || '';
+                                    const fullName = ownerRows[0].full_name || '';
+                                    if (to) {
+                                        let subject = `Update Status Rilisan: ${release.title} → ${status}`;
+                                        
+                                        // Email version of ISRC block (with HTML)
+                                        let emailIsrcBlock = '';
+                                        if (isrcBlock) {
+                                            const relTypeRaw = String(release.release_type || release.type || '').toUpperCase();
+                                            const isSingle = relTypeRaw.includes('SINGLE');
+                                            if (isSingle) {
+                                                emailIsrcBlock = `<div style="font-size:14px;color:#0f172a"><strong>ISRC:</strong> ${isrcBlock.replace('*ISRC:* ', '')}</div>`;
+                                            } else {
+                                                emailIsrcBlock = `
+          <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin:16px 0 8px">Daftar Track &amp; ISRC</div>
+          ${isrcBlock.split('\n').map(line => `<div style="font-size:14px;color:#0f172a">${line.replace(/\*(.*?)\*/g, '<strong>$1</strong>')}</div>`).join('')}
+        `;
+                                            }
+                                        }
+
+                                        let html = `
+<div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:24px">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+    <tr>
+      <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+        <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+        <div style="font-size:12px;opacity:.9">Music Distribution Update</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:24px">
+        <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo ${fullName || 'User'},</div>
+        <div style="font-size:14px;color:#334155;line-height:1.6">
+          Status rilisan Anda telah diperbarui.
+        </div>
+        <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+          <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+          <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> ${release.title}</div>
+          <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> ${status}</div>
+          ${release.upc ? `<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> ${release.upc}</div>` : ''}
+          ${emailIsrcBlock}
+        </div>
+        <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+      </td>
+    </tr>
+  </table>
+</div>`;
+                                        try {
+                                            const key = `release_status.${status}`;
+                                            const [tplRows] = await db.query('SELECT subject_template, body_template FROM email_templates WHERE template_key = ?', [key]);
+                                            if (tplRows.length > 0) {
+                                                const t = tplRows[0];
+                                                const replace = (s) => String(s || '')
+                                                    .replaceAll('{{fullName}}', fullName || 'User')
+                                                    .replaceAll('{{title}}', release.title || '')
+                                                    .replaceAll('{{status}}', status || '')
+                                                    .replaceAll('{{upc}}', upc || release.upc || '')
+                                                    .replaceAll('{{isrcBlock}}', emailIsrcBlock)
+                                                    .replaceAll('{{reason}}', String(rejectionReason || release.rejection_reason || ''))
+                                                    .replaceAll('{{description}}', String(rejectionDescription || release.rejection_description || ''));
+                                                subject = replace(t.subject_template);
+                                                html = replace(t.body_template);
+                                            }
+                                        } catch {}
+                                        const sendEmail = ({ host, port, secure, user, pass, from_email, to, subject, html }) => {
+                                            return new Promise((resolve, reject) => {
+                                                const socket = secure ? tls.connect(port, host, { servername: host }, onConnect) : net.connect(port, host, onConnect);
+                                                let buffer = '';
+                                                let closed = false;
+                                                function cleanup(err) { if (closed) return; closed = true; try { socket.end(); } catch {} if (err) reject(err); else resolve({ ok: true }); }
+                                                function expect(code) {
+                                                    return new Promise((res, rej) => {
+                                                        const onData = (data) => {
+                                                            buffer += data.toString('utf8');
+                                                            const lines = buffer.split(/\r?\n/).filter(l => l.trim().length > 0);
+                                                            const last = lines[lines.length - 1] || '';
+                                                            const m = last.match(/^(\d{3})/);
+                                                            if (m) {
+                                                                const lastCode = parseInt(m[1], 10);
+                                                                if (lastCode === code || (Array.isArray(code) && code.includes(lastCode))) {
+                                                                    socket.removeListener('data', onData);
+                                                                    buffer = '';
+                                                                    res(last);
+                                                                } else if (lastCode >= 400) {
+                                                                    socket.removeListener('data', onData);
+                                                                    rej(new Error(`SMTP error ${lastCode}: ${last}`));
+                                                                }
+                                                            }
+                                                        };
+                                                        socket.on('data', onData);
+                                                    });
+                                                }
+                                                function send(cmd) { return new Promise((res, rej) => { try { socket.write(cmd + '\r\n', 'utf8', res); } catch (e) { rej(e); } }); }
+                                                function onConnect() {
+                                                    (async () => {
+                                                        try {
+                                                            await expect(220);
+                                                            await send(`EHLO localhost`);
+                                                            await expect(250);
+                                                            if (user && pass) {
+                                                                await send('AUTH LOGIN');
+                                                                await expect(334);
+                                                                await send(Buffer.from(String(user)).toString('base64'));
+                                                                await expect(334);
+                                                                await send(Buffer.from(String(pass)).toString('base64'));
+                                                                await expect(235);
+                                                            }
+                                                            await send(`MAIL FROM:<${from_email}>`);
+                                                            await expect(250);
+                                                            await send(`RCPT TO:<${to}>`);
+                                                            await expect([250, 251]);
+                                                            await send('DATA');
+                                                            await expect(354);
+                                                            const now = new Date();
+                                                            const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@${String(from_email).split('@')[1] || 'localhost'}>`;
+                                                            const msg = [
+                                                                `From: ${smtp.from_name ? `${smtp.from_name} <${smtp.from_email}>` : `<${smtp.from_email}>`}`,
+                                                                `To: <${to}>`,
+                                                                `Subject: ${subject}`,
+                                                                `Date: ${now.toUTCString()}`,
+                                                                `Message-ID: ${messageId}`,
+                                                                `Reply-To: ${smtp.from_email}`,
+                                                                'X-Mailer: DimensiSuaraCMS/1.0',
+                                                                'MIME-Version: 1.0',
+                                                                'Content-Type: text/html; charset=utf-8',
+                                                                'Content-Transfer-Encoding: 8bit',
+                                                                '',
+                                                                html,
+                                                                ''
+                                                            ].join('\r\n');
+                                                            await send(msg + '\r\n.');
+                                                            const accepted = await expect(250);
+                                                            await send('QUIT');
+                                                            cleanup();
+                                                            if (logId) {
+                                                                await db.query('UPDATE email_logs SET status = ?, sent_at = NOW(), server_response = ? WHERE id = ?', ['SENT', accepted?.slice(0, 480) || null, logId]);
+                                                            }
+                                                        } catch (err) {
+                                                            cleanup(err);
+                                                        }
+                                                    })();
+                                                }
+                                                socket.once('error', (e) => cleanup(e));
+                                                socket.once('close', () => cleanup(new Error('SMTP connection closed')));
+                                            });
+                                        };
+                                        let logId = null;
+                                        try {
+                                            const [logRes] = await db.query(
+                                                'INSERT INTO email_logs (user_id, related_type, related_id, to_email, subject, status) VALUES (?, ?, ?, ?, ?, ?)',
+                                                [release.user_id, 'RELEASE_STATUS', release.id, to, subject, 'PENDING']
+                                            );
+                                            logId = logRes?.insertId || null;
+                                        } catch {}
+                                        try {
+                                            await sendEmail({
+                                                host: smtp.host,
+                                                port: Number(smtp.port || 587),
+                                                secure: Boolean(smtp.secure),
+                                                user: smtp.user,
+                                                pass: smtp.pass,
+                                                from_email: smtp.from_email,
+                                                to,
+                                                subject,
+                                                html
+                                            });
+                                        } catch (err) {
+                                            if (logId) {
+                                                const errMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+                                                await db.query('UPDATE email_logs SET status = ?, error_message = ? WHERE id = ?', ['FAILED', errMsg, logId]);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to insert release notification:', e.message);
         }
 
         if (Array.isArray(tracks) && tracks.length > 0) {
@@ -1278,4 +1745,410 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
+router.get('/import/template', authenticateToken, async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const headers = [
+            'Title','Version','ReleaseType','Language','PrimaryArtists',
+            'RecordLabel',
+            'Genre','SubGenre','PLine','CLine',
+            'PlannedReleaseDate','OriginalReleaseDate',
+            'DistributionTargets','DistributionHistory',
+            'OwnerEmail','Aggregator','UPC','ISRC','Author','Komposer'
+        ];
+        const sample = [{
+            Title: 'Contoh Lagu Demo',
+            Version: 'Original',
+            ReleaseType: 'SINGLE',
+            Language: 'Indonesian',
+            PrimaryArtists: 'Artist Satu, Artist Dua',
+            Label: 'Dimensi Suara',
+            Genre: 'Pop',
+            SubGenre: 'Indie Pop',
+            PLine: '2026 Dimensi Suara',
+            CLine: '2026 Dimensi Suara',
+            PlannedReleaseDate: new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10),
+            OriginalReleaseDate: '',
+            DistributionTargets: 'SOCIAL,YOUTUBE_MUSIC,ALL_DSP',
+            RecordLabel: 'Dimensi Suara Records',
+            DistributionHistory: 'Yes',
+            OwnerEmail: 'owner@example.com',
+            Aggregator: 'SoundOn',
+            UPC: '123456789012',
+            ISRC: 'USABC1234567',
+            Author: 'Lyric Writer Name',
+            Komposer: 'Composer Name'
+        }];
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(sample, { header: headers });
+        ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length, 18) }));
+        xlsx.utils.book_append_sheet(wb, ws, 'Releases');
+        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="release_import_template.xlsx"');
+        res.send(buf);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/import', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        const wb = xlsx.readFile(req.file.path);
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rows = xlsx.utils.sheet_to_json(ws, { defval: '' });
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return res.status(400).json({ error: 'Empty file' });
+        }
+        const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
+        const releaseColNames = releaseCols.map(c => c.Field);
+        let inserted = 0;
+        const errors = [];
+        for (const row of rows) {
+            try {
+                const title = String(row.Title || '').trim();
+                if (!title) { errors.push('Missing Title'); continue; }
+                const version = String(row.Version || 'Original').trim();
+                const release_type = (String(row.ReleaseType || 'SINGLE').toUpperCase() === 'ALBUM') ? 'ALBUM' : 'SINGLE';
+                const primary_artists = JSON.stringify(String(row.PrimaryArtists || '').split(',').map(s=>s.trim()).filter(Boolean));
+                const record_label = row.RecordLabel || null;
+                const p_line = row.PLine || null;
+                const c_line = row.CLine || null;
+                const genre = row.Genre || null;
+                const sub_genre = row.SubGenre || null;
+                const language = row.Language || null;
+                const planned_release_date = row.PlannedReleaseDate || null;
+                const original_release_date = row.OriginalReleaseDate || null;
+                const upc = row.UPC || null;
+                const isrcSingle = row.ISRC || null;
+                const author = row.Author || null;
+                const komposer = row.Komposer || null;
+                const distribution_targets = (() => {
+                    const ids = String(row.DistributionTargets || '').split(',').map(s=>s.trim()).filter(Boolean);
+                    if (ids.length === 0) return null;
+                    const optionMap = {
+                        'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: '/assets/platforms/social.svg' },
+                        'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: '/assets/platforms/youtube-music.svg' },
+                        'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: '/assets/platforms/alldsp.svg' },
+                    };
+                    return JSON.stringify(ids.map(id => optionMap[id]).filter(Boolean));
+                })();
+                const distribution_history = (() => {
+                    const raw = String(row.DistributionHistory || '').trim().toLowerCase();
+                    if (!raw) return null;
+                    const yes = ['yes','y','true','1'].includes(raw);
+                    return JSON.stringify(yes);
+                })();
+                const aggregator = row.Aggregator || null;
+                let user_id = req.user.id;
+                if (row.OwnerEmail) {
+                    const [users] = await db.query('SELECT id FROM users WHERE email = ?', [row.OwnerEmail]);
+                    if (users.length > 0) user_id = users[0].id;
+                }
+                const cols = ['user_id','title','version','release_type','primary_artists'];
+                const vals = [user_id, title, version, release_type, primary_artists];
+                if (releaseColNames.includes('cover_art')) { cols.push('cover_art'); vals.push(null); }
+                if (releaseColNames.includes('record_label')) { cols.push('record_label'); vals.push(record_label); }
+                if (releaseColNames.includes('p_line')) { cols.push('p_line'); vals.push(p_line); }
+                if (releaseColNames.includes('c_line')) { cols.push('c_line'); vals.push(c_line); }
+                if (releaseColNames.includes('genre')) { cols.push('genre'); vals.push(genre); }
+                if (releaseColNames.includes('sub_genre')) { cols.push('sub_genre'); vals.push(sub_genre); }
+                if (releaseColNames.includes('language')) { cols.push('language'); vals.push(language); }
+                if (releaseColNames.includes('planned_release_date')) { cols.push('planned_release_date'); vals.push(planned_release_date || null); }
+                if (releaseColNames.includes('original_release_date')) { cols.push('original_release_date'); vals.push(original_release_date || null); }
+                if (releaseColNames.includes('distribution_targets')) { cols.push('distribution_targets'); vals.push(distribution_targets || JSON.stringify([])); }
+                if (releaseColNames.includes('aggregator')) { cols.push('aggregator'); vals.push(aggregator); }
+                if (releaseColNames.includes('upc')) { cols.push('upc'); vals.push(upc); }
+                if (releaseColNames.includes('distribution_history')) { cols.push('distribution_history'); vals.push(distribution_history); }
+                cols.push('submission_date'); vals.push(new Date());
+                cols.push('status'); vals.push('Pending');
+                const placeholders = `(${cols.map(()=>'?').join(', ')})`;
+                const [insertRes] = await db.query(`INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`, vals);
+                const newReleaseId = insertRes.insertId;
+
+                // If ISRC provided, create a placeholder track
+                if (isrcSingle) {
+                    try {
+                        const [trackCols] = await db.query('SHOW COLUMNS FROM tracks');
+                        const trackColNames = trackCols.map(c => c.Field);
+                        const tCols = ['release_id','track_number','title','version','primary_artists','isrc'];
+                        const tVals = [newReleaseId, 1, title, version, primary_artists, isrcSingle];
+                        if (trackColNames.includes('composer')) { tCols.push('composer'); tVals.push(komposer || null); }
+                        if (trackColNames.includes('lyricist')) { 
+                            tCols.push('lyricist'); 
+                            tVals.push(author ? JSON.stringify([author]) : null); 
+                        }
+                        await db.query(`INSERT INTO tracks (${tCols.join(', ')}) VALUES (${tCols.map(()=>'?').join(', ')})`, tVals);
+                    } catch (e) {
+                        errors.push(`Track create error for "${title}": ${e.message}`);
+                    }
+                }
+                inserted += 1;
+            } catch (e) {
+                errors.push(e.message || 'Row insert error');
+            }
+        }
+        res.json({ inserted, errors });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Preview import: parse Excel and return rows without inserting
+const importPreviewHandler = async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        const wb = xlsx.readFile(req.file.path);
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rows = xlsx.utils.sheet_to_json(ws, { defval: '' });
+        const normalized = rows.map((row) => ({
+            Title: String(row.Title || '').trim(),
+            Version: String(row.Version || 'Original').trim(),
+            ReleaseType: String(row.ReleaseType || 'SINGLE').trim(),
+            Language: String(row.Language || '').trim(),
+            PrimaryArtists: String(row.PrimaryArtists || '').trim(),
+            RecordLabel: row.RecordLabel || '',
+            Genre: row.Genre || '',
+            SubGenre: row.SubGenre || '',
+            PLine: row.PLine || '',
+            CLine: row.CLine || '',
+            PlannedReleaseDate: row.PlannedReleaseDate || '',
+            OriginalReleaseDate: row.OriginalReleaseDate || '',
+            DistributionTargets: row.DistributionTargets || '',
+            DistributionHistory: row.DistributionHistory || '',
+            OwnerEmail: row.OwnerEmail || '',
+            Aggregator: row.Aggregator || '',
+            UPC: row.UPC || '',
+            ISRC: row.ISRC || '',
+            Author: row.Author || '',
+            Komposer: row.Komposer || ''
+        }));
+        res.json({ rows: normalized });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+router.post('/import/preview', authenticateToken, upload.single('file'), importPreviewHandler);
+router.post('/import-preview', authenticateToken, upload.single('file'), importPreviewHandler);
+router.post('/excel/preview', authenticateToken, upload.single('file'), importPreviewHandler);
+
+// Import selected rows (JSON payload)
+const importRowsHandler = async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin' && req.user.role !== 'Operator') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+        if (rows.length === 0) {
+            return res.status(400).json({ error: 'No rows provided' });
+        }
+        const [releaseCols] = await db.query('SHOW COLUMNS FROM releases');
+        const releaseColNames = releaseCols.map(c => c.Field);
+        let inserted = 0;
+        const errors = [];
+        for (const row of rows) {
+            try {
+                const title = String(row.Title || '').trim();
+                if (!title) { errors.push('Missing Title'); continue; }
+                const version = String(row.Version || 'Original').trim();
+                const release_type = (String(row.ReleaseType || 'SINGLE').toUpperCase() === 'ALBUM') ? 'ALBUM' : 'SINGLE';
+                const primary_artists = JSON.stringify(String(row.PrimaryArtists || '').split(',').map(s=>s.trim()).filter(Boolean));
+                const record_label = row.RecordLabel || null;
+                const p_line = row.PLine || null;
+                const c_line = row.CLine || null;
+                const genre = row.Genre || null;
+                const sub_genre = row.SubGenre || null;
+                const language = row.Language || null;
+                const planned_release_date = row.PlannedReleaseDate || null;
+                const original_release_date = row.OriginalReleaseDate || null;
+                const upc = row.UPC || null;
+                const isrcSingle = row.ISRC || null;
+                const author = row.Author || null;
+                const komposer = row.Komposer || null;
+                const distribution_targets = (() => {
+                    const ids = String(row.DistributionTargets || '').split(',').map(s=>s.trim()).filter(Boolean);
+                    if (ids.length === 0) return null;
+                    const optionMap = {
+                        'SOCIAL': { id: 'SOCIAL', label: 'Social Media', logo: '/assets/platforms/social.svg' },
+                        'YOUTUBE_MUSIC': { id: 'YOUTUBE_MUSIC', label: 'YouTube Music', logo: '/assets/platforms/youtube-music.svg' },
+                        'ALL_DSP': { id: 'ALL_DSP', label: 'All DSP', logo: '/assets/platforms/alldsp.svg' },
+                    };
+                    return JSON.stringify(ids.map(id => optionMap[id]).filter(Boolean));
+                })();
+                const distribution_history = (() => {
+                    const raw = String(row.DistributionHistory || '').trim().toLowerCase();
+                    if (!raw) return null;
+                    const yes = ['yes','y','true','1'].includes(raw);
+                    return JSON.stringify(yes);
+                })();
+                const aggregator = row.Aggregator || null;
+                let user_id = req.user.id;
+                if (row.OwnerEmail) {
+                    const [users] = await db.query('SELECT id FROM users WHERE email = ?', [row.OwnerEmail]);
+                    if (users.length > 0) user_id = users[0].id;
+                }
+                const cols = ['user_id','title','version','release_type','primary_artists'];
+                const vals = [user_id, title, version, release_type, primary_artists];
+                if (releaseColNames.includes('cover_art')) { cols.push('cover_art'); vals.push(null); }
+                if (releaseColNames.includes('record_label')) { cols.push('record_label'); vals.push(record_label); }
+                if (releaseColNames.includes('p_line')) { cols.push('p_line'); vals.push(p_line); }
+                if (releaseColNames.includes('c_line')) { cols.push('c_line'); vals.push(c_line); }
+                if (releaseColNames.includes('genre')) { cols.push('genre'); vals.push(genre); }
+                if (releaseColNames.includes('sub_genre')) { cols.push('sub_genre'); vals.push(sub_genre); }
+                if (releaseColNames.includes('language')) { cols.push('language'); vals.push(language); }
+                if (releaseColNames.includes('planned_release_date')) { cols.push('planned_release_date'); vals.push(planned_release_date || null); }
+                if (releaseColNames.includes('original_release_date')) { cols.push('original_release_date'); vals.push(original_release_date || null); }
+                if (releaseColNames.includes('distribution_targets')) { cols.push('distribution_targets'); vals.push(distribution_targets || JSON.stringify([])); }
+                if (releaseColNames.includes('aggregator')) { cols.push('aggregator'); vals.push(aggregator); }
+                if (releaseColNames.includes('upc')) { cols.push('upc'); vals.push(upc); }
+                if (releaseColNames.includes('distribution_history')) { cols.push('distribution_history'); vals.push(distribution_history); }
+                cols.push('submission_date'); vals.push(new Date());
+                cols.push('status'); vals.push('Pending');
+                const placeholders = `(${cols.map(()=>'?').join(', ')})`;
+                const [insertRes] = await db.query(`INSERT INTO releases (${cols.join(', ')}) VALUES ${placeholders}`, vals);
+                const newReleaseId = insertRes.insertId;
+                // ISRC track placeholder
+                if (isrcSingle) {
+                    try {
+                        const [trackCols] = await db.query('SHOW COLUMNS FROM tracks');
+                        const trackColNames = trackCols.map(c => c.Field);
+                        const tCols = ['release_id','track_number','title','version','primary_artists','isrc'];
+                        const tVals = [newReleaseId, 1, title, version, primary_artists, isrcSingle];
+                        if (trackColNames.includes('composer')) { tCols.push('composer'); tVals.push(komposer || null); }
+                        if (trackColNames.includes('lyricist')) { tCols.push('lyricist'); tVals.push(author ? JSON.stringify([author]) : null); }
+                        await db.query(`INSERT INTO tracks (${tCols.join(', ')}) VALUES (${tCols.map(()=>'?').join(', ')})`, tVals);
+                    } catch (e) {
+                        errors.push(`Track create error for "${title}": ${e.message}`);
+                    }
+                }
+                inserted += 1;
+            } catch (e) {
+                errors.push(e.message || 'Row insert error');
+            }
+        }
+        res.json({ inserted, errors });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+router.get('/:id/email-preview', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const draftStatus = typeof req.query.status === 'string' ? req.query.status : '';
+        const overrideAgg = typeof req.query.aggregator === 'string' ? req.query.aggregator : undefined;
+        const overrideUpc = typeof req.query.upc === 'string' ? req.query.upc : undefined;
+        const reason = typeof req.query.reason === 'string' ? req.query.reason : '';
+        const description = typeof req.query.description === 'string' ? req.query.description : '';
+
+        const [rows] = await db.query('SELECT * FROM releases WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).send('Release not found');
+        const release = rows[0];
+
+        if (req.user.role !== 'Admin' && release.user_id !== req.user.id) {
+            return res.status(403).send('Access denied');
+        }
+
+        const status = draftStatus || release.status || 'Pending';
+        const aggregator = overrideAgg !== undefined ? overrideAgg : (release.aggregator || null);
+        const upc = overrideUpc !== undefined ? overrideUpc : (release.upc || null);
+
+        const [ownerRows] = await db.query('SELECT email, full_name FROM users WHERE id = ?', [release.user_id]);
+        const fullName = ownerRows.length > 0 ? (ownerRows[0].full_name || '') : '';
+
+        const subject = `Update Status Rilisan: ${release.title} → ${status}`;
+        // Build ISRC section for preview
+        let isrcBlock = '';
+        try {
+            const [trackRows] = await db.query('SELECT title, isrc FROM tracks WHERE release_id = ? ORDER BY track_number ASC', [release.id]);
+            const tracksList = Array.isArray(trackRows) ? trackRows : [];
+            const relTypeRaw = String(release.release_type || release.type || '').toUpperCase();
+            const isSingle = relTypeRaw.includes('SINGLE') || tracksList.length === 1;
+            if (isSingle) {
+                const code = String(tracksList[0]?.isrc || '').trim();
+                if (code) {
+                    isrcBlock = `<div style="font-size:14px;color:#0f172a"><strong>ISRC:</strong> ${code}</div>`;
+                }
+            } else {
+                const items = tracksList.filter(t => t && String(t.isrc || '').trim().length > 0);
+                if (items.length > 0) {
+                    const listHtml = items.map(t => {
+                        const title = String(t.title || '').trim() || 'Track';
+                        const code = String(t.isrc || '').trim();
+                        return `<div style="font-size:14px;color:#0f172a"><strong>${title}:</strong> ${code}</div>`;
+                    }).join('');
+                    isrcBlock = `
+      <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin:16px 0 8px">Daftar Track &amp; ISRC</div>
+      ${listHtml}
+    `;
+                }
+            }
+        } catch {}
+        const extraBlock = (status === 'Rejected' && (reason || description))
+            ? `
+        <div style="margin-top:12px;padding:16px;border:1px dashed #fecaca;border-radius:10px;background:#fff1f2">
+          <div style="font-size:12px;color:#b91c1c;text-transform:uppercase;font-weight:700;margin-bottom:8px">Alasan Penolakan</div>
+          ${reason ? `<div style="font-size:14px;color:#7f1d1d"><strong>Ringkas:</strong> ${reason}</div>` : ''}
+          ${description ? `<div style="font-size:14px;color:#7f1d1d;white-space:pre-wrap;margin-top:8px"><strong>Detail:</strong> ${description}</div>` : ''}
+        </div>` : '';
+
+        const html = `
+<!doctype html>
+<html lang="id">
+<meta charset="utf-8" />
+<title>${subject}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr>
+    <td style="padding:20px;background:linear-gradient(90deg,#1e40af,#2563eb);color:#fff">
+      <div style="font-weight:700;font-size:18px">Dimensi Suara</div>
+      <div style="font-size:12px;opacity:.9">Music Distribution Update</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px">
+      <div style="font-size:14px;color:#0f172a;margin-bottom:12px">Halo ${fullName || 'User'},</div>
+      <div style="font-size:14px;color:#334155;line-height:1.6">Status rilisan Anda telah diperbarui.</div>
+      <div style="margin:16px 0;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f9fafb">
+        <div style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:700;margin-bottom:8px">Detail Rilisan</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Judul:</strong> ${release.title}</div>
+        <div style="font-size:14px;color:#0f172a"><strong>Status Baru:</strong> ${status}</div>
+        ${upc ? `<div style="font-size:14px;color:#0f172a"><strong>UPC:</strong> ${upc}</div>` : ''}
+        ${isrcBlock}
+      </div>
+      ${extraBlock}
+      <div style="margin-top:20px;font-size:12px;color:#94a3b8">© ${new Date().getFullYear()} Dimensi Suara</div>
+    </td>
+  </tr>
+</table>
+<div style="max-width:640px;margin:16px auto 0;color:#64748b;font-size:12px">
+  <div><strong>Subject:</strong> ${subject}</div>
+</div>
+</body>
+</html>`;
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (err) {
+        res.status(500).send(err?.message || 'Failed to build preview');
+    }
+});
+router.post('/import/rows', authenticateToken, importRowsHandler);
+router.post('/import-rows', authenticateToken, importRowsHandler);
+router.post('/excel/rows', authenticateToken, importRowsHandler);
 export default router;

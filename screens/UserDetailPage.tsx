@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User } from '../types';
 import { api } from '../utils/api';
-import { XCircle, Eye, Download, CheckCircle, Edit } from 'lucide-react';
+import { XCircle, Eye, Download, CheckCircle, Edit, ChevronLeft } from 'lucide-react';
 import { AlertModal } from '../components/AlertModal';
 
 export const UserDetailPage: React.FC = () => {
@@ -84,6 +84,33 @@ export const UserDetailPage: React.FC = () => {
       // Password is left empty for optional update
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleImpersonate = async () => {
+    if (!user || !token) return;
+    try {
+      const res = await api.impersonateUser(token, user.id);
+      const { token: newToken, user: u } = res;
+      localStorage.setItem('cms_auth', 'true');
+      localStorage.setItem('cms_user', u.username);
+      localStorage.setItem('cms_token', newToken);
+      localStorage.setItem('cms_role', u.role || 'User');
+      if (u.status) localStorage.setItem('cms_status', u.status);
+      if (currentUser?.id) {
+        localStorage.setItem('cms_impersonated_by', String(currentUser.id));
+      }
+      navigate('/dashboard');
+      setTimeout(() => {
+        try { window.location.reload(); } catch {}
+      }, 150);
+    } catch (err: any) {
+      setAlertState({
+        isOpen: true,
+        title: 'Impersonate Gagal',
+        message: err.message || 'Tidak dapat impersonate user',
+        type: 'error'
+      });
+    }
   };
 
   const handleEditSave = async () => {
@@ -221,6 +248,13 @@ export const UserDetailPage: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 animate-fade-in">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/users')}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+              title="Kembali"
+            >
+              <ChevronLeft size={24} />
+            </button>
             <h3 className="text-base font-medium text-slate-800">Profile Lengkap</h3>
             {currentUser?.role === 'Admin' && (
               <button 
@@ -235,6 +269,17 @@ export const UserDetailPage: React.FC = () => {
             <XCircle size={24} />
           </button>
         </div>
+        {currentUser?.role === 'Admin' && user?.role === 'User' && (
+          <div className="mb-4">
+            <button
+              onClick={handleImpersonate}
+              className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700 transition-colors"
+              title="Masuk sebagai user ini"
+            >
+              Impersonate User
+            </button>
+          </div>
+        )}
         <div className="space-y-4">
           <div>
             <div className="text-sm font-medium text-slate-800">{user.full_name || user.name}</div>
@@ -260,6 +305,9 @@ export const UserDetailPage: React.FC = () => {
                   <tr><td className="text-slate-600">District</td><td className="font-normal text-slate-700">{user.district || '-'}</td></tr>
                   <tr><td className="text-slate-600">Subdistrict</td><td className="font-normal text-slate-700">{user.subdistrict || '-'}</td></tr>
                   <tr><td className="text-slate-600">Postal Code</td><td className="font-normal text-slate-700">{user.postal_code || '-'}</td></tr>
+                  <tr><td className="text-slate-600">Bank</td><td className="font-normal text-slate-700">{(user as any).bank_name || '-'}</td></tr>
+                  <tr><td className="text-slate-600">No. Rekening</td><td className="font-normal text-slate-700">{(user as any).bank_account_number || '-'}</td></tr>
+                  <tr><td className="text-slate-600">Nama Rekening</td><td className="font-normal text-slate-700">{(user as any).bank_account_name || '-'}</td></tr>
                   {(user.account_type === 'COMPANY') && (
                     <>
                       <tr><td className="text-slate-600">PIC Name</td><td className="font-normal text-slate-700">{user.pic_name || '-'}</td></tr>
